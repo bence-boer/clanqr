@@ -1,5 +1,6 @@
 import { create_supabase_client } from "../db";
 import { agent_service } from "./agent_service";
+import { pipeline_service } from "./pipeline_service";
 
 const POLL_INTERVAL_MS = 5000;
 
@@ -10,7 +11,7 @@ class WatcherService {
   start() {
     if (this.is_running) return;
     this.is_running = true;
-    console.log("👁️ Watcher service started (polling every 5s)");
+    console.log("👁️ Watcher service started (polling every 5s for submitted features)");
 
     this.interval = setInterval(() => {
       this.poll().catch((error) => {
@@ -33,12 +34,7 @@ class WatcherService {
 
   private async poll() {
     const supabase = create_supabase_client();
-
-    // Check for submitted features that need manager agent
     await this.check_submitted_features(supabase);
-
-    // Check for approved tasks that need ralph agent
-    await this.check_approved_tasks(supabase);
   }
 
   private async check_submitted_features(supabase: any) {
@@ -55,26 +51,31 @@ class WatcherService {
 
       if (!existing || existing.status === "failed") {
         console.log(`📋 Spawning manager for feature: ${feature.title}`);
-        agent_service.spawn_manager(feature, supabase).catch(console.error);
+        this.spawn_manager_and_maybe_auto_approve(feature, supabase).catch(console.error);
       }
     }
   }
 
-  private async check_approved_tasks(supabase: any) {
-    const { data: tasks, error } = await supabase
-      .from("tasks")
-      .select("*, features(*, projects(*))")
-      .eq("status", "Approved");
+  private async spawn_manager_and_maybe_auto_approve(feature: any, supabase: any) {
+    await agent_service.spawn_manager(feature, supabase);
 
-    if (error || !tasks) return;
+    // If auto_approve is enabled, approve all created tasks and kick the pipeline
+    if (feature.auto_approve) {
+      const { data: tasks } = await supabase
+        .from("tasks")
+        .select("id")
+        .eq("feature_id", feature.id)
+        .eq("status", "Pending_Approval");
 
-    for (const task of tasks) {
-      const process_id = `ralph-${task.id}`;
-      const existing = agent_service.get_all_processes()[process_id];
+      if (tasks && tasks.length > 0) {
+        await supabase
+          .from("tasks")
+          .update({ status: "Approved" })
+          .eq("feature_id", feature.id)
+          .eq("status", "Pending_Approval");
 
-      if (!existing) {
-        console.log(`🔨 Spawning Ralph for task: ${task.description.slice(0, 50)}...`);
-        agent_service.spawn_ralph(task, supabase).catch(console.error);
+        console.log(`✅ Auto-approved ${tasks.length} tasks for feature: ${feature.title}`);
+        pipeline_service.process_next().catch(console.error);
       }
     }
   }

@@ -12,8 +12,12 @@ import { agents_routes } from "./routes/agents";
 import { prompts_routes } from "./routes/prompts";
 import { system_routes } from "./routes/system";
 import { chat_routes } from "./routes/chat";
+import { traits_routes } from "./routes/traits";
+import { skills_routes } from "./routes/skills";
+import { usage_routes } from "./routes/usage";
 import { watcher_service } from "./services/watcher_service";
 import { prompt_service } from "./services/prompt_service";
+import { pipeline_service } from "./services/pipeline_service";
 import { create_supabase_client } from "./db";
 
 const app = new Hono<AppBindings>();
@@ -49,6 +53,9 @@ app.route("/api/agents", agents_routes);
 app.route("/api/prompts", prompts_routes);
 app.route("/api/system", system_routes);
 app.route("/api/chat", chat_routes);
+app.route("/api/traits", traits_routes);
+app.route("/api/skills", skills_routes);
+app.route("/api/usage", usage_routes);
 
 // Boot sequence
 async function boot() {
@@ -69,8 +76,12 @@ async function boot() {
   // 2. Sync base prompts from repo files → DB
   await prompt_service.sync_from_repo();
 
-  // 3. Start watcher service
+  // 3. Start watcher service (manager-only — pipeline handles task execution)
   watcher_service.start();
+
+  // 4. Start pipeline service — trigger on any already-approved tasks
+  pipeline_service.process_next().catch(console.error);
+  console.log("✅ Pipeline service started");
 }
 
 boot().catch(console.error);

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppBindings } from "../middleware/supabase";
+import { pipeline_service } from "../services/pipeline_service";
 
 const update_task_schema = z.object({
   status: z
@@ -92,10 +93,17 @@ tasks_routes.post("/:id/approve", async (context) => {
     .select()
     .single();
 
-  if (error) {
-    return context.json({ error: error.message }, 500);
-  }
+  if (error) return context.json({ error: error.message }, 500);
+
+  // Kick pipeline to process this newly approved task
+  pipeline_service.process_next().catch(console.error);
   return context.json(data);
+});
+
+// Manually trigger pipeline to run a specific approved task
+tasks_routes.post("/:id/run", (context) => {
+  pipeline_service.process_next().catch(console.error);
+  return context.json({ success: true });
 });
 
 // Bulk approve all tasks for a feature
@@ -110,8 +118,9 @@ tasks_routes.post("/approve-all/:feature_id", async (context) => {
     .eq("status", "Pending_Approval")
     .select();
 
-  if (error) {
-    return context.json({ error: error.message }, 500);
-  }
+  if (error) return context.json({ error: error.message }, 500);
+
+  // Kick pipeline
+  pipeline_service.process_next().catch(console.error);
   return context.json(data);
 });

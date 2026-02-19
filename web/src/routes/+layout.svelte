@@ -1,6 +1,9 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { page } from "$app/stores";
   import { check_auth, register_passkey, login_passkey, logout } from "$lib/auth";
+  import { api } from "$lib/api/client";
+  import type { SystemStats } from "$lib/types";
 
   let { children } = $props();
 
@@ -8,12 +11,15 @@
   let auth_error: string = $state("");
   let setup_name: string = $state("");
   let sidebar_open: boolean = $state(false);
+  let system_stats: SystemStats | null = $state(null);
+  let current_path = $derived($page.url.pathname);
 
   onMount(async () => {
     try {
       const status = await check_auth();
       if (status.authenticated) {
         auth_state = "authenticated";
+        load_system_stats();
       } else if (!status.is_setup) {
         auth_state = "setup";
       } else {
@@ -23,6 +29,14 @@
       auth_state = "setup";
     }
   });
+
+  async function load_system_stats() {
+    try {
+      system_stats = await api.system_stats();
+    } catch {
+      // silently fail — stats are non-critical
+    }
+  }
 
   async function handle_register() {
     auth_error = "";
@@ -51,6 +65,11 @@
 
   function close_sidebar() {
     sidebar_open = false;
+  }
+
+  function is_active(path: string) {
+    if (path === "/") return current_path === "/";
+    return current_path.startsWith(path);
   }
 </script>
 
@@ -120,27 +139,77 @@
           <span class="subtitle">Agent Workspace</span>
         </div>
       </div>
-      <ul class="nav-links">
-        <li>
-          <a href="/" onclick={close_sidebar}>
-            <span class="icon">dashboard</span>
-            Dashboard
-          </a>
-        </li>
-        <li>
-          <a href="/projects" onclick={close_sidebar}>
-            <span class="icon">folder</span>
-            Projects
-          </a>
-        </li>
-        <li>
-          <a href="/monitoring" onclick={close_sidebar}>
-            <span class="icon">monitor_heart</span>
-            Monitoring
-          </a>
-        </li>
-      </ul>
+
+      <div class="nav-section">
+        <span class="nav-section-label">Workspace</span>
+        <ul class="nav-links">
+          <li>
+            <a href="/" onclick={close_sidebar} class:active={is_active("/") && current_path === "/"}>
+              <span class="icon">dashboard</span>
+              Dashboard
+            </a>
+          </li>
+          <li>
+            <a href="/projects" onclick={close_sidebar} class:active={is_active("/projects")}>
+              <span class="icon">folder</span>
+              Projects
+            </a>
+          </li>
+          <li>
+            <a href="/pipeline" onclick={close_sidebar} class:active={is_active("/pipeline")}>
+              <span class="icon">account_tree</span>
+              Pipeline
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <div class="nav-section">
+        <span class="nav-section-label">AI</span>
+        <ul class="nav-links">
+          <li>
+            <a href="/chat" onclick={close_sidebar} class:active={is_active("/chat")}>
+              <span class="icon">chat</span>
+              Chat
+            </a>
+          </li>
+          <li>
+            <a href="/usage" onclick={close_sidebar} class:active={is_active("/usage")}>
+              <span class="icon">analytics</span>
+              Usage
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <div class="nav-section">
+        <span class="nav-section-label">Configure</span>
+        <ul class="nav-links">
+          <li>
+            <a href="/prompts" onclick={close_sidebar} class:active={is_active("/prompts")}>
+              <span class="icon">tune</span>
+              Prompts &amp; Traits
+            </a>
+          </li>
+          <li>
+            <a href="/skills" onclick={close_sidebar} class:active={is_active("/skills")}>
+              <span class="icon">extension</span>
+              Skills
+            </a>
+          </li>
+        </ul>
+      </div>
+
       <div class="sidebar-footer">
+        {#if system_stats}
+          <div class="system-mini-stats">
+            <span class="icon" style="font-size:14px">memory</span>
+            CPU {system_stats.cpu_percent}%
+            {#if system_stats.cpu_temp_celsius !== null}
+              · {system_stats.cpu_temp_celsius}°C
+            {/if}
+          </div>
+        {/if}
         <button class="logout-btn" onclick={handle_logout}>
           <span class="icon">logout</span>
           Sign out
@@ -381,7 +450,6 @@
 
   .nav-links {
     list-style: none;
-    flex: 1;
   }
 
   .nav-links li {
@@ -398,6 +466,7 @@
     border-radius: var(--radius);
     font-size: 0.875rem;
     transition: all 0.15s;
+    border-left: 2px solid transparent;
   }
 
   .nav-links a:hover {
@@ -405,10 +474,41 @@
     color: var(--fg);
   }
 
+  .nav-links a.active {
+    background: var(--bg);
+    color: var(--accent);
+    border-left-color: var(--accent);
+  }
+
+  .nav-section {
+    margin-bottom: 1rem;
+  }
+
+  .nav-section-label {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--fg-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 0 0.75rem;
+    margin-bottom: 0.25rem;
+  }
+
   .sidebar-footer {
     margin-top: auto;
     padding-top: 1rem;
     border-top: 1px solid var(--border);
+  }
+
+  .system-mini-stats {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.75rem;
+    color: var(--fg-muted);
+    margin-bottom: 0.25rem;
   }
 
   .logout-btn {

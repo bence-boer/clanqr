@@ -20,6 +20,7 @@
   const project_id = $derived(page.params.id);
 
   async function load_data() {
+    if (!project_id) return;
     try {
       const [p, f] = await Promise.all([
         api.get_project(project_id),
@@ -65,7 +66,7 @@
         project_id: project_id,
         title: feature_title.trim(),
         description: feature_description.trim() || undefined,
-        resources: resources.length > 0 ? resources : undefined,
+        resources: resources.length > 0 ? (resources as any) : undefined,
       });
       feature_title = '';
       feature_description = '';
@@ -128,7 +129,6 @@
       console.error('Failed to spawn ralph:', error);
     }
   }
-
   function select_feature(feature: Feature) {
     selected_feature = feature;
     show_mobile_detail = true;
