@@ -10,3 +10,4 @@ supabase/.branches/
 agents/workspace/
 *.log
 .deploy-trigger
+.planning/
