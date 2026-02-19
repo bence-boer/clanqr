@@ -7,7 +7,7 @@
 
   let { children } = $props();
 
-  let auth_state: "loading" | "setup" | "login" | "authenticated" = $state("loading");
+  let auth_state: "loading" | "setup" | "login" | "authenticated" | "error" = $state("loading");
   let auth_error: string = $state("");
   let setup_name: string = $state("");
   let sidebar_open: boolean = $state(false);
@@ -26,7 +26,7 @@
         auth_state = "login";
       }
     } catch {
-      auth_state = "setup";
+      auth_state = "error";
     }
   });
 
@@ -81,6 +81,18 @@
   <div class="auth-screen">
     <div class="auth-card">
       <span class="icon spin">progress_activity</span>
+    </div>
+  </div>
+{:else if auth_state === "error"}
+  <div class="auth-screen">
+    <div class="auth-card">
+      <span class="icon large">cloud_off</span>
+      <h1>Ralph Agent Workspace</h1>
+      <p class="auth-subtitle">Could not reach the API server. Is it running?</p>
+      <button class="btn-primary" onclick={() => window.location.reload()}>
+        <span class="icon">refresh</span>
+        Retry
+      </button>
     </div>
   </div>
 {:else if auth_state === "setup"}

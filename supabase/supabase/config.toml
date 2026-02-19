@@ -58,10 +58,9 @@ enabled = true
 schema_paths = []
 
 [db.seed]
-# If enabled, seeds the database after migrations during a db reset.
-enabled = true
-# Specifies an ordered list of seed files to load during db reset.
-# Supports glob patterns relative to supabase directory: "./seeds/*.sql"
+# Seeds are disabled in production to prevent accidental data loss.
+# Data lives in the Docker volume supabase_db_supabase — never run `supabase db reset` in production.
+enabled = false
 sql_paths = ["./seed.sql"]
 
 [db.network_restrictions]
