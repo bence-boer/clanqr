@@ -57,7 +57,8 @@
   <div class="page-header">
     <h2>Projects</h2>
     <button class="btn btn-primary" onclick={() => (show_create = !show_create)}>
-      {show_create ? 'Cancel' : '+ New Project'}
+      <span class="icon">{show_create ? 'close' : 'add'}</span>
+      {show_create ? 'Cancel' : 'New Project'}
     </button>
   </div>
 
@@ -83,7 +84,7 @@
   {/if}
 
   {#if loading}
-    <p class="loading">Loading projects...</p>
+    <p class="loading"><span class="icon spin">progress_activity</span> Loading projects...</p>
   {:else if projects.length === 0}
     <p class="empty">No projects yet. Create one to get started.</p>
   {:else}
@@ -96,11 +97,17 @@
           </div>
           <p class="project-desc">{project.description ?? 'No description'}</p>
           <div class="project-footer">
-            <span class="date">{new Date(project.created_at).toLocaleDateString()}</span>
+            <span class="date">
+              <span class="icon" style="font-size:14px">calendar_today</span>
+              {new Date(project.created_at).toLocaleDateString()}
+            </span>
             <button
               class="btn btn-danger btn-sm"
               onclick={(e) => { e.preventDefault(); e.stopPropagation(); delete_project(project.id); }}
-            >Delete</button>
+            >
+              <span class="icon" style="font-size:14px">delete</span>
+              Delete
+            </button>
           </div>
         </a>
       {/each}
@@ -118,17 +125,19 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
   }
 
   .page-header h2 {
     font-size: 1.5rem;
-    color: #fff;
+    color: var(--fg);
   }
 
   .create-form {
-    background: #1a1a1a;
-    border: 1px solid #2a2a2a;
-    border-radius: 8px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
     padding: 1.25rem;
     margin-bottom: 1.5rem;
     display: flex;
@@ -137,42 +146,47 @@
   }
 
   .input {
-    background: #0f0f0f;
-    border: 1px solid #333;
-    border-radius: 6px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
     padding: 0.6rem 0.8rem;
-    color: #e0e0e0;
-    font-size: 0.9rem;
+    color: var(--fg);
+    font-size: 0.875rem;
     width: 100%;
+    font-family: var(--font);
   }
 
   .input:focus {
     outline: none;
-    border-color: #6ea8fe;
+    border-color: var(--accent);
   }
 
   .textarea {
     resize: vertical;
-    font-family: inherit;
+    font-family: var(--font);
   }
 
   .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
     padding: 0.5rem 1rem;
     border: none;
-    border-radius: 6px;
+    border-radius: var(--radius);
     font-size: 0.85rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.15s;
+    font-family: var(--font);
   }
 
   .btn-primary {
-    background: #2563eb;
-    color: #fff;
+    background: var(--accent);
+    color: var(--bg);
   }
 
   .btn-primary:hover {
-    background: #1d4ed8;
+    opacity: 0.9;
   }
 
   .btn-primary:disabled {
@@ -181,12 +195,12 @@
   }
 
   .btn-danger {
-    background: #dc2626;
-    color: #fff;
+    background: var(--danger);
+    color: var(--fg);
   }
 
   .btn-danger:hover {
-    background: #b91c1c;
+    opacity: 0.9;
   }
 
   .btn-sm {
@@ -195,8 +209,11 @@
   }
 
   .loading, .empty {
-    color: #888;
+    color: var(--fg-muted);
     font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
   .project-grid {
@@ -206,9 +223,9 @@
   }
 
   .project-card {
-    background: #1a1a1a;
-    border: 1px solid #2a2a2a;
-    border-radius: 8px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
     padding: 1.25rem;
     text-decoration: none;
     color: inherit;
@@ -216,7 +233,7 @@
   }
 
   .project-card:hover {
-    border-color: #444;
+    border-color: var(--accent);
   }
 
   .project-header {
@@ -224,16 +241,18 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 0.5rem;
+    gap: 0.5rem;
+    flex-wrap: wrap;
   }
 
   .project-header h3 {
-    font-size: 1.1rem;
-    color: #fff;
+    font-size: 1.05rem;
+    color: var(--fg);
   }
 
   .project-desc {
     font-size: 0.85rem;
-    color: #888;
+    color: var(--fg-muted);
     margin-bottom: 0.75rem;
   }
 
@@ -241,21 +260,32 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
 
   .date {
     font-size: 0.75rem;
-    color: #666;
+    color: var(--fg-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
   }
 
   .badge {
-    font-size: 0.7rem;
-    padding: 0.2rem 0.6rem;
+    font-size: 0.65rem;
+    padding: 0.2rem 0.55rem;
     border-radius: 12px;
     font-weight: 600;
     text-transform: uppercase;
   }
 
-  .badge-active { background: #0f3d0f; color: #4caf50; }
-  .badge-archived { background: #333; color: #aaa; }
+  .badge-active { background: rgba(74, 158, 110, 0.15); color: var(--success); }
+  .badge-archived { background: var(--bg-elevated); color: var(--fg-muted); }
+
+  @media (max-width: 768px) {
+    .project-grid {
+      grid-template-columns: 1fr;
+    }
+  }
 </style>

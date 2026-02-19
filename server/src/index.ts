@@ -3,6 +3,8 @@ import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 import { logger } from "hono/logger";
 import { supabase_middleware, type AppBindings } from "./middleware/supabase";
+import { auth_middleware } from "./middleware/auth";
+import { auth_routes } from "./routes/auth";
 import { projects_routes } from "./routes/projects";
 import { features_routes } from "./routes/features";
 import { tasks_routes } from "./routes/tasks";
@@ -17,19 +19,24 @@ app.use("*", secureHeaders());
 app.use(
   "*",
   cors({
-    origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
+    origin: (origin) => origin ?? "*",
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
   })
 );
 app.use("*", supabase_middleware());
 
-// Health check
+// Health check (no auth)
 app.get("/health", (context) => {
   return context.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// API routes
+// Auth routes (no auth required)
+app.route("/api/auth", auth_routes);
+
+// Protected API routes
+app.use("/api/*", auth_middleware());
 app.route("/api/projects", projects_routes);
 app.route("/api/features", features_routes);
 app.route("/api/tasks", tasks_routes);
