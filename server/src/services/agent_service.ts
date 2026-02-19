@@ -3,6 +3,15 @@ import type { SupabaseClient } from "../db";
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 
+const HOME = process.env.HOME ?? "/home/scoy";
+const COPILOT_BIN =
+  process.env.COPILOT_BIN ?? join(HOME, ".local/bin/copilot");
+const ENRICHED_PATH = [
+  join(HOME, ".local/bin"),
+  join(HOME, ".bun/bin"),
+  process.env.PATH ?? "/usr/local/bin:/usr/bin:/bin",
+].join(":");
+
 interface AgentProcess {
   task_id: string;
   run_id?: string; // agent_runs table id
@@ -107,12 +116,12 @@ class AgentService {
 
     try {
       const proc = Bun.spawn(
-        ["copilot", "-p", prompt, "--allow-all-tools"],
+        [COPILOT_BIN, "-p", prompt, "--allow-all-tools"],
         {
           cwd: work_dir,
           stdout: "pipe",
           stderr: "pipe",
-          env: { ...process.env, HOME: process.env.HOME ?? "/home/scoy" },
+          env: { ...process.env, HOME, PATH: ENRICHED_PATH },
         }
       );
 
@@ -146,12 +155,23 @@ class AgentService {
       // Parse tasks from output file
       if (exit_code === 0) {
         await this.parse_manager_output(feature_id, work_dir, supabase);
+      } else {
+        // Reset feature to Submitted so watcher can retry
+        await supabase
+          .from("features")
+          .update({ status: "Submitted" })
+          .eq("id", feature_id);
       }
     } catch (error) {
       agent_proc.status = "failed";
       agent_proc.finished_at = new Date().toISOString();
       agent_proc.log +=
         `\nERROR: ${error instanceof Error ? error.message : "Unknown error"}`;
+      // Reset feature to Submitted so watcher can retry
+      await supabase
+        .from("features")
+        .update({ status: "Submitted" })
+        .eq("id", feature_id);
       if (run_record?.id) {
         await supabase
           .from("agent_runs")
@@ -217,12 +237,12 @@ class AgentService {
 
     try {
       const proc = Bun.spawn(
-        ["copilot", "-p", prompt, "--allow-all-tools"],
+        [COPILOT_BIN, "-p", prompt, "--allow-all-tools"],
         {
           cwd: work_dir,
           stdout: "pipe",
           stderr: "pipe",
-          env: { ...process.env, HOME: process.env.HOME ?? "/home/scoy" },
+          env: { ...process.env, HOME, PATH: ENRICHED_PATH },
         }
       );
 

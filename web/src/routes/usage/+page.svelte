@@ -376,6 +376,7 @@
   .filters {
     display: flex;
     gap: 0.5rem;
+    flex-wrap: wrap;
   }
 
   .select {
@@ -387,6 +388,7 @@
     padding: 0.35rem 0.6rem;
     cursor: pointer;
     font-family: inherit;
+    min-width: 0;
   }
 
   .select:focus {
@@ -519,5 +521,7 @@
     .stats-2 { grid-template-columns: 1fr; }
     .breakdown-section { grid-template-columns: 1fr; }
     .history-header { flex-direction: column; align-items: flex-start; }
+    .filters { flex-direction: column; width: 100%; }
+    .bar-label { width: auto; min-width: 60px; }
   }
 </style>

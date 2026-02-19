@@ -12,7 +12,7 @@ prompts_routes.get("/", async (context) => {
   const supabase = context.get("supabase");
   const { data, error } = await supabase
     .from("prompts")
-    .select("id, role, version, updated_at")
+    .select("*")
     .order("role");
 
   if (error) return context.json({ error: error.message }, 500);

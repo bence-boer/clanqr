@@ -1,4 +1,14 @@
 import type { SupabaseClient } from "../db";
+import { join } from "path";
+
+const HOME = process.env.HOME ?? "/home/scoy";
+const COPILOT_BIN =
+  process.env.COPILOT_BIN ?? join(HOME, ".local/bin/copilot");
+const ENRICHED_PATH = [
+  join(HOME, ".local/bin"),
+  join(HOME, ".bun/bin"),
+  process.env.PATH ?? "/usr/local/bin:/usr/bin:/bin",
+].join(":");
 
 interface ActiveChat {
   session_id: string;
@@ -6,7 +16,7 @@ interface ActiveChat {
 }
 
 class ChatService {
-  private active: ActiveChat | null = null;
+  private active_sessions: Map<string, ActiveChat> = new Map();
 
   async send_message(
     session_id: string,
@@ -37,16 +47,16 @@ class ChatService {
       .single();
 
     const proc = Bun.spawn(
-      ["copilot", "-p", content, "--model", model, "--allow-all-tools"],
+      [COPILOT_BIN, "-p", content, "--model", model, "--allow-all-tools"],
       {
-        cwd: process.env.HOME ?? "/home/scoy",
+        cwd: HOME,
         stdout: "pipe",
         stderr: "pipe",
-        env: { ...process.env },
+        env: { ...process.env, HOME, PATH: ENRICHED_PATH },
       }
     );
 
-    this.active = { session_id, process: proc };
+    this.active_sessions.set(session_id, { session_id, process: proc });
 
     let full_response = "";
     const reader = proc.stdout?.getReader();
@@ -67,7 +77,7 @@ class ChatService {
     }
 
     const exit_code = await proc.exited;
-    this.active = null;
+    this.active_sessions.delete(session_id);
 
     const finished_at = new Date().toISOString();
     const duration_ms = Date.now() - new Date(started_at).getTime();
@@ -96,16 +106,20 @@ class ChatService {
   }
 
   cancel(session_id: string): boolean {
-    if (this.active?.session_id === session_id) {
-      this.active.process.kill();
-      this.active = null;
+    const active = this.active_sessions.get(session_id);
+    if (active) {
+      active.process.kill();
+      this.active_sessions.delete(session_id);
       return true;
     }
     return false;
   }
 
-  is_busy(): boolean {
-    return this.active !== null;
+  is_busy(session_id?: string): boolean {
+    if (session_id) {
+      return this.active_sessions.has(session_id);
+    }
+    return this.active_sessions.size > 0;
   }
 }
 

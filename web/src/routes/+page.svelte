@@ -72,21 +72,21 @@
     <p class="loading"><span class="icon spin">progress_activity</span> Loading...</p>
   {:else}
     <div class="stats">
-      <div class="stat-card">
+      <a href="/projects" class="stat-card">
         <span class="icon stat-icon">folder</span>
         <span class="stat-value">{projects.length}</span>
         <span class="stat-label">Projects</span>
-      </div>
-      <div class="stat-card">
+      </a>
+      <a href="/projects" class="stat-card">
         <span class="icon stat-icon">category</span>
         <span class="stat-value">{total_features}</span>
         <span class="stat-label">Features</span>
-      </div>
-      <div class="stat-card pipeline-stat" style="--state-color: {pipeline ? pipeline_state_color(pipeline.state) : 'var(--fg-muted)'}">
+      </a>
+      <a href="/pipeline" class="stat-card pipeline-stat" style="--state-color: {pipeline ? pipeline_state_color(pipeline.state) : 'var(--fg-muted)'}">
         <span class="icon stat-icon">account_tree</span>
         <span class="stat-value">{pipeline ? pipeline_state_label(pipeline.state) : '—'}</span>
         <span class="stat-label">Pipeline · {pipeline?.queue_depth ?? 0} queued</span>
-      </div>
+      </a>
     </div>
 
     <!-- System Stats Card -->
@@ -234,6 +234,14 @@
     border-radius: var(--radius);
     padding: 1.25rem;
     text-align: center;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+
+  .stat-card:hover {
+    border-color: var(--accent);
   }
 
   .stat-icon {
@@ -466,7 +474,9 @@
   }
 
   @media (max-width: 768px) {
-    .stats { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: repeat(3, 1fr); }
+    .stat-card { padding: 0.75rem 0.5rem; }
+    .stat-value { font-size: 1.25rem; }
     .quick-actions { grid-template-columns: repeat(2, 1fr); }
     .sys-stat { grid-template-columns: 80px 1fr 70px; }
   }

@@ -10,6 +10,7 @@
   let refresh_message = $state<string | null>(null);
   let expanded_skill = $state<string | null>(null);
   let skill_content = $state<string | null>(null);
+  let skill_files = $state<{ name: string; content: string }[]>([]);
   let content_loading = $state(false);
 
   async function load_skills() {
@@ -40,14 +41,17 @@
     if (expanded_skill === name) {
       expanded_skill = null;
       skill_content = null;
+      skill_files = [];
       return;
     }
     expanded_skill = name;
     skill_content = null;
+    skill_files = [];
     content_loading = true;
     try {
       const full = await api.get_skill(name);
       skill_content = full.content;
+      skill_files = full.files ?? [];
     } catch {
       skill_content = 'Failed to load skill content.';
     } finally {
@@ -116,6 +120,19 @@
                 </div>
               {:else}
                 <pre class="skill-content">{skill_content}</pre>
+                {#if skill_files.length > 0}
+                  <div class="skill-extra-files">
+                    {#each skill_files as file}
+                      <details class="extra-file">
+                        <summary class="extra-file-name">
+                          <span class="icon" style="font-size:14px">description</span>
+                          {file.name}
+                        </summary>
+                        <pre class="skill-content">{file.content}</pre>
+                      </details>
+                    {/each}
+                  </div>
+                {/if}
               {/if}
             </div>
           {/if}
@@ -324,6 +341,28 @@
     margin: 0;
     max-height: 480px;
     overflow-y: auto;
+  }
+
+  .skill-extra-files {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  .extra-file-name {
+    cursor: pointer;
+    font-size: 0.82rem;
+    color: var(--accent);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0;
+  }
+
+  .extra-file .skill-content {
+    margin-top: 0.5rem;
+    max-height: 320px;
   }
 
   @media (max-width: 600px) {

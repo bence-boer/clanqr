@@ -16,6 +16,12 @@
 
   let selected_feature = $state<Feature | null>(null);
   let show_mobile_detail = $state(false);
+  let editing_feature = $state(false);
+  let edit_title = $state('');
+  let edit_description = $state('');
+  let saving_edit = $state(false);
+  let new_resource_url = $state('');
+  let new_resource_title = $state('');
 
   const project_id = $derived(page.params.id);
 
@@ -132,6 +138,60 @@
   function select_feature(feature: Feature) {
     selected_feature = feature;
     show_mobile_detail = true;
+    editing_feature = false;
+  }
+
+  function start_editing() {
+    if (!selected_feature) return;
+    edit_title = selected_feature.title;
+    edit_description = selected_feature.description ?? '';
+    editing_feature = true;
+  }
+
+  function cancel_editing() {
+    editing_feature = false;
+  }
+
+  async function save_feature_edit() {
+    if (!selected_feature || !edit_title.trim()) return;
+    saving_edit = true;
+    try {
+      await api.update_feature(selected_feature.id, {
+        title: edit_title.trim(),
+        description: edit_description.trim() || null,
+      } as Partial<Feature>);
+      editing_feature = false;
+      await load_data();
+    } catch (error) {
+      console.error('Failed to update feature:', error);
+    } finally {
+      saving_edit = false;
+    }
+  }
+
+  async function add_resource_to_feature() {
+    if (!selected_feature || !new_resource_url.trim()) return;
+    try {
+      await api.add_resource(selected_feature.id, {
+        url: new_resource_url.trim(),
+        title: new_resource_title.trim() || undefined,
+      });
+      new_resource_url = '';
+      new_resource_title = '';
+      await load_data();
+    } catch (error) {
+      console.error('Failed to add resource:', error);
+    }
+  }
+
+  async function remove_existing_resource(resource_id: string) {
+    if (!selected_feature) return;
+    try {
+      await api.delete_resource(selected_feature.id, resource_id);
+      await load_data();
+    } catch (error) {
+      console.error('Failed to delete resource:', error);
+    }
   }
 
   function status_icon(status: string): string {
@@ -243,7 +303,10 @@
           <div class="detail-header">
             <h3>{selected_feature.title}</h3>
             <div class="detail-actions">
-              {#if selected_feature.status === 'Draft'}
+              {#if selected_feature.status === 'Draft' && !editing_feature}
+                <button class="btn btn-secondary btn-sm" onclick={start_editing}>
+                  <span class="icon" style="font-size:14px">edit</span> Edit
+                </button>
                 <button class="btn btn-primary btn-sm" onclick={() => submit_feature(selected_feature!.id)}>
                   <span class="icon" style="font-size:14px">send</span> Submit
                 </button>
@@ -255,6 +318,20 @@
           </div>
 
           <div class="detail-body">
+            {#if editing_feature}
+              <form class="edit-feature-form" onsubmit={(e) => { e.preventDefault(); save_feature_edit(); }}>
+                <label class="edit-label" for="edit-title">Title</label>
+                <input id="edit-title" type="text" class="input" bind:value={edit_title} required />
+                <label class="edit-label" for="edit-desc">Description</label>
+                <textarea id="edit-desc" class="input textarea" bind:value={edit_description} rows={4}></textarea>
+                <div class="form-actions">
+                  <button type="button" class="btn btn-secondary btn-sm" onclick={cancel_editing}>Cancel</button>
+                  <button type="submit" class="btn btn-primary btn-sm" disabled={saving_edit || !edit_title.trim()}>
+                    {saving_edit ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </form>
+            {:else}
             <div class="detail-section">
               <h4><span class="icon" style="font-size:16px">description</span> Description</h4>
               <div class="description-text">{selected_feature.description ?? 'No description'}</div>
@@ -270,13 +347,33 @@
                         <span class="icon" style="font-size:14px">open_in_new</span>
                         {resource.title ?? resource.url}
                       </a>
-                      <span class="badge badge-{status_class(resource.status)}">
-                        <span class="icon" style="font-size:11px">{status_icon(resource.status)}</span>
-                        {resource.status}
-                      </span>
+                      <div class="resource-actions">
+                        <span class="badge badge-{status_class(resource.status)}">
+                          <span class="icon" style="font-size:11px">{status_icon(resource.status)}</span>
+                          {resource.status}
+                        </span>
+                        {#if selected_feature.status === 'Draft'}
+                          <button class="btn btn-danger btn-icon" onclick={() => remove_existing_resource(resource.id)} title="Remove resource">
+                            <span class="icon" style="font-size:14px">close</span>
+                          </button>
+                        {/if}
+                      </div>
                     </li>
                   {/each}
                 </ul>
+              </div>
+            {/if}
+
+            {#if selected_feature.status === 'Draft'}
+              <div class="detail-section">
+                <h4><span class="icon" style="font-size:16px">add_link</span> Add Resource</h4>
+                <div class="add-resource-row">
+                  <input type="url" placeholder="https://..." bind:value={new_resource_url} class="input" />
+                  <input type="text" placeholder="Title" bind:value={new_resource_title} class="input input-title" />
+                  <button class="btn btn-primary btn-sm" onclick={add_resource_to_feature} disabled={!new_resource_url.trim()}>
+                    <span class="icon" style="font-size:14px">add</span> Add
+                  </button>
+                </div>
               </div>
             {/if}
 
@@ -332,6 +429,7 @@
                 </div>
               {/if}
             </div>
+            {/if}
           </div>
         {:else}
           <div class="empty-detail">
@@ -443,6 +541,23 @@
     display: flex; align-items: center; gap: 0.3rem;
   }
   .description-text { font-size: 0.875rem; color: var(--fg); line-height: 1.6; white-space: pre-wrap; }
+
+  .resource-actions {
+    display: flex; align-items: center; gap: 0.35rem;
+  }
+
+  .add-resource-row {
+    display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;
+  }
+
+  .edit-feature-form {
+    display: flex; flex-direction: column; gap: 0.75rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .edit-label {
+    font-size: 0.8rem; color: var(--fg-muted); font-weight: 600;
+  }
 
   .resource-list { list-style: none; }
   .resource-list li {

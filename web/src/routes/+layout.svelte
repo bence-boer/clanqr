@@ -555,6 +555,11 @@
   @media (max-width: 768px) {
     .mobile-toggle {
       display: block;
+      transition: left 0.2s ease;
+    }
+
+    .sidebar-open .mobile-toggle {
+      left: calc(220px + 0.75rem);
     }
 
     .sidebar {
