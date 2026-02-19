@@ -5,6 +5,7 @@ const BASE_URL = PUBLIC_API_URL || "";
 async function api_fetch<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, {
     ...options,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...options?.headers,

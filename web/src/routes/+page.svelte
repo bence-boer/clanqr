@@ -39,18 +39,21 @@
   <h2>Dashboard</h2>
 
   {#if loading}
-    <p class="loading">Loading...</p>
+    <p class="loading"><span class="icon spin">progress_activity</span> Loading...</p>
   {:else}
     <div class="stats">
       <div class="stat-card">
+        <span class="icon stat-icon">folder</span>
         <span class="stat-value">{projects.length}</span>
         <span class="stat-label">Projects</span>
       </div>
       <div class="stat-card">
+        <span class="icon stat-icon">category</span>
         <span class="stat-value">{recent_features.length}</span>
         <span class="stat-label">Features</span>
       </div>
       <div class="stat-card">
+        <span class="icon stat-icon">smart_toy</span>
         <span class="stat-value">{running_agents}</span>
         <span class="stat-label">Running Agents</span>
       </div>
@@ -70,8 +73,8 @@
               </div>
               <p class="feature-desc">{feature.description ?? 'No description'}</p>
               <div class="feature-meta">
-                <span>{feature.tasks?.length ?? 0} tasks</span>
-                <span>{feature.resources?.length ?? 0} resources</span>
+                <span><span class="icon meta-icon">task</span> {feature.tasks?.length ?? 0} tasks</span>
+                <span><span class="icon meta-icon">link</span> {feature.resources?.length ?? 0} resources</span>
               </div>
             </div>
           {/each}
@@ -86,8 +89,9 @@
           {#each Object.entries(agent_status) as [id, agent]}
             {#if agent.status === 'running'}
               <div class="agent-card">
-                <span class="agent-type">{agent.type === 'manager' ? '📋' : '🔨'} {agent.type}</span>
-                <span class="agent-id">{id}</span>
+                <span class="icon agent-icon">{agent.type === 'manager' ? 'assignment' : 'build'}</span>
+                <span class="agent-type">{agent.type}</span>
+                <span class="agent-id">{id.slice(0, 8)}</span>
                 <span class="badge badge-running">Running</span>
               </div>
             {/if}
@@ -102,11 +106,14 @@
   .dashboard h2 {
     font-size: 1.5rem;
     margin-bottom: 1.5rem;
-    color: #fff;
+    color: var(--fg);
   }
 
   .loading {
-    color: #888;
+    color: var(--fg-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
   .stats {
@@ -117,24 +124,31 @@
   }
 
   .stat-card {
-    background: #1a1a1a;
-    border: 1px solid #2a2a2a;
-    border-radius: 8px;
-    padding: 1.5rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
     text-align: center;
+  }
+
+  .stat-icon {
+    font-size: 24px;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 0.5rem;
   }
 
   .stat-value {
     display: block;
     font-size: 2rem;
     font-weight: 700;
-    color: #fff;
+    color: var(--fg);
   }
 
   .stat-label {
     display: block;
-    font-size: 0.85rem;
-    color: #888;
+    font-size: 0.8rem;
+    color: var(--fg-muted);
     margin-top: 0.25rem;
   }
 
@@ -143,18 +157,18 @@
   }
 
   .section h3 {
-    font-size: 1.1rem;
-    color: #ccc;
+    font-size: 1.05rem;
+    color: var(--fg);
     margin-bottom: 1rem;
   }
 
   .empty {
-    color: #666;
+    color: var(--fg-muted);
     font-size: 0.9rem;
   }
 
   .empty a {
-    color: #6ea8fe;
+    color: var(--accent);
   }
 
   .feature-list {
@@ -164,9 +178,9 @@
   }
 
   .feature-card {
-    background: #1a1a1a;
-    border: 1px solid #2a2a2a;
-    border-radius: 8px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
     padding: 1rem 1.25rem;
   }
 
@@ -175,16 +189,18 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
 
   .feature-title {
     font-weight: 600;
-    color: #fff;
+    color: var(--fg);
   }
 
   .feature-desc {
     font-size: 0.85rem;
-    color: #888;
+    color: var(--fg-muted);
     margin-bottom: 0.5rem;
   }
 
@@ -192,22 +208,34 @@
     display: flex;
     gap: 1rem;
     font-size: 0.8rem;
-    color: #666;
+    color: var(--fg-muted);
+    flex-wrap: wrap;
+  }
+
+  .feature-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .meta-icon {
+    font-size: 16px;
   }
 
   .badge {
-    font-size: 0.7rem;
-    padding: 0.2rem 0.6rem;
+    font-size: 0.65rem;
+    padding: 0.2rem 0.55rem;
     border-radius: 12px;
     font-weight: 600;
     text-transform: uppercase;
+    white-space: nowrap;
   }
 
-  .badge-draft { background: #333; color: #aaa; }
-  .badge-submitted { background: #1a3a5c; color: #6ea8fe; }
-  .badge-in_progress { background: #3a2f0b; color: #ffc107; }
-  .badge-done { background: #0f3d0f; color: #4caf50; }
-  .badge-running { background: #1a3a5c; color: #6ea8fe; }
+  .badge-draft { background: var(--bg-elevated); color: var(--fg-muted); }
+  .badge-submitted { background: rgba(106, 168, 254, 0.15); color: #6ea8fe; }
+  .badge-in_progress { background: var(--accent-dim); color: var(--accent); }
+  .badge-done { background: rgba(74, 158, 110, 0.15); color: var(--success); }
+  .badge-running { background: rgba(106, 168, 254, 0.15); color: #6ea8fe; }
 
   .agent-list {
     display: flex;
@@ -218,11 +246,16 @@
   .agent-card {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    background: #1a1a1a;
-    border: 1px solid #2a2a2a;
-    border-radius: 8px;
+    gap: 0.75rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
     padding: 0.75rem 1rem;
+    flex-wrap: wrap;
+  }
+
+  .agent-icon {
+    color: var(--accent);
   }
 
   .agent-type {
@@ -231,8 +264,14 @@
   }
 
   .agent-id {
-    color: #666;
+    color: var(--fg-muted);
     font-size: 0.8rem;
     font-family: monospace;
+  }
+
+  @media (max-width: 768px) {
+    .stats {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

@@ -1,0 +1,34 @@
+name: Deploy to Pi
+
+on:
+  push:
+    branches: ['main']
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, pi]
+    steps:
+      - name: Pull latest code
+        run: |
+          cd /home/scoy/Developer/repositories/ralph-agent-workspace
+          git pull origin main
+
+      - name: Install dependencies
+        run: |
+          export BUN_INSTALL="/home/scoy/.bun"
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          cd /home/scoy/Developer/repositories/ralph-agent-workspace
+          cd server && bun install --frozen-lockfile
+          cd ../web && bun install --frozen-lockfile
+
+      - name: Build web
+        run: |
+          export BUN_INSTALL="/home/scoy/.bun"
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          cd /home/scoy/Developer/repositories/ralph-agent-workspace/web
+          bun run build
+
+      - name: Trigger service restart
+        run: |
+          touch /home/scoy/Developer/repositories/ralph-agent-workspace/.deploy-trigger
