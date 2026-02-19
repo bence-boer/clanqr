@@ -325,8 +325,8 @@ class AgentService {
   }
 
   private async collect_output(agent_proc: AgentProcess, proc: Subprocess) {
-    const stdout_reader = proc.stdout?.getReader();
-    const stderr_reader = proc.stderr?.getReader();
+    const stdout_reader = proc.stdout instanceof ReadableStream ? (proc.stdout as ReadableStream<Uint8Array>).getReader() : undefined;
+    const stderr_reader = proc.stderr instanceof ReadableStream ? (proc.stderr as ReadableStream<Uint8Array>).getReader() : undefined;
     const decoder = new TextDecoder();
 
     const read_stream = async (
@@ -345,7 +345,7 @@ class AgentService {
     };
 
     // Read both streams concurrently
-    Promise.all([read_stream(stdout_reader), read_stream(stderr_reader)]);
+    Promise.all([read_stream(stdout_reader as any), read_stream(stderr_reader as any)]);
   }
 
   private async parse_manager_output(

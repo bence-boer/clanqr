@@ -162,8 +162,7 @@ auth_routes.post("/login/options", async (context) => {
   }
 
   const allow = (passkeys ?? []).map((p: any) => ({
-    id: Buffer.from(p.credential_id, "base64url"),
-    type: "public-key" as const,
+    id: p.credential_id as string,
     transports: p.transports?.split(",").filter(Boolean) ?? [],
   }));
 

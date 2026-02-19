@@ -55,8 +55,8 @@ usage_routes.get("/summary", async (context) => {
 // Paginated run history
 usage_routes.get("/history", async (context) => {
   const supabase = context.get("supabase");
-  const page = Number(context.req.query("page") ?? "1");
-  const per_page = Math.min(Number(context.req.query("per_page") ?? "20"), 100);
+  const page = Math.max(1, parseInt(context.req.query("page") ?? "1", 10) || 1);
+  const per_page = Math.min(Math.max(1, parseInt(context.req.query("per_page") ?? "20", 10) || 20), 100);
   const type_filter = context.req.query("type");
   const status_filter = context.req.query("status");
 
