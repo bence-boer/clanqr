@@ -1,4 +1,6 @@
-const BASE_URL = "http://localhost:3001";
+import { PUBLIC_API_URL } from "$env/static/public";
+
+const BASE_URL = PUBLIC_API_URL || "";
 
 async function api_fetch<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, {
