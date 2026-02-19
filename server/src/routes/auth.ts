@@ -41,19 +41,19 @@ auth_routes.get("/status", async (context) => {
   return context.json({ is_setup, authenticated });
 });
 
-// Generate registration options (first-time setup or add new passkey)
+// Generate registration options (first-time setup only)
 auth_routes.post("/register/options", async (context) => {
   const db = context.get("supabase");
-  const body = await context.req.json<{ display_name?: string }>();
 
-  // Get existing passkeys to exclude
-  const { data: existing } = await db
+  // Block registration if a passkey already exists
+  const { count } = await db
     .from("passkeys")
-    .select("credential_id");
-  const exclude = (existing ?? []).map((p: any) => ({
-    id: Buffer.from(p.credential_id, "base64url"),
-    type: "public-key" as const,
-  }));
+    .select("*", { count: "exact", head: true });
+  if ((count ?? 0) > 0) {
+    return context.json({ error: "Passkey already registered" }, 403);
+  }
+
+  const body = await context.req.json<{ display_name?: string }>();
 
   const options = await generateRegistrationOptions({
     rpName: RP_NAME,
@@ -61,7 +61,6 @@ auth_routes.post("/register/options", async (context) => {
     userName: body.display_name ?? "admin",
     userDisplayName: body.display_name ?? "Admin",
     attestationType: "none",
-    excludeCredentials: exclude,
     authenticatorSelection: {
       residentKey: "preferred",
       userVerification: "preferred",
@@ -78,6 +77,15 @@ auth_routes.post("/register/options", async (context) => {
 // Verify registration response
 auth_routes.post("/register/verify", async (context) => {
   const db = context.get("supabase");
+
+  // Block registration if a passkey already exists
+  const { count } = await db
+    .from("passkeys")
+    .select("*", { count: "exact", head: true });
+  if ((count ?? 0) > 0) {
+    return context.json({ error: "Passkey already registered" }, 403);
+  }
+
   const body = await context.req.json();
   const expected_challenge = challenge_store.get("registration");
 
@@ -145,9 +153,13 @@ auth_routes.post("/register/verify", async (context) => {
 // Generate authentication options (login)
 auth_routes.post("/login/options", async (context) => {
   const db = context.get("supabase");
-  const { data: passkeys } = await db
+  const { data: passkeys, count } = await db
     .from("passkeys")
-    .select("credential_id, transports");
+    .select("credential_id, transports", { count: "exact" });
+
+  if (!count || count === 0) {
+    return context.json({ error: "No passkeys registered" }, 403);
+  }
 
   const allow = (passkeys ?? []).map((p: any) => ({
     id: Buffer.from(p.credential_id, "base64url"),
