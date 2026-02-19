@@ -11,6 +11,7 @@ jobs:
     steps:
       - name: Pull latest code
         run: |
+          git config --global --add safe.directory /home/scoy/Developer/repositories/ralph-agent-workspace
           cd /home/scoy/Developer/repositories/ralph-agent-workspace
           git pull origin main
 
