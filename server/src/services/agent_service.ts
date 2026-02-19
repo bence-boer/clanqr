@@ -5,6 +5,7 @@ import { join } from "path";
 
 interface AgentProcess {
   task_id: string;
+  run_id?: string; // agent_runs table id
   type: "manager" | "ralph";
   process: Subprocess | null;
   status: "running" | "completed" | "failed" | "stopped";
@@ -79,12 +80,26 @@ class AgentService {
 
     const prompt = build_manager_prompt(spec, work_dir);
 
+    // Create agent_runs record
+    const started_at = new Date().toISOString();
+    const { data: run_record } = await supabase
+      .from("agent_runs")
+      .insert({
+        type: "manager",
+        reference_id: feature_id,
+        status: "running",
+        started_at,
+      })
+      .select("id")
+      .single();
+
     const agent_proc: AgentProcess = {
       task_id: `manager-${feature_id}`,
+      run_id: run_record?.id,
       type: "manager",
       process: null,
       status: "running",
-      started_at: new Date().toISOString(),
+      started_at,
       log: "",
     };
 
@@ -114,6 +129,20 @@ class AgentService {
       // Save log
       writeFileSync(join(work_dir, "agent.log"), agent_proc.log);
 
+      // Update agent_runs record
+      if (run_record?.id) {
+        const duration_ms = Date.now() - new Date(started_at).getTime();
+        await supabase
+          .from("agent_runs")
+          .update({
+            status: agent_proc.status,
+            log: agent_proc.log.slice(-10000),
+            finished_at: agent_proc.finished_at,
+            duration_ms,
+          })
+          .eq("id", run_record.id);
+      }
+
       // Parse tasks from output file
       if (exit_code === 0) {
         await this.parse_manager_output(feature_id, work_dir, supabase);
@@ -123,6 +152,16 @@ class AgentService {
       agent_proc.finished_at = new Date().toISOString();
       agent_proc.log +=
         `\nERROR: ${error instanceof Error ? error.message : "Unknown error"}`;
+      if (run_record?.id) {
+        await supabase
+          .from("agent_runs")
+          .update({
+            status: "failed",
+            error: error instanceof Error ? error.message : "Unknown error",
+            finished_at: agent_proc.finished_at,
+          })
+          .eq("id", run_record.id);
+      }
     }
   }
 
@@ -151,12 +190,26 @@ class AgentService {
 
     const prompt = build_ralph_prompt(task_spec, work_dir);
 
+    // Create agent_runs record
+    const started_at = new Date().toISOString();
+    const { data: run_record } = await supabase
+      .from("agent_runs")
+      .insert({
+        type: "ralph",
+        reference_id: task_id,
+        status: "running",
+        started_at,
+      })
+      .select("id")
+      .single();
+
     const agent_proc: AgentProcess = {
       task_id: `ralph-${task_id}`,
+      run_id: run_record?.id,
       type: "ralph",
       process: null,
       status: "running",
-      started_at: new Date().toISOString(),
+      started_at,
       log: "",
     };
 
@@ -181,6 +234,20 @@ class AgentService {
       agent_proc.finished_at = new Date().toISOString();
 
       writeFileSync(join(work_dir, "agent.log"), agent_proc.log);
+
+      // Update agent_runs record
+      if (run_record?.id) {
+        const duration_ms = Date.now() - new Date(started_at).getTime();
+        await supabase
+          .from("agent_runs")
+          .update({
+            status: agent_proc.status,
+            log: agent_proc.log.slice(-10000),
+            finished_at: agent_proc.finished_at,
+            duration_ms,
+          })
+          .eq("id", run_record.id);
+      }
 
       // Update task status
       await supabase
@@ -211,24 +278,48 @@ class AgentService {
       agent_proc.finished_at = new Date().toISOString();
       agent_proc.log +=
         `\nERROR: ${error instanceof Error ? error.message : "Unknown error"}`;
+      if (run_record?.id) {
+        await supabase
+          .from("agent_runs")
+          .update({
+            status: "failed",
+            error: error instanceof Error ? error.message : "Unknown error",
+            finished_at: agent_proc.finished_at,
+          })
+          .eq("id", run_record.id);
+      }
     }
   }
 
-  stop_process(task_id: string) {
+  stop_process(task_id: string, supabase?: SupabaseClient) {
     const proc = this.processes.get(task_id);
     if (proc?.process) {
       proc.process.kill();
       proc.status = "stopped";
       proc.finished_at = new Date().toISOString();
+      if (supabase && proc.run_id) {
+        supabase
+          .from("agent_runs")
+          .update({ status: "stopped", finished_at: proc.finished_at })
+          .eq("id", proc.run_id)
+          .then(() => {});
+      }
     }
   }
 
-  stop_all() {
+  stop_all(supabase?: SupabaseClient) {
     for (const [_id, proc] of this.processes) {
       if (proc.process && proc.status === "running") {
         proc.process.kill();
         proc.status = "stopped";
         proc.finished_at = new Date().toISOString();
+        if (supabase && proc.run_id) {
+          supabase
+            .from("agent_runs")
+            .update({ status: "stopped", finished_at: proc.finished_at })
+            .eq("id", proc.run_id)
+            .then(() => {});
+        }
       }
     }
   }
