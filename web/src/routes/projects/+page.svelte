@@ -8,6 +8,10 @@
   let new_name = $state('');
   let new_description = $state('');
   let creating = $state(false);
+  let editing_id = $state<string | null>(null);
+  let edit_name = $state('');
+  let edit_description = $state('');
+  let saving_edit = $state(false);
 
   async function load_projects() {
     try {
@@ -45,6 +49,36 @@
       await load_projects();
     } catch (error) {
       console.error('Failed to delete project:', error);
+    }
+  }
+
+  function start_edit(project: Project, event: MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    editing_id = project.id;
+    edit_name = project.name;
+    edit_description = project.description ?? '';
+  }
+
+  function cancel_edit(event: MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    editing_id = null;
+  }
+
+  async function save_edit(event: MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!editing_id || !edit_name.trim()) return;
+    saving_edit = true;
+    try {
+      await api.update_project(editing_id, { name: edit_name.trim(), description: edit_description.trim() || null } as Partial<Project>);
+      editing_id = null;
+      await load_projects();
+    } catch (error) {
+      console.error('Failed to update project:', error);
+    } finally {
+      saving_edit = false;
     }
   }
 
@@ -90,6 +124,20 @@
   {:else}
     <div class="project-grid">
       {#each projects as project}
+        {#if editing_id === project.id}
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div class="project-card editing" onclick={(e) => e.preventDefault()}>
+            <input type="text" class="input" bind:value={edit_name} placeholder="Project name" />
+            <textarea class="input textarea" bind:value={edit_description} placeholder="Description" rows={2}></textarea>
+            <div class="project-footer">
+              <button class="btn btn-secondary btn-sm" onclick={cancel_edit}>Cancel</button>
+              <button class="btn btn-primary btn-sm" onclick={save_edit} disabled={saving_edit || !edit_name.trim()}>
+                {saving_edit ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        {:else}
         <a href="/projects/{project.id}" class="project-card">
           <div class="project-header">
             <h3>{project.name}</h3>
@@ -101,15 +149,23 @@
               <span class="icon" style="font-size:14px">calendar_today</span>
               {new Date(project.created_at).toLocaleDateString()}
             </span>
-            <button
-              class="btn btn-danger btn-sm"
-              onclick={(e) => { e.preventDefault(); e.stopPropagation(); delete_project(project.id); }}
-            >
-              <span class="icon" style="font-size:14px">delete</span>
-              Delete
-            </button>
+            <div class="project-card-actions">
+              <button
+                class="btn btn-secondary btn-sm"
+                onclick={(e) => { start_edit(project, e); }}
+              >
+                <span class="icon" style="font-size:14px">edit</span>
+              </button>
+              <button
+                class="btn btn-danger btn-sm"
+                onclick={(e) => { e.preventDefault(); e.stopPropagation(); delete_project(project.id); }}
+              >
+                <span class="icon" style="font-size:14px">delete</span>
+              </button>
+            </div>
           </div>
         </a>
+        {/if}
       {/each}
     </div>
   {/if}
@@ -234,6 +290,17 @@
 
   .project-card:hover {
     border-color: var(--accent);
+  }
+
+  .project-card.editing {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .project-card-actions {
+    display: flex;
+    gap: 0.35rem;
   }
 
   .project-header {

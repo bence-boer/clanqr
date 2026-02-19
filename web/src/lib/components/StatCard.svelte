@@ -4,11 +4,23 @@
     value: string | number;
     label: string;
     unit?: string;
+    href?: string;
   }
 
-  const { icon, value, label, unit = '' }: Props = $props();
+  const { icon, value, label, unit = '', href }: Props = $props();
 </script>
 
+{#if href}
+<a {href} class="stat-card stat-link">
+  {#if icon}
+    <span class="icon stat-icon">{icon}</span>
+  {/if}
+  <div class="stat-content">
+    <span class="stat-value">{value}{unit}</span>
+    <span class="stat-label">{label}</span>
+  </div>
+</a>
+{:else}
 <div class="stat-card">
   {#if icon}
     <span class="icon stat-icon">{icon}</span>
@@ -18,6 +30,7 @@
     <span class="stat-label">{label}</span>
   </div>
 </div>
+{/if}
 
 <style>
   .stat-card {
@@ -28,6 +41,17 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 8px;
+  }
+
+  .stat-link {
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+
+  .stat-link:hover {
+    border-color: var(--accent, #d4af37);
   }
 
   .stat-icon {

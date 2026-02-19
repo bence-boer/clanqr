@@ -1032,6 +1032,9 @@
     padding: 0.85rem 1.1rem;
     transition: border-color 0.15s;
     flex-wrap: wrap;
+    max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
   }
 
   .trait-row:hover {
@@ -1142,6 +1145,16 @@
     .filter-count {
       margin-left: 0;
       width: 100%;
+    }
+
+    .trait-row {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .trait-actions {
+      align-self: flex-end;
+      flex-wrap: wrap;
     }
   }
 </style>

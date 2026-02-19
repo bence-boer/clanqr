@@ -10,6 +10,7 @@ export interface SkillInfo {
   description: string;
   path: string;
   content: string;
+  files: { name: string; content: string }[];
 }
 
 interface SkillCache {
@@ -68,6 +69,7 @@ class SkillService {
 
   private read_skill(skill_path: string): SkillInfo | null {
     const candidate_files = ["SKILL.md", "skill.md"];
+    const READABLE_EXTENSIONS = new Set([".md", ".txt", ".yaml", ".yml", ".json", ".ts", ".js"]);
 
     for (const filename of candidate_files) {
       const file_path = join(skill_path, filename);
@@ -76,11 +78,34 @@ class SkillService {
       try {
         const content = readFileSync(file_path, "utf-8");
         const { name, description } = parse_skill_frontmatter(content);
+
+        // Read additional files in the skill directory
+        const files: { name: string; content: string }[] = [];
+        try {
+          const entries = readdirSync(skill_path, { withFileTypes: true });
+          for (const entry of entries) {
+            if (!entry.isFile()) continue;
+            if (entry.name === filename) continue;
+            const ext_idx = entry.name.lastIndexOf(".");
+            const ext = ext_idx === -1 ? "" : entry.name.slice(ext_idx).toLowerCase();
+            if (!READABLE_EXTENSIONS.has(ext)) continue;
+            try {
+              const file_content = readFileSync(join(skill_path, entry.name), "utf-8");
+              files.push({ name: entry.name, content: file_content });
+            } catch {
+              // Skip unreadable files
+            }
+          }
+        } catch {
+          // Skip if directory listing fails
+        }
+
         return {
           name: name ?? skill_path.split("/").pop() ?? "unknown",
           description: description ?? "",
           path: skill_path,
           content,
+          files,
         };
       } catch {
         continue;

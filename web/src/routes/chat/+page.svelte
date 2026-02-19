@@ -3,12 +3,16 @@
   import type { ChatMessage, ChatSession } from '$lib/types';
 
   const MODELS = [
-    'claude-sonnet-4.5',
-    'claude-opus-4.5',
-    'claude-sonnet-4',
-    'gpt-5.1',
-    'gpt-5-mini',
-    'gpt-4.1',
+    { group: 'Claude', models: [
+      'claude-sonnet-4.6', 'claude-sonnet-4.5', 'claude-haiku-4.5',
+      'claude-opus-4.6', 'claude-opus-4.6-fast', 'claude-opus-4.5', 'claude-sonnet-4',
+    ]},
+    { group: 'Gemini', models: ['gemini-3-pro-preview'] },
+    { group: 'GPT', models: [
+      'gpt-5.3-codex', 'gpt-5.2-codex', 'gpt-5.2',
+      'gpt-5.1-codex-max', 'gpt-5.1-codex', 'gpt-5.1', 'gpt-5.1-codex-mini',
+      'gpt-5-mini', 'gpt-4.1',
+    ]},
   ];
 
   let sessions = $state<ChatSession[]>([]);
@@ -100,51 +104,65 @@
     scroll_to_bottom();
 
     try {
-      // Send message to backend
-      await api.send_chat_message(active_session.id, message_content);
+      // Send message and get the SSE stream response
+      const response = await api.send_chat_message(active_session.id, message_content);
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
 
-      // Connect to SSE stream for the response
-      const stream_url = api.chat_stream_url(active_session.id);
-      const event_source = new EventSource(stream_url, { withCredentials: true });
+      if (reader) {
+        let buffer = '';
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
 
-      event_source.onmessage = (event) => {
-        if (event.data === '[DONE]') {
-          event_source.close();
-          // Finalize: add the complete assistant message
-          const assistant_message: ChatMessage = {
-            id: crypto.randomUUID(),
-            session_id: active_session!.id,
-            role: 'assistant',
-            content: streaming_content,
-            created_at: new Date().toISOString(),
-          };
-          messages = [...messages, assistant_message];
-          streaming_content = '';
-          is_streaming = false;
-          scroll_to_bottom();
-          // Refresh sessions list (title may have been set)
-          load_sessions();
-        } else {
-          streaming_content += event.data;
-          scroll_to_bottom();
+            // Process complete SSE lines
+            const lines = buffer.split('\n');
+            buffer = lines.pop() ?? '';
+
+            for (const line of lines) {
+              if (!line.startsWith('data: ')) continue;
+              const data_str = line.slice(6);
+              try {
+                const data = JSON.parse(data_str);
+                if (data.done) {
+                  // Stream complete
+                } else if (data.error) {
+                  error_msg = data.error;
+                } else if (data.chunk) {
+                  streaming_content += data.chunk;
+                  scroll_to_bottom();
+                }
+              } catch {
+                // Non-JSON data, treat as raw chunk
+                streaming_content += data_str;
+                scroll_to_bottom();
+              }
+            }
+          }
+        } catch {
+          // Stream closed
+        } finally {
+          reader.releaseLock();
         }
-      };
+      }
 
-      event_source.onerror = () => {
-        event_source.close();
-        if (streaming_content) {
-          const assistant_message: ChatMessage = {
-            id: crypto.randomUUID(),
-            session_id: active_session!.id,
-            role: 'assistant',
-            content: streaming_content,
-            created_at: new Date().toISOString(),
-          };
-          messages = [...messages, assistant_message];
-          streaming_content = '';
-        }
-        is_streaming = false;
-      };
+      // Finalize: add the complete assistant message
+      if (streaming_content) {
+        const assistant_message: ChatMessage = {
+          id: crypto.randomUUID(),
+          session_id: active_session!.id,
+          role: 'assistant',
+          content: streaming_content,
+          created_at: new Date().toISOString(),
+        };
+        messages = [...messages, assistant_message];
+      }
+      streaming_content = '';
+      is_streaming = false;
+      scroll_to_bottom();
+      load_sessions();
     } catch (send_error) {
       error_msg = 'Failed to send message';
       is_streaming = false;
@@ -227,8 +245,12 @@
       <div class="chat-header">
         <span class="chat-session-title">{format_session_title(active_session)}</span>
         <select class="model-select" bind:value={selected_model}>
-          {#each MODELS as model}
-            <option value={model}>{model}</option>
+          {#each MODELS as group}
+            <optgroup label={group.group}>
+              {#each group.models as model}
+                <option value={model}>{model}</option>
+              {/each}
+            </optgroup>
           {/each}
         </select>
       </div>
@@ -569,7 +591,14 @@
   @keyframes spin { to { transform: rotate(360deg); } }
 
   @media (max-width: 768px) {
-    .chat-page { flex-direction: column; height: auto; }
-    .sessions-panel { width: 100%; height: 200px; margin-right: 0; margin-bottom: 0.75rem; }
+    .chat-page {
+      flex-direction: column;
+      height: calc(100dvh - 3.5rem);
+      min-height: 0;
+    }
+    .sessions-panel { width: 100%; height: 180px; margin-right: 0; margin-bottom: 0; }
+    .chat-area { flex: 1; min-height: 0; }
+    .message-bubble { max-width: 90%; }
+    .input-area { padding-bottom: env(safe-area-inset-bottom, 0.75rem); }
   }
 </style>

@@ -109,6 +109,7 @@ export interface SkillInfo {
   description: string;
   path: string;
   content: string;
+  files?: { name: string; content: string }[];
 }
 
 export interface SkillLink {

@@ -71,6 +71,10 @@ async function boot() {
     .from("tasks")
     .update({ status: "Approved" })
     .eq("status", "In_Progress");
+  await supabase
+    .from("features")
+    .update({ status: "Submitted" })
+    .eq("status", "In_Progress");
   console.log("✅ Stale process recovery complete");
 
   // 2. Sync base prompts from repo files → DB

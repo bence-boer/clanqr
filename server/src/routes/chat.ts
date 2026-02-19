@@ -85,8 +85,8 @@ chat_routes.post("/sessions/:id/send", async (context) => {
 
   if (!session) return context.json({ error: "Session not found" }, 404);
 
-  if (chat_service.is_busy()) {
-    return context.json({ error: "Another chat is already in progress" }, 409);
+  if (chat_service.is_busy(session_id)) {
+    return context.json({ error: "This chat session is already processing a message" }, 409);
   }
 
   const body = await context.req.json();
