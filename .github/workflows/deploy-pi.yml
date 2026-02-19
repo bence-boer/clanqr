@@ -28,7 +28,7 @@ jobs:
           export BUN_INSTALL="/home/scoy/.bun"
           export PATH="$BUN_INSTALL/bin:$PATH"
           cd /home/scoy/Developer/repositories/ralph-agent-workspace/web
-          bun run build
+          bun --bun run build
 
       - name: Trigger service restart
         run: |
