@@ -13,7 +13,7 @@ jobs:
         run: |
           git config --global --add safe.directory /home/scoy/Developer/repositories/ralph-agent-workspace
           cd /home/scoy/Developer/repositories/ralph-agent-workspace
-          git pull origin main
+          git pull https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/bence-boer/ralph-agent-workspace.git main
 
       - name: Install dependencies
         run: |
