@@ -9,6 +9,15 @@ const WORKSPACE_DIR = join(
   "agents/workspace"
 );
 
+const HOME = process.env.HOME ?? "/home/scoy";
+const COPILOT_BIN =
+  process.env.COPILOT_BIN ?? join(HOME, ".local/bin/copilot");
+const ENRICHED_PATH = [
+  join(HOME, ".local/bin"),
+  join(HOME, ".bun/bin"),
+  process.env.PATH ?? "/usr/local/bin:/usr/bin:/bin",
+].join(":");
+
 const TASK_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
 type PipelineState = "idle" | "running" | "paused";
@@ -135,11 +144,11 @@ class PipelineService {
     const run_id: string = run_record?.id ?? "";
 
     try {
-      const proc = Bun.spawn(["copilot", "-p", prompt, "--allow-all-tools"], {
+      const proc = Bun.spawn([COPILOT_BIN, "-p", prompt, "--allow-all-tools"], {
         cwd: work_dir,
         stdout: "pipe",
         stderr: "pipe",
-        env: { ...process.env, HOME: process.env.HOME ?? "/home/scoy" },
+        env: { ...process.env, HOME, PATH: ENRICHED_PATH },
       });
 
       this.active_run = {

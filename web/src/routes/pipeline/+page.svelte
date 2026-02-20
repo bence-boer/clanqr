@@ -685,4 +685,14 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   .spin { animation: spin 1s linear infinite; }
   .spin-small { animation: spin 2s linear infinite; display: inline-block; }
+
+  /* ── Responsive ──────────────────────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .page { overflow-x: hidden; }
+    .status-bar { flex-direction: column; align-items: flex-start; }
+    .status-right { width: 100%; justify-content: flex-end; flex-wrap: wrap; }
+    .queue-item { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+    .item-actions { align-self: flex-end; }
+    .pagination { flex-wrap: wrap; gap: 0.5rem; }
+  }
 </style>

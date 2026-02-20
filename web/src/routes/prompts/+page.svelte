@@ -1155,6 +1155,7 @@
     .trait-actions {
       align-self: flex-end;
       flex-wrap: wrap;
+      flex-shrink: 1;
     }
   }
 </style>

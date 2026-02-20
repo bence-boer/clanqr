@@ -86,6 +86,12 @@ export const api = {
   spawn_ralph: (id: string) => api_fetch<{ success: boolean }>(`/api/tasks/${id}/run`, { method: "POST" }),
   approve_all_tasks: (feature_id: string) =>
     api_fetch<Task[]>(`/api/tasks/approve-all/${feature_id}`, { method: "POST" }),
+  create_task: (data: { feature_id: string; description: string }) =>
+    api_fetch<Task>(`/api/tasks`, { method: "POST", body: JSON.stringify(data) }),
+  update_task: (id: string, data: { description?: string }) =>
+    api_fetch<Task>(`/api/tasks/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  delete_task: (id: string) =>
+    api_fetch<{ success: boolean }>(`/api/tasks/${id}`, { method: "DELETE" }),
 
   // ── Agents / Pipeline ─────────────────────────────────────────────────────
   agent_status: () => api_fetch<Record<string, any>>("/api/agents/status"),
