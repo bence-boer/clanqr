@@ -105,7 +105,7 @@
 
     try {
       // Send message and get the SSE stream response
-      const response = await api.send_chat_message(active_session.id, message_content);
+      const response = await api.send_chat_message(active_session.id, message_content, selected_model);
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
 

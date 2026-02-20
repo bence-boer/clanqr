@@ -174,12 +174,12 @@ export const api = {
     api_fetch<ChatSession>("/api/chat/sessions", { method: "POST", body: JSON.stringify(data) }),
   delete_chat_session: (id: string) =>
     api_fetch<{ success: boolean }>(`/api/chat/sessions/${id}`, { method: "DELETE" }),
-  send_chat_message: async (session_id: string, content: string): Promise<Response> => {
+  send_chat_message: async (session_id: string, content: string, model?: string): Promise<Response> => {
     const response = await fetch(`${BASE_URL}/api/chat/sessions/${session_id}/send`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, ...(model ? { model } : {}) }),
     });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: response.statusText }));
