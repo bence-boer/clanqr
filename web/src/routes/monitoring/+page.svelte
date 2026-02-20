@@ -179,7 +179,7 @@
   }
   .btn-secondary { background: var(--bg-elevated); color: var(--fg); }
   .btn-secondary:hover { opacity: 0.85; }
-  .btn-danger { background: var(--danger); color: var(--fg); }
+  .btn-danger { background: var(--danger); color: #fff; }
   .btn-danger:hover { opacity: 0.9; }
   .btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
   .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.75rem; }

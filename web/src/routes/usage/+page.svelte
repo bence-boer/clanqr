@@ -235,6 +235,7 @@
 <style>
   .page {
     max-width: 960px;
+    overflow-x: hidden;
   }
 
   .page-header {
@@ -516,6 +517,11 @@
   }
 
   /* ── Responsive ────────────────────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .stats-3 { grid-template-columns: repeat(2, 1fr); }
+    .breakdown-section { grid-template-columns: 1fr; }
+  }
+
   @media (max-width: 640px) {
     .stats-3 { grid-template-columns: 1fr; }
     .stats-2 { grid-template-columns: 1fr; }

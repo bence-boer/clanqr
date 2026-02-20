@@ -23,6 +23,12 @@
   let new_resource_url = $state('');
   let new_resource_title = $state('');
 
+  let adding_task = $state(false);
+  let new_task_desc = $state('');
+  let editing_task_id = $state<string | null>(null);
+  let editing_task_desc = $state('');
+  let saving_task = $state(false);
+
   const project_id = $derived(page.params.id);
 
   async function load_data() {
@@ -133,6 +139,50 @@
       await load_data();
     } catch (error) {
       console.error('Failed to spawn ralph:', error);
+    }
+  }
+
+  async function add_task() {
+    if (!new_task_desc.trim() || !selected_feature) return;
+    saving_task = true;
+    try {
+      await api.create_task({ feature_id: selected_feature.id, description: new_task_desc.trim() });
+      new_task_desc = '';
+      adding_task = false;
+      await load_data();
+    } catch (error) {
+      console.error('Failed to add task:', error);
+    } finally {
+      saving_task = false;
+    }
+  }
+
+  function start_task_edit(task: Task) {
+    editing_task_id = task.id;
+    editing_task_desc = task.description;
+  }
+
+  async function save_task_edit() {
+    if (!editing_task_id || !editing_task_desc.trim()) return;
+    saving_task = true;
+    try {
+      await api.update_task(editing_task_id, { description: editing_task_desc.trim() });
+      editing_task_id = null;
+      await load_data();
+    } catch (error) {
+      console.error('Failed to update task:', error);
+    } finally {
+      saving_task = false;
+    }
+  }
+
+  async function remove_task(task_id: string) {
+    if (!confirm('Delete this task?')) return;
+    try {
+      await api.delete_task(task_id);
+      await load_data();
+    } catch (error) {
+      console.error('Failed to delete task:', error);
     }
   }
   function select_feature(feature: Feature) {
@@ -390,8 +440,27 @@
                       <span class="icon" style="font-size:14px">done_all</span> Approve All
                     </button>
                   {/if}
+                  <button class="btn btn-secondary btn-sm" onclick={() => { adding_task = true; new_task_desc = ''; }}>
+                    <span class="icon" style="font-size:14px">add</span> Add Task
+                  </button>
                 </div>
               </div>
+
+              {#if adding_task}
+                <div class="task-add-form">
+                  <input
+                    class="task-input"
+                    type="text"
+                    placeholder="Task description…"
+                    bind:value={new_task_desc}
+                    onkeydown={(e) => { if (e.key === 'Enter') add_task(); if (e.key === 'Escape') adding_task = false; }}
+                  />
+                  <div class="task-add-actions">
+                    <button class="btn btn-primary btn-sm" onclick={add_task} disabled={saving_task || !new_task_desc.trim()}>Save</button>
+                    <button class="btn btn-secondary btn-sm" onclick={() => adding_task = false}>Cancel</button>
+                  </div>
+                </div>
+              {/if}
 
               {#if !selected_feature.tasks || selected_feature.tasks.length === 0}
                 <p class="empty">No tasks yet. Submit the feature to generate tasks via Manager agent.</p>
@@ -399,31 +468,54 @@
                 <div class="task-list">
                   {#each selected_feature.tasks as task}
                     <div class="task-item">
-                      <div class="task-header">
-                        <span class="task-desc">{task.description}</span>
-                        <span class="badge badge-{status_class(task.status)}">
-                          <span class="icon" style="font-size:11px">{status_icon(task.status)}</span>
-                          {task.status.replace(/_/g, ' ')}
-                        </span>
-                      </div>
-                      <div class="task-actions">
-                        {#if task.status === 'Pending_Approval'}
-                          <button class="btn btn-primary btn-sm" onclick={() => approve_task(task.id)}>
-                            <span class="icon" style="font-size:14px">thumb_up</span> Approve
-                          </button>
-                        {/if}
-                        {#if task.status === 'Approved'}
-                          <button class="btn btn-secondary btn-sm" onclick={() => spawn_ralph(task.id)}>
-                            <span class="icon" style="font-size:14px">play_arrow</span> Run Ralph
-                          </button>
-                        {/if}
-                        {#if task.agent_log}
-                          <details class="log-details">
-                            <summary><span class="icon" style="font-size:14px">terminal</span> View Log</summary>
-                            <pre class="log-content">{task.agent_log}</pre>
-                          </details>
-                        {/if}
-                      </div>
+                      {#if editing_task_id === task.id}
+                        <div class="task-edit-form">
+                          <input
+                            class="task-input"
+                            type="text"
+                            bind:value={editing_task_desc}
+                            onkeydown={(e) => { if (e.key === 'Enter') save_task_edit(); if (e.key === 'Escape') editing_task_id = null; }}
+                          />
+                          <div class="task-add-actions">
+                            <button class="btn btn-primary btn-sm" onclick={save_task_edit} disabled={saving_task}>Save</button>
+                            <button class="btn btn-secondary btn-sm" onclick={() => editing_task_id = null}>Cancel</button>
+                          </div>
+                        </div>
+                      {:else}
+                        <div class="task-header">
+                          <span class="task-desc">{task.description}</span>
+                          <span class="badge badge-{status_class(task.status)}">
+                            <span class="icon" style="font-size:11px">{status_icon(task.status)}</span>
+                            {task.status.replace(/_/g, ' ')}
+                          </span>
+                        </div>
+                        <div class="task-actions">
+                          {#if task.status === 'Pending_Approval'}
+                            <button class="btn btn-primary btn-sm" onclick={() => approve_task(task.id)}>
+                              <span class="icon" style="font-size:14px">thumb_up</span> Approve
+                            </button>
+                          {/if}
+                          {#if task.status === 'Approved'}
+                            <button class="btn btn-secondary btn-sm" onclick={() => spawn_ralph(task.id)}>
+                              <span class="icon" style="font-size:14px">play_arrow</span> Run Ralph
+                            </button>
+                          {/if}
+                          {#if ['Pending_Approval', 'Approved'].includes(task.status)}
+                            <button class="btn btn-icon btn-sm" title="Edit" onclick={() => start_task_edit(task)}>
+                              <span class="icon" style="font-size:14px">edit</span>
+                            </button>
+                            <button class="btn btn-danger btn-sm" title="Delete" onclick={() => remove_task(task.id)}>
+                              <span class="icon" style="font-size:14px">delete</span>
+                            </button>
+                          {/if}
+                          {#if task.agent_log}
+                            <details class="log-details">
+                              <summary><span class="icon" style="font-size:14px">terminal</span> View Log</summary>
+                              <pre class="log-content">{task.agent_log}</pre>
+                            </details>
+                          {/if}
+                        </div>
+                      {/if}
                     </div>
                   {/each}
                 </div>
@@ -490,7 +582,7 @@
   .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
   .btn-secondary { background: var(--bg-elevated); color: var(--fg); }
   .btn-secondary:hover { opacity: 0.85; }
-  .btn-danger { background: var(--danger); color: var(--fg); }
+  .btn-danger { background: var(--danger); color: #fff; }
   .btn-danger:hover { opacity: 0.9; }
   .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.75rem; }
   .btn-icon { padding: 0.35rem; min-width: 0; }
@@ -590,6 +682,20 @@
   }
   .task-desc { font-size: 0.85rem; color: var(--fg); }
   .task-actions { margin-top: 0.5rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+
+  .task-add-form, .task-edit-form {
+    display: flex; flex-direction: column; gap: 0.5rem;
+    background: var(--bg); border: 1px solid var(--accent);
+    border-radius: var(--radius); padding: 0.75rem; margin-bottom: 0.5rem;
+  }
+  .task-input {
+    width: 100%; padding: 0.4rem 0.6rem;
+    background: var(--bg-elevated); border: 1px solid var(--border);
+    border-radius: var(--radius); color: var(--fg); font-size: 0.85rem;
+    font-family: var(--font); outline: none; transition: border-color 0.15s;
+  }
+  .task-input:focus { border-color: var(--accent); }
+  .task-add-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
 
   .badge {
     font-size: 0.65rem; font-weight: 600; text-transform: uppercase; white-space: nowrap;

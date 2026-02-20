@@ -252,11 +252,21 @@
 
   .btn-danger {
     background: var(--danger);
-    color: var(--fg);
+    color: #fff;
   }
 
   .btn-danger:hover {
     opacity: 0.9;
+  }
+
+  .btn-secondary {
+    background: var(--bg-elevated);
+    color: var(--fg);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover {
+    opacity: 0.85;
   }
 
   .btn-sm {

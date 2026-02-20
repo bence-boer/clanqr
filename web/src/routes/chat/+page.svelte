@@ -29,7 +29,13 @@
   let messages_container = $state<HTMLElement | null>(null);
 
   $effect(() => {
-    load_sessions();
+    load_sessions().then(() => {
+      const saved_id = sessionStorage.getItem('active_chat_session');
+      if (saved_id) {
+        const saved = sessions.find((s) => s.id === saved_id);
+        if (saved) select_session(saved);
+      }
+    });
   });
 
   async function load_sessions() {
@@ -45,6 +51,7 @@
   async function select_session(session: ChatSession) {
     active_session = session;
     selected_model = session.model;
+    sessionStorage.setItem('active_chat_session', session.id);
     loading_messages = true;
     messages = [];
     try {
@@ -77,6 +84,7 @@
       if (active_session?.id === session_id) {
         active_session = null;
         messages = [];
+        sessionStorage.removeItem('active_chat_session');
       }
     } catch {
       error_msg = 'Failed to delete session';
