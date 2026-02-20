@@ -79,26 +79,33 @@ class SkillService {
         const content = readFileSync(file_path, "utf-8");
         const { name, description } = parse_skill_frontmatter(content);
 
-        // Read additional files in the skill directory
+        // Read additional files in the skill directory (recursively)
         const files: { name: string; content: string }[] = [];
-        try {
-          const entries = readdirSync(skill_path, { withFileTypes: true });
-          for (const entry of entries) {
-            if (!entry.isFile()) continue;
-            if (entry.name === filename) continue;
-            const ext_idx = entry.name.lastIndexOf(".");
-            const ext = ext_idx === -1 ? "" : entry.name.slice(ext_idx).toLowerCase();
-            if (!READABLE_EXTENSIONS.has(ext)) continue;
-            try {
-              const file_content = readFileSync(join(skill_path, entry.name), "utf-8");
-              files.push({ name: entry.name, content: file_content });
-            } catch {
-              // Skip unreadable files
+        const scan_dir = (dir_path: string, prefix: string) => {
+          try {
+            const entries = readdirSync(dir_path, { withFileTypes: true });
+            for (const entry of entries) {
+              const rel_name = prefix ? `${prefix}/${entry.name}` : entry.name;
+              if (entry.isDirectory()) {
+                scan_dir(join(dir_path, entry.name), rel_name);
+              } else if (entry.isFile()) {
+                if (dir_path === skill_path && entry.name === filename) continue;
+                const ext_idx = entry.name.lastIndexOf(".");
+                const ext = ext_idx === -1 ? "" : entry.name.slice(ext_idx).toLowerCase();
+                if (!READABLE_EXTENSIONS.has(ext)) continue;
+                try {
+                  const file_content = readFileSync(join(dir_path, entry.name), "utf-8");
+                  files.push({ name: rel_name, content: file_content });
+                } catch {
+                  // Skip unreadable files
+                }
+              }
             }
+          } catch {
+            // Skip if directory listing fails
           }
-        } catch {
-          // Skip if directory listing fails
-        }
+        };
+        scan_dir(skill_path, "");
 
         return {
           name: name ?? skill_path.split("/").pop() ?? "unknown",

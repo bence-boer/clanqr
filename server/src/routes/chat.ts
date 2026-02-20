@@ -10,6 +10,7 @@ const create_session_schema = z.object({
 
 const send_message_schema = z.object({
   content: z.string().min(1),
+  model: z.string().optional(),
 });
 
 export const chat_routes = new Hono<AppBindings>();
@@ -93,7 +94,7 @@ chat_routes.post("/sessions/:id/send", async (context) => {
   const result = send_message_schema.safeParse(body);
   if (!result.success) return context.json({ error: result.error.format() }, 400);
 
-  const { content } = result.data;
+  const { content, model } = result.data;
 
   return new Response(
     new ReadableStream({
@@ -104,7 +105,7 @@ chat_routes.post("/sessions/:id/send", async (context) => {
           await chat_service.send_message(
             session_id,
             content,
-            session.model,
+            model ?? session.model,
             supabase,
             (chunk) => {
               controller.enqueue(
