@@ -27,19 +27,19 @@ const app = new Hono<AppBindings>();
 app.use("*", logger());
 app.use("*", secureHeaders());
 app.use(
-  "*",
-  cors({
-    origin: (origin) => origin ?? "*",
-    allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    allowHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-  })
+    "*",
+    cors({
+        origin: (origin) => origin ?? "*",
+        allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+        allowHeaders: ["Content-Type", "Authorization"],
+        credentials: true,
+    })
 );
 app.use("*", supabase_middleware());
 
 // Health check (no auth)
 app.get("/health", (context) => {
-  return context.json({ status: "ok", timestamp: new Date().toISOString() });
+    return context.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
 // Auth routes (no auth required)
@@ -65,33 +65,33 @@ app.route("/api/admin", admin_routes);
 
 // Boot sequence
 async function boot() {
-  const supabase = create_supabase_client();
+    const supabase = create_supabase_client();
 
-  // 1. Recover stale agent runs from previous server crash
-  const now = new Date().toISOString();
-  await supabase
-    .from("agent_runs")
-    .update({ status: "failed", error: "Server restarted during execution", finished_at: now })
-    .eq("status", "running");
-  await supabase
-    .from("tasks")
-    .update({ status: "Approved" })
-    .eq("status", "In_Progress");
-  await supabase
-    .from("features")
-    .update({ status: "Submitted" })
-    .eq("status", "In_Progress");
-  console.log("✅ Stale process recovery complete");
+    // 1. Recover stale agent runs from previous server crash
+    const now = new Date().toISOString();
+    await supabase
+        .from("agent_runs")
+        .update({ status: "failed", error: "Server restarted during execution", finished_at: now })
+        .eq("status", "running");
+    await supabase
+        .from("tasks")
+        .update({ status: "Approved" })
+        .eq("status", "In_Progress");
+    await supabase
+        .from("features")
+        .update({ status: "Submitted" })
+        .eq("status", "In_Progress");
+    console.log("✅ Stale process recovery complete");
 
-  // 2. Sync base prompts from repo files → DB
-  await prompt_service.sync_from_repo();
+    // 2. Sync base prompts from repo files → DB
+    await prompt_service.sync_from_repo();
 
-  // 3. Start watcher service (manager-only — pipeline handles task execution)
-  watcher_service.start();
+    // 3. Start watcher service (manager-only — pipeline handles task execution)
+    watcher_service.start();
 
-  // 4. Start pipeline service — trigger on any already-approved tasks
-  pipeline_service.process_next().catch(console.error);
-  console.log("✅ Pipeline service started");
+    // 4. Start pipeline service — trigger on any already-approved tasks
+    pipeline_service.process_next().catch(console.error);
+    console.log("✅ Pipeline service started");
 }
 
 boot().catch(console.error);
@@ -100,6 +100,6 @@ const port = Number(process.env.PORT ?? 3001);
 console.log(`🚀 Server running at http://localhost:${port}`);
 
 export default {
-  port,
-  fetch: app.fetch,
+    port,
+    fetch: app.fetch,
 };

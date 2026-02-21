@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Pre-commit hook — runs type-checks and tests before allowing a commit.
+# Installed via: bun run prepare (or manually: cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit)
+
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+
+echo "🔍 Pre-commit: type-checking server..."
+(cd "$ROOT/server" && bun run --bun tsc --noEmit)
+
+echo "🔍 Pre-commit: type-checking web..."
+(cd "$ROOT/web" && bun run check)
+
+echo "🧪 Pre-commit: running unit tests..."
+(cd "$ROOT/server" && bun test)
+
+echo "✅ All pre-commit checks passed."

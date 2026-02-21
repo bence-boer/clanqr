@@ -6,6 +6,19 @@
   "scripts": {
     "dev": "bun run --filter '*' dev",
     "dev:server": "bun run --filter server dev",
-    "dev:web": "bun run --filter web dev"
+    "dev:web": "bun run --filter web dev",
+    "dev:db": "docker compose -f docker-compose.dev.yml up -d",
+    "dev:db:stop": "docker compose -f docker-compose.dev.yml down",
+    "dev:db:reset": "./scripts/dev-db-reset.sh",
+    "dev:setup": "./scripts/dev-setup.sh",
+    "check": "bun run check:server && bun run check:web",
+    "check:server": "cd server && bun run --bun tsc --noEmit",
+    "check:web": "cd web && bun run check",
+    "test": "cd server && bun test",
+    "test:server": "cd server && bun test",
+    "test:e2e": "cd e2e && bun x playwright test",
+    "test:e2e:headed": "cd e2e && bun x playwright test --headed",
+    "test:e2e:ui": "cd e2e && bun x playwright test --ui",
+    "prepare": "cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit"
   }
 }

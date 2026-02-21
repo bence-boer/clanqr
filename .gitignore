@@ -11,3 +11,8 @@ agents/workspace/
 *.log
 .deploy-trigger
 .planning/
+
+# Playwright
+e2e/test-results/
+e2e/playwright-report/
+e2e/blob-report/
