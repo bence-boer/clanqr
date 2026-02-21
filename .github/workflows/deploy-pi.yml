@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  sanity-checks:
     runs-on: [self-hosted, pi]
     steps:
       - name: Pull latest code
@@ -24,6 +24,31 @@ jobs:
           cd server && bun install --frozen-lockfile
           cd ../web && bun install --frozen-lockfile
 
+      - name: Type-check server
+        run: |
+          export BUN_INSTALL="/home/scoy/.bun"
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          cd /home/scoy/Developer/repositories/ralph-agent-workspace/server
+          bun run --bun tsc --noEmit
+
+      - name: Type-check web
+        run: |
+          export BUN_INSTALL="/home/scoy/.bun"
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          cd /home/scoy/Developer/repositories/ralph-agent-workspace/web
+          bun run check
+
+      - name: Run unit tests
+        run: |
+          export BUN_INSTALL="/home/scoy/.bun"
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          cd /home/scoy/Developer/repositories/ralph-agent-workspace/server
+          bun test
+
+  deploy:
+    needs: sanity-checks
+    runs-on: [self-hosted, pi]
+    steps:
       - name: Apply database migrations
         run: |
           cd /home/scoy/Developer/repositories/ralph-agent-workspace

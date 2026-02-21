@@ -1,0 +1,53 @@
+# Local development stack — Postgres + PostgREST + Gateway (Supabase-compatible)
+# Usage: docker compose -f docker-compose.dev.yml up -d
+# This mirrors the production Supabase setup but runs entirely locally.
+# @supabase/supabase-js expects <url>/rest/v1/ routing — the gateway handles that.
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: ralph_dev_db
+    ports:
+      - "54322:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - ralph_dev_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # PostgREST provides the RESTful API that @supabase/supabase-js talks to
+  rest:
+    image: postgrest/postgrest:v12.2.8
+    container_name: ralph_dev_rest
+    # No host port — only accessible through gateway
+    expose:
+      - "3000"
+    environment:
+      PGRST_DB_URI: postgres://postgres:postgres@db:5432/postgres
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: postgres
+      PGRST_JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-long
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Nginx gateway mimics Supabase's Kong — routes /rest/v1/* → PostgREST
+  gateway:
+    image: nginx:alpine
+    container_name: ralph_dev_gateway
+    ports:
+      - "54321:80"
+    volumes:
+      - ./nginx.dev.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - rest
+
+volumes:
+  ralph_dev_pgdata:
