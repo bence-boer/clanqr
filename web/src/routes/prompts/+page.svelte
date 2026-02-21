@@ -1143,14 +1143,31 @@
       grid-template-columns: 1fr;
     }
 
+    .filter-bar {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
     .filter-count {
       margin-left: 0;
       width: 100%;
     }
 
+    .traits-list {
+      overflow-x: hidden;
+      box-sizing: border-box;
+    }
+
     .trait-row {
       flex-direction: column;
       align-items: flex-start;
+    }
+
+    .trait-name {
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
+      max-width: 100%;
     }
 
     .trait-actions {

@@ -21,6 +21,24 @@ export function auth_middleware() {
       return context.json({ error: "Session expired" }, 401);
     }
 
+    const { data: passkey } = await db
+      .from("passkeys")
+      .select("role")
+      .eq("id", session.passkey_id)
+      .single();
+
+    context.set("passkey_id", session.passkey_id);
+    context.set("role", passkey?.role ?? "user");
+
+    await next();
+  });
+}
+
+export function admin_middleware() {
+  return createMiddleware<AppBindings>(async (context, next) => {
+    if (context.get("role") !== "admin") {
+      return context.json({ error: "Forbidden" }, 403);
+    }
     await next();
   });
 }

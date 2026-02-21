@@ -14,6 +14,7 @@ export interface Feature {
   title: string;
   description: string | null;
   status: "Draft" | "Submitted" | "In_Progress" | "Done";
+  model: string | null;
   on_task_failure: "stop" | "skip" | "retry";
   auto_approve: boolean;
   created_at: string;
@@ -180,4 +181,32 @@ export interface PromptRecord {
   content: string;
   version: number;
   updated_at: string;
+}
+
+export interface User {
+  id: string;
+  display_name: string | null;
+  role: 'admin' | 'user';
+  created_at: string;
+  session_count: number;
+}
+
+export interface InviteToken {
+  id: string;
+  label: string | null;
+  role: 'admin' | 'user';
+  expires_at: string;
+  used_at: string | null;
+  created_at: string;
+  created_by_display_name: string | null;
+  used_by_display_name: string | null;
+  token_preview: string | null;
+}
+
+export interface InviteStatus {
+  valid: boolean;
+  reason?: 'missing' | 'not_found' | 'used' | 'expired';
+  role?: 'admin' | 'user';
+  label?: string | null;
+  expires_at?: string;
 }

@@ -56,6 +56,20 @@ traits_routes.post("/", async (context) => {
 });
 
 // Assign trait to a scope — must come before /:id to avoid conflict
+// List assignments (filtered by scope + ID)
+traits_routes.get("/assign", async (context) => {
+  const supabase = context.get("supabase");
+  const { scope, task_id, feature_id, project_id } = context.req.query();
+  let query = supabase.from("trait_assignments").select("*");
+  if (scope) query = query.eq("scope", scope);
+  if (task_id) query = query.eq("task_id", task_id);
+  if (feature_id) query = query.eq("feature_id", feature_id);
+  if (project_id) query = query.eq("project_id", project_id);
+  const { data, error } = await query;
+  if (error) return context.json({ error: error.message }, 500);
+  return context.json(data);
+});
+
 traits_routes.post("/assign", async (context) => {
   const result = assign_schema.safeParse(await context.req.json());
   if (!result.success) return context.json({ error: result.error.format() }, 400);

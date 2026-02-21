@@ -13,7 +13,8 @@ jobs:
         run: |
           git config --global --add safe.directory /home/scoy/Developer/repositories/ralph-agent-workspace
           cd /home/scoy/Developer/repositories/ralph-agent-workspace
-          git pull https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/bence-boer/ralph-agent-workspace.git main
+          git fetch https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/bence-boer/ralph-agent-workspace.git main
+          git reset --hard FETCH_HEAD
 
       - name: Install dependencies
         run: |
@@ -22,6 +23,21 @@ jobs:
           cd /home/scoy/Developer/repositories/ralph-agent-workspace
           cd server && bun install --frozen-lockfile
           cd ../web && bun install --frozen-lockfile
+
+      - name: Apply database migrations
+        run: |
+          cd /home/scoy/Developer/repositories/ralph-agent-workspace
+          for f in supabase/supabase/migrations/*.sql; do
+            version=$(basename "$f" | cut -d_ -f1)
+            already=$(docker exec supabase_db_supabase psql -U postgres -d postgres -tAc \
+              "SELECT 1 FROM supabase_migrations.schema_migrations WHERE version='$version'" 2>/dev/null)
+            if [ "$already" != "1" ]; then
+              echo "Applying migration: $(basename $f)"
+              docker exec -i supabase_db_supabase psql -U postgres -d postgres < "$f"
+              docker exec supabase_db_supabase psql -U postgres -d postgres -c \
+                "INSERT INTO supabase_migrations.schema_migrations (version, name) VALUES ('$version', '$(basename ${f%.sql} | sed "s/^[0-9]*_//")')"
+            fi
+          done
 
       - name: Build web
         run: |
