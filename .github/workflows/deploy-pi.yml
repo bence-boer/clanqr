@@ -36,7 +36,7 @@ jobs:
           export BUN_INSTALL="/home/scoy/.bun"
           export PATH="$BUN_INSTALL/bin:$PATH"
           cd /home/scoy/Developer/repositories/ralph-agent-workspace/web
-          bun run check
+          bun run --bun check
 
       - name: Run unit tests
         run: |
