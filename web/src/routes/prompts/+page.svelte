@@ -1016,6 +1016,7 @@
 
   /* ── Traits list ─────────────────────────────────────────────────────────── */
   .traits-list {
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
