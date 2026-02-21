@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, setContext } from "svelte";
   import { page } from "$app/stores";
   import { check_auth, register_passkey, login_passkey, logout } from "$lib/auth";
   import { api } from "$lib/api/client";
@@ -12,12 +12,23 @@
   let setup_name: string = $state("");
   let sidebar_open: boolean = $state(false);
   let system_stats: SystemStats | null = $state(null);
+  let role: string | null = $state(null);
+  let passkey_id: string | null = $state(null);
   let current_path = $derived($page.url.pathname);
 
+  setContext("role", { get role() { return role; } });
+  setContext("passkey_id", { get passkey_id() { return passkey_id; } });
+
   onMount(async () => {
+    if (current_path.startsWith("/invite")) {
+      auth_state = "authenticated";
+      return;
+    }
     try {
       const status = await check_auth();
       if (status.authenticated) {
+        role = status.role;
+        passkey_id = status.passkey_id;
         auth_state = "authenticated";
         load_system_stats();
       } else if (!status.is_setup) {
@@ -52,7 +63,12 @@
     auth_error = "";
     try {
       const ok = await login_passkey();
-      if (ok) auth_state = "authenticated";
+      if (ok) {
+        const status = await check_auth();
+        role = status.role;
+        passkey_id = status.passkey_id;
+        auth_state = "authenticated";
+      }
     } catch (e: any) {
       auth_error = e.message;
     }
@@ -60,6 +76,8 @@
 
   async function handle_logout() {
     await logout();
+    role = null;
+    passkey_id = null;
     auth_state = "login";
   }
 
@@ -131,6 +149,8 @@
       {/if}
     </div>
   </div>
+{:else if current_path.startsWith("/invite")}
+  {@render children()}
 {:else}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="app" class:sidebar-open={sidebar_open}>
@@ -211,6 +231,20 @@
           </li>
         </ul>
       </div>
+
+      {#if role === "admin"}
+        <div class="nav-section">
+          <span class="nav-section-label">Settings</span>
+          <ul class="nav-links">
+            <li>
+              <a href="/admin" onclick={close_sidebar} class:active={is_active("/admin")}>
+                <span class="icon">admin_panel_settings</span>
+                Admin
+              </a>
+            </li>
+          </ul>
+        </div>
+      {/if}
 
       <div class="sidebar-footer">
         {#if system_stats}

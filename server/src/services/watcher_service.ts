@@ -37,6 +37,8 @@ class WatcherService {
     await this.check_submitted_features(supabase);
   }
 
+  private spawned_features = new Set<string>();
+
   private async check_submitted_features(supabase: any) {
     const { data: features, error } = await supabase
       .from("features")
@@ -46,13 +48,31 @@ class WatcherService {
     if (error || !features) return;
 
     for (const feature of features) {
+      // Skip if we already spawned a manager for this feature in this server lifetime
+      if (this.spawned_features.has(feature.id)) continue;
+
       const process_id = `manager-${feature.id}`;
       const existing = agent_service.get_all_processes()[process_id];
 
-      if (!existing || existing.status === "failed") {
-        console.log(`📋 Spawning manager for feature: ${feature.title}`);
-        this.spawn_manager_and_maybe_auto_approve(feature, supabase).catch(console.error);
-      }
+      // Skip if there's already a running or completed manager process in memory
+      if (existing && existing.status !== "failed") continue;
+
+      // Check if there's already a recent running manager in the DB (survives restarts)
+      const { data: recent_run } = await supabase
+        .from("agent_runs")
+        .select("id, status")
+        .eq("type", "manager")
+        .eq("reference_id", feature.id)
+        .in("status", ["running", "completed"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (recent_run) continue;
+
+      console.log(`📋 Spawning manager for feature: ${feature.title}`);
+      this.spawned_features.add(feature.id);
+      this.spawn_manager_and_maybe_auto_approve(feature, supabase).catch(console.error);
     }
   }
 

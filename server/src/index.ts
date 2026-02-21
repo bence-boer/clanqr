@@ -3,7 +3,7 @@ import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 import { logger } from "hono/logger";
 import { supabase_middleware, type AppBindings } from "./middleware/supabase";
-import { auth_middleware } from "./middleware/auth";
+import { auth_middleware, admin_middleware } from "./middleware/auth";
 import { auth_routes } from "./routes/auth";
 import { projects_routes } from "./routes/projects";
 import { features_routes } from "./routes/features";
@@ -15,6 +15,7 @@ import { chat_routes } from "./routes/chat";
 import { traits_routes } from "./routes/traits";
 import { skills_routes } from "./routes/skills";
 import { usage_routes } from "./routes/usage";
+import { admin_routes } from "./routes/admin";
 import { watcher_service } from "./services/watcher_service";
 import { prompt_service } from "./services/prompt_service";
 import { pipeline_service } from "./services/pipeline_service";
@@ -56,6 +57,11 @@ app.route("/api/chat", chat_routes);
 app.route("/api/traits", traits_routes);
 app.route("/api/skills", skills_routes);
 app.route("/api/usage", usage_routes);
+
+// Admin routes (auth + role check)
+app.use("/api/admin/*", auth_middleware());
+app.use("/api/admin/*", admin_middleware());
+app.route("/api/admin", admin_routes);
 
 // Boot sequence
 async function boot() {

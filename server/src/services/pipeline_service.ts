@@ -134,17 +134,22 @@ class PipelineService {
     const prompt = await prompt_service.resolve_for_task(task_id, task_spec);
 
     // Create agent_runs record
+    const model = task.features?.model ?? null;
     const started_at = new Date().toISOString();
     const { data: run_record } = await supabase
       .from("agent_runs")
-      .insert({ type: "ralph", reference_id: task_id, status: "running", started_at })
+      .insert({ type: "ralph", reference_id: task_id, status: "running", started_at, model })
       .select("id")
       .single();
 
     const run_id: string = run_record?.id ?? "";
 
     try {
-      const proc = Bun.spawn([COPILOT_BIN, "-p", prompt, "--allow-all-tools"], {
+      const spawn_args = [COPILOT_BIN, "-p", prompt, "--allow-all-tools"];
+      const model = task.features?.model ?? null;
+      if (model) spawn_args.push("--model", model);
+
+      const proc = Bun.spawn(spawn_args, {
         cwd: work_dir,
         stdout: "pipe",
         stderr: "pipe",

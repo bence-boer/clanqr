@@ -362,6 +362,7 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    min-width: 0;
   }
 
   .count-badge {
@@ -520,6 +521,7 @@
   @media (max-width: 768px) {
     .stats-3 { grid-template-columns: repeat(2, 1fr); }
     .breakdown-section { grid-template-columns: 1fr; }
+    .filters { flex-wrap: wrap; }
   }
 
   @media (max-width: 640px) {

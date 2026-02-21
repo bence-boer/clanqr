@@ -90,6 +90,7 @@ class AgentService {
     const prompt = build_manager_prompt(spec, work_dir);
 
     // Create agent_runs record
+    const model = feature.model ?? null;
     const started_at = new Date().toISOString();
     const { data: run_record } = await supabase
       .from("agent_runs")
@@ -98,6 +99,7 @@ class AgentService {
         reference_id: feature_id,
         status: "running",
         started_at,
+        model,
       })
       .select("id")
       .single();
@@ -115,8 +117,11 @@ class AgentService {
     this.processes.set(agent_proc.task_id, agent_proc);
 
     try {
+      const manager_spawn_args = [COPILOT_BIN, "-p", prompt, "--allow-all-tools"];
+      if (model) manager_spawn_args.push("--model", model);
+
       const proc = Bun.spawn(
-        [COPILOT_BIN, "-p", prompt, "--allow-all-tools"],
+        manager_spawn_args,
         {
           cwd: work_dir,
           stdout: "pipe",
@@ -211,6 +216,7 @@ class AgentService {
     const prompt = build_ralph_prompt(task_spec, work_dir);
 
     // Create agent_runs record
+    const ralph_model = task.features?.model ?? null;
     const started_at = new Date().toISOString();
     const { data: run_record } = await supabase
       .from("agent_runs")
@@ -219,6 +225,7 @@ class AgentService {
         reference_id: task_id,
         status: "running",
         started_at,
+        model: ralph_model,
       })
       .select("id")
       .single();
@@ -236,8 +243,11 @@ class AgentService {
     this.processes.set(agent_proc.task_id, agent_proc);
 
     try {
+      const ralph_spawn_args = [COPILOT_BIN, "-p", prompt, "--allow-all-tools"];
+      if (ralph_model) ralph_spawn_args.push("--model", ralph_model);
+
       const proc = Bun.spawn(
-        [COPILOT_BIN, "-p", prompt, "--allow-all-tools"],
+        ralph_spawn_args,
         {
           cwd: work_dir,
           stdout: "pipe",

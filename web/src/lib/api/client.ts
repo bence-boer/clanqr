@@ -1,5 +1,8 @@
 import { PUBLIC_API_URL } from "$env/static/public";
 import type {
+  User,
+  InviteToken,
+  InviteStatus,
   AgentRun,
   ChatMessage,
   ChatSession,
@@ -142,6 +145,14 @@ export const api = {
     api_fetch<ResolvedTrait[]>(`/api/traits/resolve/${task_id}`),
   resolve_feature_traits: (feature_id: string) =>
     api_fetch<ResolvedTrait[]>(`/api/traits/resolve/feature/${feature_id}`),
+  list_trait_assignments: (params: { scope?: string; task_id?: string; feature_id?: string; project_id?: string }) => {
+    const qs = new URLSearchParams();
+    if (params.scope) qs.set("scope", params.scope);
+    if (params.task_id) qs.set("task_id", params.task_id);
+    if (params.feature_id) qs.set("feature_id", params.feature_id);
+    if (params.project_id) qs.set("project_id", params.project_id);
+    return api_fetch<TraitAssignment[]>(`/api/traits/assign?${qs}`);
+  },
 
   // ── Skills ────────────────────────────────────────────────────────────────
   list_skills: () =>
@@ -195,5 +206,27 @@ export const api = {
   },
   chat_stream_url: (session_id: string) =>
     `${BASE_URL}/api/chat/sessions/${session_id}/stream`,
+
+  // ── Admin ─────────────────────────────────────────────────────────────────
+  list_users: () => api_fetch<User[]>('/api/admin'),
+  update_user_role: (id: string, role: string) =>
+    api_fetch<User>(`/api/admin/${id}`, { method: 'PATCH', body: JSON.stringify({ role }) }),
+  delete_user: (id: string) =>
+    api_fetch<{ success: boolean }>(`/api/admin/${id}`, { method: 'DELETE' }),
+  list_invites: () => api_fetch<InviteToken[]>('/api/admin/invites'),
+  create_invite: (data: { role: string; expires_at: string; label?: string }) =>
+    api_fetch<InviteToken & { token: string }>('/api/admin/invites', { method: 'POST', body: JSON.stringify(data) }),
+  revoke_invite: (id: string) =>
+    api_fetch<{ success: boolean }>(`/api/admin/invites/${id}`, { method: 'DELETE' }),
+  revoke_user_sessions: (id: string) =>
+    api_fetch<{ success: boolean }>(`/api/admin/${id}/sessions`, { method: 'DELETE' }),
+  clear_old_invites: () =>
+    api_fetch<{ deleted: number }>('/api/admin/invites/bulk-clear', { method: 'DELETE' }),
+  get_invite_status: async (token: string) => {
+    const response = await fetch(`${BASE_URL}/api/auth/invite/status?token=${encodeURIComponent(token)}`, {
+      credentials: 'include',
+    });
+    return response.json() as Promise<InviteStatus>;
+  },
 };
 

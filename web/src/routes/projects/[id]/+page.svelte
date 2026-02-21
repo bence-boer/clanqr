@@ -1,7 +1,18 @@
 <script lang="ts">
   import { page } from '$app/state';
   import { api } from '$lib/api/client';
-  import type { Project, Feature, Task } from '$lib/types';
+  import type { Project, Feature, Task, Trait, SkillLink } from '$lib/types';
+
+  const MODELS = [
+    { value: '', label: 'Default (auto)' },
+    { value: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5' },
+    { value: 'claude-haiku-4-5', label: 'Claude Haiku 4.5' },
+    { value: 'claude-opus-4', label: 'Claude Opus 4' },
+    { value: 'claude-sonnet-4', label: 'Claude Sonnet 4' },
+    { value: 'gpt-4.1', label: 'GPT-4.1' },
+    { value: 'gpt-4.1-mini', label: 'GPT-4.1 Mini' },
+    { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+  ];
 
   let project = $state<Project | null>(null);
   let features = $state<Feature[]>([]);
@@ -12,6 +23,7 @@
   let feature_title = $state('');
   let feature_description = $state('');
   let feature_resources = $state<{ url: string; title: string }[]>([]);
+  let feature_model = $state('');
   let creating_feature = $state(false);
 
   let selected_feature = $state<Feature | null>(null);
@@ -19,6 +31,7 @@
   let editing_feature = $state(false);
   let edit_title = $state('');
   let edit_description = $state('');
+  let edit_model = $state('');
   let saving_edit = $state(false);
   let new_resource_url = $state('');
   let new_resource_title = $state('');
@@ -28,6 +41,13 @@
   let editing_task_id = $state<string | null>(null);
   let editing_task_desc = $state('');
   let saving_task = $state(false);
+
+  let managing_task_id: string | null = $state(null);
+  let available_traits = $state<Trait[]>([]);
+  let available_skills = $state<{ name: string; description: string }[]>([]);
+  let task_trait_assignments = $state<{ id: string; trait_id: string }[]>([]);
+  let task_skill_links = $state<SkillLink[]>([]);
+  let loading_artifacts = $state(false);
 
   const project_id = $derived(page.params.id);
 
@@ -78,10 +98,12 @@
         project_id: project_id,
         title: feature_title.trim(),
         description: feature_description.trim() || undefined,
+        model: feature_model || null,
         resources: resources.length > 0 ? (resources as any) : undefined,
       });
       feature_title = '';
       feature_description = '';
+      feature_model = '';
       feature_resources = [];
       show_feature_form = false;
       await load_data();
@@ -195,6 +217,7 @@
     if (!selected_feature) return;
     edit_title = selected_feature.title;
     edit_description = selected_feature.description ?? '';
+    edit_model = selected_feature.model ?? '';
     editing_feature = true;
   }
 
@@ -209,6 +232,7 @@
       await api.update_feature(selected_feature.id, {
         title: edit_title.trim(),
         description: edit_description.trim() || null,
+        model: edit_model || null,
       } as Partial<Feature>);
       editing_feature = false;
       await load_data();
@@ -242,6 +266,73 @@
     } catch (error) {
       console.error('Failed to delete resource:', error);
     }
+  }
+
+  async function toggle_task_artifacts(task_id: string) {
+    if (managing_task_id === task_id) {
+      managing_task_id = null;
+      return;
+    }
+    managing_task_id = task_id;
+    loading_artifacts = true;
+    try {
+      const [traits, skills, assignments, links] = await Promise.all([
+        api.list_traits('ralph'),
+        api.list_skills(),
+        api.list_trait_assignments({ scope: 'task', task_id }),
+        api.get_task_skills(task_id),
+      ]);
+      available_traits = traits;
+      available_skills = skills;
+      task_trait_assignments = assignments;
+      task_skill_links = links;
+    } catch (error) {
+      console.error('Failed to load artifacts:', error);
+    } finally {
+      loading_artifacts = false;
+    }
+  }
+
+  async function toggle_trait(trait: Trait) {
+    if (!managing_task_id) return;
+    const existing = task_trait_assignments.find((a) => a.trait_id === trait.id);
+    if (existing) {
+      try {
+        await api.remove_trait_assignment(existing.id);
+      } catch (error) {
+        console.error('Failed to remove trait:', error);
+      }
+    } else {
+      try {
+        await api.assign_trait({ trait_id: trait.id, scope: 'task', task_id: managing_task_id });
+      } catch (error) {
+        console.error('Failed to assign trait:', error);
+      }
+    }
+    try {
+      task_trait_assignments = await api.list_trait_assignments({ scope: 'task', task_id: managing_task_id });
+    } catch {}
+  }
+
+  async function toggle_skill(skill_name: string) {
+    if (!managing_task_id) return;
+    const existing = task_skill_links.find((sl) => sl.skill_name === skill_name);
+    if (existing) {
+      try {
+        await api.unlink_skill(existing.id);
+      } catch (error) {
+        console.error('Failed to unlink skill:', error);
+      }
+    } else {
+      try {
+        await api.link_skill(managing_task_id, skill_name);
+      } catch (error) {
+        console.error('Failed to link skill:', error);
+      }
+    }
+    try {
+      task_skill_links = await api.get_task_skills(managing_task_id);
+    } catch {}
   }
 
   function status_icon(status: string): string {
@@ -289,6 +380,11 @@
       <form class="create-form" onsubmit={(e) => { e.preventDefault(); create_feature(); }}>
         <input type="text" placeholder="Feature title" bind:value={feature_title} class="input" required />
         <textarea placeholder="Description" bind:value={feature_description} class="input textarea" rows="4"></textarea>
+        <select bind:value={feature_model} class="input select">
+          {#each MODELS as m}
+            <option value={m.value}>{m.label}</option>
+          {/each}
+        </select>
         <div class="resources-section">
           <div class="resources-header">
             <span><span class="icon" style="font-size:16px">link</span> Resources</span>
@@ -337,6 +433,9 @@
               <div class="feature-item-meta">
                 <span class="icon" style="font-size:12px">task</span> {feature.tasks?.length ?? 0} tasks
                 <span class="icon" style="font-size:12px;margin-left:0.5rem">link</span> {feature.resources?.length ?? 0} resources
+                {#if feature.model}
+                  <span class="badge badge-info" style="margin-left:0.5rem">{feature.model}</span>
+                {/if}
               </div>
             </button>
           {/each}
@@ -374,6 +473,12 @@
                 <input id="edit-title" type="text" class="input" bind:value={edit_title} required />
                 <label class="edit-label" for="edit-desc">Description</label>
                 <textarea id="edit-desc" class="input textarea" bind:value={edit_description} rows={4}></textarea>
+                <label class="edit-label" for="edit-model">Model</label>
+                <select id="edit-model" bind:value={edit_model} class="input select">
+                  {#each MODELS as m}
+                    <option value={m.value}>{m.label}</option>
+                  {/each}
+                </select>
                 <div class="form-actions">
                   <button type="button" class="btn btn-secondary btn-sm" onclick={cancel_editing}>Cancel</button>
                   <button type="submit" class="btn btn-primary btn-sm" disabled={saving_edit || !edit_title.trim()}>
@@ -514,7 +619,58 @@
                               <pre class="log-content">{task.agent_log}</pre>
                             </details>
                           {/if}
+                          <button class="btn btn-secondary btn-sm" title="Artifacts" onclick={() => toggle_task_artifacts(task.id)}>
+                            <span class="icon" style="font-size:14px">tune</span> Artifacts
+                          </button>
                         </div>
+                        {#if managing_task_id === task.id}
+                          <div class="artifacts-panel">
+                            {#if loading_artifacts}
+                              <p class="empty"><span class="icon spin" style="font-size:14px">progress_activity</span> Loading...</p>
+                            {:else}
+                              <div class="artifacts-section">
+                                <h5><span class="icon" style="font-size:14px">psychology</span> Traits</h5>
+                                {#if available_traits.length === 0}
+                                  <p class="empty">No traits available</p>
+                                {:else}
+                                  {#each available_traits as trait}
+                                    <label class="artifact-check">
+                                      <input
+                                        type="checkbox"
+                                        checked={task_trait_assignments.some((a) => a.trait_id === trait.id)}
+                                        onchange={() => toggle_trait(trait)}
+                                      />
+                                      <span class="artifact-name">{trait.name}</span>
+                                      {#if trait.description}
+                                        <span class="artifact-desc">{trait.description}</span>
+                                      {/if}
+                                    </label>
+                                  {/each}
+                                {/if}
+                              </div>
+                              <div class="artifacts-section">
+                                <h5><span class="icon" style="font-size:14px">extension</span> Skills</h5>
+                                {#if available_skills.length === 0}
+                                  <p class="empty">No skills available</p>
+                                {:else}
+                                  {#each available_skills as skill}
+                                    <label class="artifact-check">
+                                      <input
+                                        type="checkbox"
+                                        checked={task_skill_links.some((sl) => sl.skill_name === skill.name)}
+                                        onchange={() => toggle_skill(skill.name)}
+                                      />
+                                      <span class="artifact-name">{skill.name}</span>
+                                      {#if skill.description}
+                                        <span class="artifact-desc">{skill.description}</span>
+                                      {/if}
+                                    </label>
+                                  {/each}
+                                {/if}
+                              </div>
+                            {/if}
+                          </div>
+                        {/if}
                       {/if}
                     </div>
                   {/each}
@@ -733,6 +889,33 @@
     display: none; background: none; border: none; color: var(--fg);
     cursor: pointer; padding: 0.25rem;
   }
+
+  .select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.6rem center;
+    padding-right: 2rem;
+  }
+
+  .artifacts-panel {
+    margin-top: 0.75rem; padding: 0.75rem;
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .artifacts-section { margin-bottom: 0.75rem; }
+  .artifacts-section:last-child { margin-bottom: 0; }
+  .artifacts-section h5 {
+    font-size: 0.8rem; color: var(--fg-muted); margin-bottom: 0.4rem;
+    display: flex; align-items: center; gap: 0.3rem;
+  }
+  .artifact-check {
+    display: flex; align-items: baseline; gap: 0.4rem;
+    font-size: 0.8rem; color: var(--fg); padding: 0.2rem 0; cursor: pointer;
+  }
+  .artifact-check input { margin: 0; flex-shrink: 0; }
+  .artifact-name { font-weight: 600; }
+  .artifact-desc { color: var(--fg-muted); font-size: 0.75rem; }
 
   @media (max-width: 768px) {
     .content-grid {
