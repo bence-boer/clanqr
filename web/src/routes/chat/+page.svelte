@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from '$lib/api/client';
+  import { read_sse_stream } from '$lib/utils/sse';
   import type { ChatMessage, ChatSession } from '$lib/types';
 
   const MODELS = [
@@ -118,47 +119,16 @@
     try {
       // Send message and get the SSE stream response
       const response = await api.send_chat_message(active_session.id, message_content, selected_model);
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
 
-      if (reader) {
-        let buffer = '';
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-
-            // Process complete SSE lines
-            const lines = buffer.split('\n');
-            buffer = lines.pop() ?? '';
-
-            for (const line of lines) {
-              if (!line.startsWith('data: ')) continue;
-              const data_str = line.slice(6);
-              try {
-                const data = JSON.parse(data_str);
-                if (data.done) {
-                  // Stream complete
-                } else if (data.error) {
-                  error_msg = data.error;
-                } else if (data.chunk) {
-                  streaming_content += data.chunk;
-                  scroll_to_bottom();
-                }
-              } catch (_) {
-                // Non-JSON data, treat as raw chunk
-                streaming_content += data_str;
-                scroll_to_bottom();
-              }
-            }
-          }
-        } catch (_) {
-          // Stream closed
-        } finally {
-          reader.releaseLock();
-        }
-      }
+      await read_sse_stream(response, {
+        on_chunk: (chunk) => {
+          streaming_content += chunk;
+          scroll_to_bottom();
+        },
+        on_error: (err) => {
+          error_msg = err;
+        },
+      });
 
       // Finalize: add the complete assistant message
       if (streaming_content) {

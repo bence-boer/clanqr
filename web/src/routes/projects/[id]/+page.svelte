@@ -2,7 +2,9 @@
   import { page } from '$app/state';
   import { api } from '$lib/api/client';
   import { use_polling } from '$lib/utils/polling';
-  import type { Project, Feature, Task, Trait, SkillLink } from '$lib/types';
+  import type { Project, Feature, Task } from '$lib/types';
+  import FeatureForm from './FeatureForm.svelte';
+  import TaskArtifacts from './TaskArtifacts.svelte';
 
   const MODELS = [
     { value: '', label: 'Default (auto)' },
@@ -21,11 +23,6 @@
   let auto_approve = $state(false);
 
   let show_feature_form = $state(false);
-  let feature_title = $state('');
-  let feature_description = $state('');
-  let feature_resources = $state<{ url: string; title: string }[]>([]);
-  let feature_model = $state('');
-  let creating_feature = $state(false);
 
   let selected_feature = $state<Feature | null>(null);
   let show_mobile_detail = $state(false);
@@ -44,11 +41,6 @@
   let saving_task = $state(false);
 
   let managing_task_id: string | null = $state(null);
-  let available_traits = $state<Trait[]>([]);
-  let available_skills = $state<{ name: string; description: string }[]>([]);
-  let task_trait_assignments = $state<{ id: string; trait_id: string }[]>([]);
-  let task_skill_links = $state<SkillLink[]>([]);
-  let loading_artifacts = $state(false);
 
   const project_id = $derived(page.params.id);
 
@@ -76,39 +68,19 @@
     load_data();
   }, 5000);
 
-  function add_resource_field() {
-    feature_resources = [...feature_resources, { url: '', title: '' }];
-  }
-
-  function remove_resource(index: number) {
-    feature_resources = feature_resources.filter((_, i) => i !== index);
-  }
-
-  async function create_feature() {
-    if (!feature_title.trim()) return;
-    creating_feature = true;
+  async function create_feature(data: { title: string; description?: string; model: string | null; resources: { url: string; title?: string }[] }) {
     try {
-      const resources = feature_resources
-        .filter((r) => r.url.trim())
-        .map((r) => ({ url: r.url.trim(), title: r.title.trim() || undefined }));
-
       await api.create_feature({
         project_id: project_id,
-        title: feature_title.trim(),
-        description: feature_description.trim() || undefined,
-        model: feature_model || null,
-        resources: resources.length > 0 ? (resources as any) : undefined,
+        title: data.title,
+        description: data.description,
+        model: data.model,
+        resources: data.resources.length > 0 ? (data.resources as any) : undefined,
       });
-      feature_title = '';
-      feature_description = '';
-      feature_model = '';
-      feature_resources = [];
       show_feature_form = false;
       await load_data();
     } catch (error) {
       console.error('Failed to create feature:', error);
-    } finally {
-      creating_feature = false;
     }
   }
 
@@ -266,71 +238,8 @@
     }
   }
 
-  async function toggle_task_artifacts(task_id: string) {
-    if (managing_task_id === task_id) {
-      managing_task_id = null;
-      return;
-    }
-    managing_task_id = task_id;
-    loading_artifacts = true;
-    try {
-      const [traits, skills, assignments, links] = await Promise.all([
-        api.list_traits('ralph'),
-        api.list_skills(),
-        api.list_trait_assignments({ scope: 'task', task_id }),
-        api.get_task_skills(task_id),
-      ]);
-      available_traits = traits;
-      available_skills = skills;
-      task_trait_assignments = assignments;
-      task_skill_links = links;
-    } catch (error) {
-      console.error('Failed to load artifacts:', error);
-    } finally {
-      loading_artifacts = false;
-    }
-  }
-
-  async function toggle_trait(trait: Trait) {
-    if (!managing_task_id) return;
-    const existing = task_trait_assignments.find((a) => a.trait_id === trait.id);
-    if (existing) {
-      try {
-        await api.remove_trait_assignment(existing.id);
-      } catch (error) {
-        console.error('Failed to remove trait:', error);
-      }
-    } else {
-      try {
-        await api.assign_trait({ trait_id: trait.id, scope: 'task', task_id: managing_task_id });
-      } catch (error) {
-        console.error('Failed to assign trait:', error);
-      }
-    }
-    try {
-      task_trait_assignments = await api.list_trait_assignments({ scope: 'task', task_id: managing_task_id });
-    } catch (err) { console.error('Failed to load trait assignments:', err); }
-  }
-
-  async function toggle_skill(skill_name: string) {
-    if (!managing_task_id) return;
-    const existing = task_skill_links.find((sl) => sl.skill_name === skill_name);
-    if (existing) {
-      try {
-        await api.unlink_skill(existing.id);
-      } catch (error) {
-        console.error('Failed to unlink skill:', error);
-      }
-    } else {
-      try {
-        await api.link_skill(managing_task_id, skill_name);
-      } catch (error) {
-        console.error('Failed to link skill:', error);
-      }
-    }
-    try {
-      task_skill_links = await api.get_task_skills(managing_task_id);
-    } catch (err) { console.error('Failed to load skill links:', err); }
+  function toggle_task_artifacts(task_id: string) {
+    managing_task_id = managing_task_id === task_id ? null : task_id;
   }
 
   function status_icon(status: string): string {
@@ -375,38 +284,7 @@
     </div>
 
     {#if show_feature_form}
-      <form class="create-form" onsubmit={(e) => { e.preventDefault(); create_feature(); }}>
-        <input type="text" placeholder="Feature title" bind:value={feature_title} class="input" required />
-        <textarea placeholder="Description" bind:value={feature_description} class="input textarea" rows="4"></textarea>
-        <select bind:value={feature_model} class="input select">
-          {#each MODELS as m}
-            <option value={m.value}>{m.label}</option>
-          {/each}
-        </select>
-        <div class="resources-section">
-          <div class="resources-header">
-            <span><span class="icon" style="font-size:16px">link</span> Resources</span>
-            <button type="button" class="btn btn-sm btn-secondary" onclick={add_resource_field}>
-              <span class="icon" style="font-size:14px">add</span> Add URL
-            </button>
-          </div>
-          {#each feature_resources as resource, index}
-            <div class="resource-row">
-              <input type="url" placeholder="https://..." bind:value={resource.url} class="input" />
-              <input type="text" placeholder="Title" bind:value={resource.title} class="input input-title" />
-              <button type="button" class="btn btn-danger btn-icon" onclick={() => remove_resource(index)}>
-                <span class="icon" style="font-size:16px">close</span>
-              </button>
-            </div>
-          {/each}
-        </div>
-        <div class="form-actions">
-          <button type="submit" class="btn btn-primary" disabled={creating_feature || !feature_title.trim()}>
-            <span class="icon" style="font-size:16px">save</span>
-            {creating_feature ? 'Creating...' : 'Save Draft'}
-          </button>
-        </div>
-      </form>
+      <FeatureForm models={MODELS} on_create={create_feature} on_cancel={() => show_feature_form = false} />
     {/if}
 
     <div class="content-grid" class:show-detail={show_mobile_detail}>
@@ -622,52 +500,7 @@
                           </button>
                         </div>
                         {#if managing_task_id === task.id}
-                          <div class="artifacts-panel">
-                            {#if loading_artifacts}
-                              <p class="empty"><span class="icon spin" style="font-size:14px">progress_activity</span> Loading...</p>
-                            {:else}
-                              <div class="artifacts-section">
-                                <h5><span class="icon" style="font-size:14px">psychology</span> Traits</h5>
-                                {#if available_traits.length === 0}
-                                  <p class="empty">No traits available</p>
-                                {:else}
-                                  {#each available_traits as trait}
-                                    <label class="artifact-check">
-                                      <input
-                                        type="checkbox"
-                                        checked={task_trait_assignments.some((a) => a.trait_id === trait.id)}
-                                        onchange={() => toggle_trait(trait)}
-                                      />
-                                      <span class="artifact-name">{trait.name}</span>
-                                      {#if trait.description}
-                                        <span class="artifact-desc">{trait.description}</span>
-                                      {/if}
-                                    </label>
-                                  {/each}
-                                {/if}
-                              </div>
-                              <div class="artifacts-section">
-                                <h5><span class="icon" style="font-size:14px">extension</span> Skills</h5>
-                                {#if available_skills.length === 0}
-                                  <p class="empty">No skills available</p>
-                                {:else}
-                                  {#each available_skills as skill}
-                                    <label class="artifact-check">
-                                      <input
-                                        type="checkbox"
-                                        checked={task_skill_links.some((sl) => sl.skill_name === skill.name)}
-                                        onchange={() => toggle_skill(skill.name)}
-                                      />
-                                      <span class="artifact-name">{skill.name}</span>
-                                      {#if skill.description}
-                                        <span class="artifact-desc">{skill.description}</span>
-                                      {/if}
-                                    </label>
-                                  {/each}
-                                {/if}
-                              </div>
-                            {/if}
-                          </div>
+                          <TaskArtifacts task_id={task.id} />
                         {/if}
                       {/if}
                     </div>
@@ -701,12 +534,6 @@
   .page-header h2 { font-size: 1.5rem; color: var(--fg); margin-top: 0.25rem; }
   .project-desc { color: var(--fg-muted); font-size: 0.9rem; }
 
-  .create-form {
-    background: var(--bg-surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.5rem;
-    display: flex; flex-direction: column; gap: 0.75rem;
-  }
-
   .input {
     background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
     padding: 0.6rem 0.8rem; color: var(--fg); font-size: 0.875rem; width: 100%;
@@ -716,13 +543,6 @@
   .textarea { resize: vertical; font-family: var(--font); }
   .input-title { max-width: 180px; }
 
-  .resources-section { margin-top: 0.5rem; }
-  .resources-header {
-    display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 0.5rem; font-size: 0.875rem; color: var(--fg-muted);
-  }
-  .resources-header span { display: inline-flex; align-items: center; gap: 0.3rem; }
-  .resource-row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; }
   .form-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
 
   .btn {
@@ -895,25 +715,6 @@
     background-position: right 0.6rem center;
     padding-right: 2rem;
   }
-
-  .artifacts-panel {
-    margin-top: 0.75rem; padding: 0.75rem;
-    background: var(--bg-surface); border: 1px solid var(--border);
-    border-radius: var(--radius);
-  }
-  .artifacts-section { margin-bottom: 0.75rem; }
-  .artifacts-section:last-child { margin-bottom: 0; }
-  .artifacts-section h5 {
-    font-size: 0.8rem; color: var(--fg-muted); margin-bottom: 0.4rem;
-    display: flex; align-items: center; gap: 0.3rem;
-  }
-  .artifact-check {
-    display: flex; align-items: baseline; gap: 0.4rem;
-    font-size: 0.8rem; color: var(--fg); padding: 0.2rem 0; cursor: pointer;
-  }
-  .artifact-check input { margin: 0; flex-shrink: 0; }
-  .artifact-name { font-weight: 600; }
-  .artifact-desc { color: var(--fg-muted); font-size: 0.75rem; }
 
   @media (max-width: 768px) {
     .content-grid {
