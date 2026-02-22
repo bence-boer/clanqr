@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { api } from '$lib/api/client';
   import { EmptyState, LoadingSpinner, StatCard, StatusBadge } from '$lib/components';
   import type { AgentRun, UsageBreakdown, UsageSummary } from '$lib/types';
@@ -45,7 +46,7 @@
     return Math.round((value / max) * 100);
   }
 
-  $effect(() => {
+  onMount(() => {
     api.usage_summary()
       .then(data => { summary = data; })
       .catch(err => console.error('usage summary error:', err))

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { api } from '$lib/api/client';
   import type { Project } from '$lib/types';
 
@@ -82,7 +83,7 @@
     }
   }
 
-  $effect(() => {
+  onMount(() => {
     load_projects();
   });
 </script>
@@ -125,9 +126,7 @@
     <div class="project-grid">
       {#each projects as project}
         {#if editing_id === project.id}
-          <!-- svelte-ignore a11y_click_events_have_key_events -->
-          <!-- svelte-ignore a11y_no_static_element_interactions -->
-          <div class="project-card editing" onclick={(e) => e.preventDefault()}>
+          <div class="project-card editing">
             <input type="text" class="input" bind:value={edit_name} placeholder="Project name" />
             <textarea class="input textarea" bind:value={edit_description} placeholder="Description" rows={2}></textarea>
             <div class="project-footer">

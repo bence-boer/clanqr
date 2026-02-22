@@ -1,12 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { page } from "$app/stores";
+  import { page } from "$app/state";
   import { goto } from "$app/navigation";
   import { check_auth, register_passkey } from "$lib/auth";
   import { api } from "$lib/api/client";
   import type { InviteStatus } from "$lib/types";
 
-  let token = $derived($page.url.searchParams.get("token"));
+  let token = $derived(page.url.searchParams.get("token"));
   let display_name = $state("");
   let error = $state("");
   let loading = $state(true);
@@ -25,7 +25,7 @@
         goto("/");
         return;
       }
-    } catch {
+    } catch (_) {
       // not authenticated — proceed
     }
     try {
@@ -39,8 +39,8 @@
         };
         error = reasons[info.reason ?? ""] ?? "This invite link is invalid.";
       }
-    } catch {
-      // Endpoint might not exist yet — allow form to show
+    } catch (err) {
+      console.error('Failed to check invite status:', err);
     }
     loading = false;
   });

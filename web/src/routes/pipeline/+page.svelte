@@ -1,6 +1,7 @@
 <script lang="ts">
   import { api } from '$lib/api/client';
   import { StatusBadge, LoadingSpinner, EmptyState } from '$lib/components';
+  import { use_polling } from '$lib/utils/polling';
   import type { AgentRun, PipelineStatus, Task } from '$lib/types';
 
   let pipeline = $state<PipelineStatus | null>(null);
@@ -24,15 +25,16 @@
   async function load_pipeline() {
     try {
       pipeline = await api.pipeline_status();
-    } catch {
-      // ignore — backend may not be running
+    } catch (err) {
+      console.error('Failed to load pipeline status:', err);
     }
   }
 
   async function load_queue() {
     try {
       queue = await api.list_tasks(undefined, 'Approved');
-    } catch {
+    } catch (err) {
+      console.error('Failed to load queue:', err);
       queue = [];
     }
   }
@@ -43,7 +45,8 @@
       history = result.runs;
       history_total = result.total;
       history_total_pages = result.total_pages;
-    } catch {
+    } catch (err) {
+      console.error('Failed to load history:', err);
       history = [];
     }
   }
@@ -58,7 +61,8 @@
     try {
       const result = await api.pipeline_log();
       log_text = result.log;
-    } catch {
+    } catch (err) {
+      console.error('Failed to load log:', err);
       log_text = 'Failed to load log.';
     } finally {
       log_loading = false;
@@ -66,14 +70,11 @@
   }
 
   // Poll every 3s
-  $effect(() => {
-    load_all();
-    const interval = setInterval(async () => {
-      await Promise.all([load_pipeline(), load_queue()]);
-      if (log_visible) refresh_log();
-    }, 3000);
-    return () => clearInterval(interval);
-  });
+  use_polling(async () => {
+    await Promise.all([load_pipeline(), load_queue()]);
+    if (log_visible) refresh_log();
+    loading = false;
+  }, 3000);
 
   // Reload history when filter or page changes
   $effect(() => {

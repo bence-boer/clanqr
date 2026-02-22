@@ -1,17 +1,16 @@
 <script lang="ts">
-  import { getContext } from 'svelte';
+  import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { api } from '$lib/api/client';
+  import { auth_store } from '$lib/stores/auth.svelte';
   import type { User, InviteToken } from '$lib/types';
 
-  // ── Auth context ────────────────────────────────────────────────────────────
-  const role_ctx = getContext<{ role: string | null }>('role');
-  const passkey_ctx = getContext<{ passkey_id: string | null }>('passkey_id');
-  let self_id = $derived(passkey_ctx?.passkey_id ?? null);
+  // ── Auth ────────────────────────────────────────────────────────────────────
+  let self_id = $derived(auth_store.passkey_id);
 
   // Redirect non-admin users
   $effect(() => {
-    if (role_ctx?.role !== null && role_ctx?.role !== 'admin') {
+    if (auth_store.role !== null && auth_store.role !== 'admin') {
       goto('/');
     }
   });
@@ -141,7 +140,7 @@
       await navigator.clipboard.writeText(new_invite_url);
       copy_done = true;
       setTimeout(() => { copy_done = false; }, 2000);
-    } catch {
+    } catch (_) {
       // clipboard not available
     }
   }
@@ -159,7 +158,7 @@
   }
 
   // ── Lifecycle ────────────────────────────────────────────────────────────────
-  $effect(() => {
+  onMount(() => {
     load_users();
     load_invites();
   });
