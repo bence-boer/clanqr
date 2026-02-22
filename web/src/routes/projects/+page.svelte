@@ -13,6 +13,39 @@
   let edit_name = $state('');
   let edit_description = $state('');
   let saving_edit = $state(false);
+  let selected_ids = $state<Set<string>>(new Set());
+  let deleting_selected = $state(false);
+
+  let all_selected = $derived(projects.length > 0 && selected_ids.size === projects.length);
+
+  function toggle_select(id: string) {
+    const next = new Set(selected_ids);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    selected_ids = next;
+  }
+
+  function toggle_all() {
+    if (all_selected) {
+      selected_ids = new Set();
+    } else {
+      selected_ids = new Set(projects.map(p => p.id));
+    }
+  }
+
+  async function delete_selected() {
+    if (selected_ids.size === 0) return;
+    if (!confirm(`Delete ${selected_ids.size} project(s) and all their features?`)) return;
+    deleting_selected = true;
+    try {
+      await Promise.all([...selected_ids].map(id => api.delete_project(id)));
+      selected_ids = new Set();
+      await load_projects();
+    } catch (error) {
+      console.error('Failed to delete projects:', error);
+    } finally {
+      deleting_selected = false;
+    }
+  }
 
   async function load_projects() {
     try {
@@ -91,10 +124,24 @@
 <div class="page">
   <div class="page-header">
     <h2>Projects</h2>
-    <button class="btn btn-primary" onclick={() => (show_create = !show_create)}>
-      <span class="icon">{show_create ? 'close' : 'add'}</span>
-      {show_create ? 'Cancel' : 'New Project'}
-    </button>
+    <div class="header-actions">
+      {#if projects.length > 0}
+        <label class="select-all-label">
+          <input type="checkbox" checked={all_selected} onchange={toggle_all} />
+          Select all
+        </label>
+      {/if}
+      {#if selected_ids.size > 0}
+        <button class="btn btn-danger" onclick={delete_selected} disabled={deleting_selected}>
+          <span class="icon">delete</span>
+          Delete {selected_ids.size}
+        </button>
+      {/if}
+      <button class="btn btn-primary" onclick={() => (show_create = !show_create)}>
+        <span class="icon">{show_create ? 'close' : 'add'}</span>
+        {show_create ? 'Cancel' : 'New Project'}
+      </button>
+    </div>
   </div>
 
   {#if show_create}
@@ -137,9 +184,12 @@
             </div>
           </div>
         {:else}
-        <a href="/projects/{project.id}" class="project-card">
+        <a href="/projects/{project.id}" class="project-card" class:selected-card={selected_ids.has(project.id)}>
           <div class="project-header">
-            <h3>{project.name}</h3>
+            <div class="project-header-left">
+              <input type="checkbox" checked={selected_ids.has(project.id)} onclick={(e: MouseEvent) => { e.preventDefault(); e.stopPropagation(); toggle_select(project.id); }} />
+              <h3>{project.name}</h3>
+            </div>
             <span class="badge badge-{project.status.toLowerCase()}">{project.status}</span>
           </div>
           <p class="project-desc">{project.description ?? 'No description'}</p>
@@ -182,6 +232,22 @@
     margin-bottom: 1.5rem;
     flex-wrap: wrap;
     gap: 0.75rem;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .select-all-label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+    color: var(--fg-muted);
+    cursor: pointer;
   }
 
   .page-header h2 {
@@ -319,6 +385,16 @@
     margin-bottom: 0.5rem;
     gap: 0.5rem;
     flex-wrap: wrap;
+  }
+
+  .project-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .selected-card {
+    border-color: var(--accent);
   }
 
   .project-header h3 {

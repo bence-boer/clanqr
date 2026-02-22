@@ -87,6 +87,17 @@ async function boot() {
 
     // 1. Recover stale agent runs from previous server crash
     const now = new Date().toISOString();
+
+    // Find features with interrupted managers BEFORE marking runs as failed
+    const { data: interrupted_runs } = await supabase
+        .from("agent_runs")
+        .select("feature_id")
+        .eq("type", "manager")
+        .eq("status", "running");
+    const interrupted_feature_ids = (interrupted_runs ?? [])
+        .map((r: any) => r.feature_id)
+        .filter(Boolean);
+
     await supabase
         .from("agent_runs")
         .update({ status: "failed", error: "Server restarted during execution", finished_at: now })
@@ -95,10 +106,15 @@ async function boot() {
         .from("tasks")
         .update({ status: "Approved" })
         .eq("status", "In_Progress");
-    await supabase
-        .from("features")
-        .update({ status: "Submitted" })
-        .eq("status", "In_Progress");
+
+    // Only reset features whose managers were actually interrupted
+    if (interrupted_feature_ids.length > 0) {
+        await supabase
+            .from("features")
+            .update({ status: "Submitted" })
+            .eq("status", "In_Progress")
+            .in("id", interrupted_feature_ids);
+    }
     console.log("✅ Stale process recovery complete");
 
     // 2. Sync base prompts from repo files → DB

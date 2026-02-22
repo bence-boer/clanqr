@@ -190,6 +190,7 @@
           <thead>
             <tr>
               <th>Type</th>
+              <th>Model</th>
               <th>Status</th>
               <th>Duration</th>
               <th>Tokens</th>
@@ -200,6 +201,7 @@
             {#each runs as run}
               <tr>
                 <td><span class="type-badge type-{run.type}">{run.type}</span></td>
+                <td class="model-col">{run.model ?? 'default'}</td>
                 <td><StatusBadge status={run.status} /></td>
                 <td class="mono">{format_duration(run.duration_ms)}</td>
                 <td class="mono">{format_tokens(run.prompt_tokens, run.completion_tokens)}</td>
@@ -448,6 +450,15 @@
   .runs-table td.date-col {
     color: var(--fg-muted);
     font-size: 0.8rem;
+  }
+
+  .runs-table td.model-col {
+    font-size: 0.8rem;
+    color: var(--fg-muted);
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   /* ── Type badges ───────────────────────────────────────────────────────── */

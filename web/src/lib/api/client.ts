@@ -177,6 +177,7 @@ export const api = {
 
     // ── System ────────────────────────────────────────────────────────────────
     system_stats: () => api_fetch<SystemStats>("/api/system/stats"),
+    list_models: () => api_fetch<{ value: string; label: string }[]>("/api/system/models"),
 
     // ── Usage ─────────────────────────────────────────────────────────────────
     usage_summary: () => api_fetch<UsageSummary>("/api/usage/summary"),

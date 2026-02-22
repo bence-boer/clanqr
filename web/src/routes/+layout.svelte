@@ -13,10 +13,27 @@
   let system_stats: SystemStats | null = $state(null);
   let current_path = $derived(page.url.pathname);
 
-  onMount(async () => {
-    await auth_store.check(current_path.startsWith("/invite"));
-    if (auth_store.state === "authenticated" && !current_path.startsWith("/invite")) {
+  let auth_check_done = $state(false);
+
+  async function do_auth_check() {
+    if (auth_check_done) return;
+    auth_check_done = true;
+    await auth_store.check();
+    if (auth_store.state === "authenticated") {
       load_system_stats();
+    }
+  }
+
+  onMount(() => {
+    if (!current_path.startsWith("/invite")) {
+      do_auth_check();
+    }
+  });
+
+  // Re-check auth when navigating away from invite pages
+  $effect(() => {
+    if (!current_path.startsWith("/invite") && !auth_check_done) {
+      do_auth_check();
     }
   });
 
@@ -54,7 +71,9 @@
   <title>Ralph Agent Workspace</title>
 </svelte:head>
 
-{#if auth_store.state === "loading"}
+{#if current_path.startsWith("/invite")}
+  {@render children()}
+{:else if auth_store.state === "loading"}
   <div class="auth-screen">
     <div class="auth-card">
       <span class="icon spin">progress_activity</span>
@@ -99,17 +118,15 @@
       <span class="icon large">lock</span>
       <h1>Ralph Agent Workspace</h1>
       <p class="auth-subtitle">Authenticate with your passkey to continue.</p>
-      <button class="btn-primary" onclick={handle_login}>
-        <span class="icon">fingerprint</span>
-        Sign in with Passkey
+      <button class="btn-primary" onclick={handle_login} disabled={auth_store.pending}>
+        <span class="icon">{auth_store.pending ? 'progress_activity' : 'fingerprint'}</span>
+        {auth_store.pending ? 'Authenticating…' : 'Sign in with Passkey'}
       </button>
       {#if auth_store.error}
         <p class="auth-error">{auth_store.error}</p>
       {/if}
     </div>
   </div>
-{:else if current_path.startsWith("/invite")}
-  {@render children()}
 {:else}
   <div class="app" class:sidebar-open={sidebar_open}>
     <button class="mobile-toggle" onclick={() => sidebar_open = !sidebar_open}>
