@@ -1,0 +1,298 @@
+/* ── CSS Custom Properties (Design Tokens) ──────────────────────────────── */
+
+:root {
+    --bg: #1a1816;
+    --bg-surface: #231f1c;
+    --bg-elevated: #2c2724;
+    --fg: #e6e1d6;
+    --fg-muted: #9e978a;
+    --border: #3d3630;
+    --accent: #d4af37;
+    --accent-dim: rgba(212, 175, 55, 0.15);
+    --danger: #c9544a;
+    --success: #4a9e6e;
+    --radius: 8px;
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ── Reset ───────────────────────────────────────────────────────────────── */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--fg);
+    line-height: 1.5;
+}
+
+::selection {
+    background-color: var(--accent);
+    color: var(--bg);
+}
+
+/* ── Icon (Material Symbols) ─────────────────────────────────────────────── */
+
+.icon {
+    font-family: 'Material Symbols Rounded';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 20px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-smoothing: antialiased;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.icon.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-elevated);
+    color: var(--fg);
+    font-size: 0.8rem;
+    cursor: pointer;
+    font-family: var(--font);
+    transition: all 0.15s;
+}
+
+.btn:hover {
+    background: var(--bg-surface);
+}
+
+.btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.25rem;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font);
+    transition: opacity 0.15s;
+}
+
+.btn-primary:hover {
+    opacity: 0.9;
+}
+
+.btn-danger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--danger);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--danger);
+    font-size: 0.8rem;
+    cursor: pointer;
+    font-family: var(--font);
+    transition: all 0.15s;
+}
+
+.btn-danger:hover {
+    background: var(--danger);
+    color: var(--fg);
+}
+
+.btn-sm {
+    padding: 0.35rem 0.65rem;
+    font-size: 0.75rem;
+}
+
+.btn-icon {
+    background: none;
+    border: none;
+    color: var(--fg-muted);
+    cursor: pointer;
+    padding: 0.35rem;
+    border-radius: var(--radius);
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+}
+
+.btn-icon:hover {
+    color: var(--fg);
+    background: var(--bg-elevated);
+}
+
+/* ── Page Header ─────────────────────────────────────────────────────────── */
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.page-header h2 {
+    font-size: 1.25rem;
+    color: var(--fg);
+}
+
+/* ── Forms ────────────────────────────────────────────────────────────────── */
+
+.input {
+    width: 100%;
+    padding: 0.55rem 0.75rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--fg);
+    font-size: 0.85rem;
+    font-family: var(--font);
+}
+
+.input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.textarea {
+    resize: vertical;
+    min-height: 60px;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.form-field label {
+    font-size: 0.8rem;
+    color: var(--fg-muted);
+    font-weight: 500;
+}
+
+/* ── Cards & Sections ────────────────────────────────────────────────────── */
+
+.section {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.section-header h3 {
+    font-size: 1rem;
+    color: var(--fg);
+}
+
+/* ── Tables ───────────────────────────────────────────────────────────────── */
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+    padding: 0.65rem 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.85rem;
+}
+
+.data-table th {
+    color: var(--fg-muted);
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* ── Badges ──────────────────────────────────────────────────────────────── */
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.badge-active, .badge-running, .badge-completed, .badge-complete {
+    background: rgba(74, 158, 110, 0.15);
+    color: var(--success);
+}
+
+.badge-archived, .badge-failed, .badge-stopped {
+    background: rgba(201, 84, 74, 0.15);
+    color: var(--danger);
+}
+
+.badge-draft, .badge-idle, .badge-pending_approval {
+    background: rgba(158, 151, 138, 0.15);
+    color: var(--fg-muted);
+}
+
+.badge-submitted, .badge-in_progress, .badge-approved, .badge-queued {
+    background: var(--accent-dim);
+    color: var(--accent);
+}
+
+.badge-paused {
+    background: var(--accent-dim);
+    color: var(--accent);
+}
+
+/* ── Utility ─────────────────────────────────────────────────────────────── */
+
+.muted-text {
+    color: var(--fg-muted);
+    font-size: 0.85rem;
+}
+
+.muted-sm {
+    color: var(--fg-muted);
+    font-size: 0.8rem;
+}
+
+.loading {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--fg-muted);
+}

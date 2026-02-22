@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { onMount, onDestroy } from 'svelte';
   import { api } from '$lib/api/client';
+  import { use_polling } from '$lib/utils/polling';
   import type { PipelineStatus, Project, SystemStats } from '$lib/types';
 
   let projects = $state<Project[]>([]);
@@ -27,16 +29,22 @@
   async function load_system_stats() {
     try {
       system_stats = await api.system_stats();
-    } catch {
-      // silently fail
+    } catch (err) {
+      console.error('Failed to load system stats:', err);
     }
   }
 
-  $effect(() => {
-    load_data();
+  use_polling(load_data, 5000);
+
+  onMount(() => {
     load_system_stats();
-    const interval = setInterval(load_data, 5000);
-    return () => clearInterval(interval);
+  });
+
+  onDestroy(() => {
+    if (stats_interval_id) {
+      clearInterval(stats_interval_id);
+      stats_interval_id = null;
+    }
   });
 
   function toggle_stats_refresh() {

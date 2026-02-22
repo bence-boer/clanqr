@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from '$app/state';
   import { api } from '$lib/api/client';
+  import { use_polling } from '$lib/utils/polling';
   import type { Project, Feature, Task, Trait, SkillLink } from '$lib/types';
 
   const MODELS = [
@@ -70,13 +71,10 @@
     }
   }
 
-  $effect(() => {
-    project_id;
+  use_polling(() => {
     loading = true;
     load_data();
-    const interval = setInterval(load_data, 5000);
-    return () => clearInterval(interval);
-  });
+  }, 5000);
 
   function add_resource_field() {
     feature_resources = [...feature_resources, { url: '', title: '' }];
@@ -311,7 +309,7 @@
     }
     try {
       task_trait_assignments = await api.list_trait_assignments({ scope: 'task', task_id: managing_task_id });
-    } catch {}
+    } catch (err) { console.error('Failed to load trait assignments:', err); }
   }
 
   async function toggle_skill(skill_name: string) {
@@ -332,7 +330,7 @@
     }
     try {
       task_skill_links = await api.get_task_skills(managing_task_id);
-    } catch {}
+    } catch (err) { console.error('Failed to load skill links:', err); }
   }
 
   function status_icon(status: string): string {

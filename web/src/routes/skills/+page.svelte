@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { api } from '$lib/api/client';
   import { EmptyState, LoadingSpinner } from '$lib/components';
   import type { SkillInfo } from '$lib/types';
@@ -52,14 +53,15 @@
       const full = await api.get_skill(name);
       skill_content = full.content;
       skill_files = full.files ?? [];
-    } catch {
+    } catch (err) {
+      console.error('Failed to load skill content:', err);
       skill_content = 'Failed to load skill content.';
     } finally {
       content_loading = false;
     }
   }
 
-  $effect(() => {
+  onMount(() => {
     load_skills();
   });
 </script>

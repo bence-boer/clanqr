@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { api } from '$lib/api/client';
   import type { ChatMessage, ChatSession } from '$lib/types';
 
@@ -28,7 +29,7 @@
 
   let messages_container = $state<HTMLElement | null>(null);
 
-  $effect(() => {
+  onMount(() => {
     load_sessions().then(() => {
       const saved_id = sessionStorage.getItem('active_chat_session');
       if (saved_id) {
@@ -41,8 +42,8 @@
   async function load_sessions() {
     try {
       sessions = await api.list_chat_sessions();
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error('Failed to load chat sessions:', err);
     } finally {
       loading_sessions = false;
     }
@@ -57,7 +58,8 @@
     try {
       const data = await api.get_chat_session(session.id);
       messages = data.messages ?? [];
-    } catch {
+    } catch (err) {
+      console.error('Failed to load messages:', err);
       error_msg = 'Failed to load messages';
     } finally {
       loading_messages = false;
@@ -70,7 +72,8 @@
       const session = await api.create_chat_session({ model: selected_model });
       sessions = [session, ...sessions];
       await select_session(session);
-    } catch {
+    } catch (err) {
+      console.error('Failed to create session:', err);
       error_msg = 'Failed to create session';
     }
   }
@@ -86,7 +89,8 @@
         messages = [];
         sessionStorage.removeItem('active_chat_session');
       }
-    } catch {
+    } catch (err) {
+      console.error('Failed to delete session:', err);
       error_msg = 'Failed to delete session';
     }
   }
@@ -142,14 +146,14 @@
                   streaming_content += data.chunk;
                   scroll_to_bottom();
                 }
-              } catch {
+              } catch (_) {
                 // Non-JSON data, treat as raw chunk
                 streaming_content += data_str;
                 scroll_to_bottom();
               }
             }
           }
-        } catch {
+        } catch (_) {
           // Stream closed
         } finally {
           reader.releaseLock();
@@ -217,12 +221,13 @@
       <ul class="session-list">
         {#each sessions as session (session.id)}
           <li>
-            <!-- svelte-ignore a11y_click_events_have_key_events -->
-            <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div
               class="session-item"
               class:active={active_session?.id === session.id}
+              role="button"
+              tabindex="0"
               onclick={() => select_session(session)}
+              onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select_session(session); } }}
             >
               <span class="session-label">{format_session_title(session)}</span>
               <button
@@ -384,6 +389,13 @@
     border-radius: var(--radius);
     cursor: pointer;
     transition: all 0.15s;
+    background: none;
+    border: 1px solid transparent;
+    color: inherit;
+    font-family: inherit;
+    font-size: inherit;
+    width: 100%;
+    text-align: left;
   }
 
   .session-item:hover { background: var(--bg-elevated); }

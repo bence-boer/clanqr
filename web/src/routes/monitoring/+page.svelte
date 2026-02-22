@@ -1,5 +1,6 @@
 <script lang="ts">
   import { api } from '$lib/api/client';
+  import { use_polling } from '$lib/utils/polling';
 
   let agent_status = $state<Record<string, any>>({});
   let selected_log = $state<string | null>(null);
@@ -17,18 +18,15 @@
     }
   }
 
-  $effect(() => {
-    load_status();
-    const interval = setInterval(load_status, 3000);
-    return () => clearInterval(interval);
-  });
+  use_polling(load_status, 3000);
 
   async function view_log(task_id: string) {
     selected_log = task_id;
     try {
       const result = await api.agent_log(task_id);
       log_content = result.log || 'No log output yet.';
-    } catch {
+    } catch (err) {
+      console.error('Failed to load log:', err);
       log_content = 'Failed to load log.';
     }
   }

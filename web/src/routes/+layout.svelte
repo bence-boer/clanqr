@@ -1,84 +1,43 @@
 <script lang="ts">
-  import { onMount, setContext } from "svelte";
-  import { page } from "$app/stores";
-  import { check_auth, register_passkey, login_passkey, logout } from "$lib/auth";
+  import { onMount } from "svelte";
+  import { page } from "$app/state";
   import { api } from "$lib/api/client";
+  import { auth_store } from "$lib/stores/auth.svelte";
+  import "$lib/styles/global.css";
   import type { SystemStats } from "$lib/types";
 
   let { children } = $props();
 
-  let auth_state: "loading" | "setup" | "login" | "authenticated" | "error" = $state("loading");
-  let auth_error: string = $state("");
   let setup_name: string = $state("");
   let sidebar_open: boolean = $state(false);
   let system_stats: SystemStats | null = $state(null);
-  let role: string | null = $state(null);
-  let passkey_id: string | null = $state(null);
-  let current_path = $derived($page.url.pathname);
-
-  setContext("role", { get role() { return role; } });
-  setContext("passkey_id", { get passkey_id() { return passkey_id; } });
+  let current_path = $derived(page.url.pathname);
 
   onMount(async () => {
-    if (current_path.startsWith("/invite")) {
-      auth_state = "authenticated";
-      return;
-    }
-    try {
-      const status = await check_auth();
-      if (status.authenticated) {
-        role = status.role;
-        passkey_id = status.passkey_id;
-        auth_state = "authenticated";
-        load_system_stats();
-      } else if (!status.is_setup) {
-        auth_state = "setup";
-      } else {
-        auth_state = "login";
-      }
-    } catch {
-      auth_state = "error";
+    await auth_store.check(current_path.startsWith("/invite"));
+    if (auth_store.state === "authenticated" && !current_path.startsWith("/invite")) {
+      load_system_stats();
     }
   });
 
   async function load_system_stats() {
     try {
       system_stats = await api.system_stats();
-    } catch {
-      // silently fail — stats are non-critical
+    } catch (err) {
+      console.error('Failed to load system stats:', err);
     }
   }
 
   async function handle_register() {
-    auth_error = "";
-    try {
-      const ok = await register_passkey(setup_name || "Admin");
-      if (ok) auth_state = "authenticated";
-    } catch (e: any) {
-      auth_error = e.message;
-    }
+    await auth_store.register(setup_name || "Admin");
   }
 
   async function handle_login() {
-    auth_error = "";
-    try {
-      const ok = await login_passkey();
-      if (ok) {
-        const status = await check_auth();
-        role = status.role;
-        passkey_id = status.passkey_id;
-        auth_state = "authenticated";
-      }
-    } catch (e: any) {
-      auth_error = e.message;
-    }
+    await auth_store.login();
   }
 
   async function handle_logout() {
-    await logout();
-    role = null;
-    passkey_id = null;
-    auth_state = "login";
+    await auth_store.sign_out();
   }
 
   function close_sidebar() {
@@ -95,13 +54,13 @@
   <title>Ralph Agent Workspace</title>
 </svelte:head>
 
-{#if auth_state === "loading"}
+{#if auth_store.state === "loading"}
   <div class="auth-screen">
     <div class="auth-card">
       <span class="icon spin">progress_activity</span>
     </div>
   </div>
-{:else if auth_state === "error"}
+{:else if auth_store.state === "error"}
   <div class="auth-screen">
     <div class="auth-card">
       <span class="icon large">cloud_off</span>
@@ -113,7 +72,7 @@
       </button>
     </div>
   </div>
-{:else if auth_state === "setup"}
+{:else if auth_store.state === "setup"}
   <div class="auth-screen">
     <div class="auth-card">
       <span class="icon large">passkey</span>
@@ -129,12 +88,12 @@
         <span class="icon">fingerprint</span>
         Create Passkey
       </button>
-      {#if auth_error}
-        <p class="auth-error">{auth_error}</p>
+      {#if auth_store.error}
+        <p class="auth-error">{auth_store.error}</p>
       {/if}
     </div>
   </div>
-{:else if auth_state === "login"}
+{:else if auth_store.state === "login"}
   <div class="auth-screen">
     <div class="auth-card">
       <span class="icon large">lock</span>
@@ -144,23 +103,21 @@
         <span class="icon">fingerprint</span>
         Sign in with Passkey
       </button>
-      {#if auth_error}
-        <p class="auth-error">{auth_error}</p>
+      {#if auth_store.error}
+        <p class="auth-error">{auth_store.error}</p>
       {/if}
     </div>
   </div>
 {:else if current_path.startsWith("/invite")}
   {@render children()}
 {:else}
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="app" class:sidebar-open={sidebar_open}>
     <button class="mobile-toggle" onclick={() => sidebar_open = !sidebar_open}>
       <span class="icon">{sidebar_open ? "close" : "menu"}</span>
     </button>
 
     {#if sidebar_open}
-      <!-- svelte-ignore a11y_click_events_have_key_events -->
-      <div class="sidebar-overlay" onclick={close_sidebar}></div>
+      <button class="sidebar-overlay" onclick={close_sidebar} aria-label="Close sidebar"></button>
     {/if}
 
     <nav class="sidebar">
@@ -232,7 +189,7 @@
         </ul>
       </div>
 
-      {#if role === "admin"}
+      {#if auth_store.role === "admin"}
         <div class="nav-section">
           <span class="nav-section-label">Settings</span>
           <ul class="nav-links">
@@ -269,71 +226,6 @@
 {/if}
 
 <style>
-  :global(*) {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-
-  :global(:root) {
-    --bg: #1a1816;
-    --bg-surface: #231f1c;
-    --bg-elevated: #2c2724;
-    --fg: #e6e1d6;
-    --fg-muted: #9e978a;
-    --border: #3d3630;
-    --accent: #d4af37;
-    --accent-dim: rgba(212, 175, 55, 0.15);
-    --danger: #c9544a;
-    --success: #4a9e6e;
-    --radius: 8px;
-    --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  }
-
-  :global(body) {
-    font-family: var(--font);
-    background: var(--bg);
-    color: var(--fg);
-    line-height: 1.5;
-  }
-
-  :global(::selection) {
-    background-color: var(--accent);
-    color: var(--bg);
-  }
-
-  .icon {
-    font-family: 'Material Symbols Rounded';
-    font-weight: normal;
-    font-style: normal;
-    font-size: 20px;
-    line-height: 1;
-    letter-spacing: normal;
-    text-transform: none;
-    display: inline-block;
-    white-space: nowrap;
-    word-wrap: normal;
-    direction: ltr;
-    -webkit-font-smoothing: antialiased;
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-  }
-
-  :global(.icon) {
-    font-family: 'Material Symbols Rounded';
-    font-weight: normal;
-    font-style: normal;
-    font-size: 20px;
-    line-height: 1;
-    letter-spacing: normal;
-    text-transform: none;
-    display: inline-block;
-    white-space: nowrap;
-    word-wrap: normal;
-    direction: ltr;
-    -webkit-font-smoothing: antialiased;
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-  }
-
   .icon.large {
     font-size: 48px;
     color: var(--accent);
@@ -343,11 +235,6 @@
   .icon.spin {
     font-size: 32px;
     color: var(--accent);
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
   }
 
   /* Auth screens */
@@ -404,26 +291,6 @@
     margin-top: 1rem;
   }
 
-  :global(.btn-primary) {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.65rem 1.25rem;
-    background: var(--accent);
-    color: var(--bg);
-    border: none;
-    border-radius: var(--radius);
-    font-size: 0.875rem;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: var(--font);
-    transition: opacity 0.15s;
-  }
-
-  :global(.btn-primary:hover) {
-    opacity: 0.9;
-  }
-
   /* App layout */
   .app {
     display: flex;
@@ -451,6 +318,9 @@
     inset: 0;
     background: rgba(0, 0, 0, 0.5);
     z-index: 39;
+    border: none;
+    cursor: pointer;
+    font-size: 0;
   }
 
   .sidebar {
