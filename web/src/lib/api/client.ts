@@ -23,6 +23,13 @@ import type {
 
 const BASE_URL = PUBLIC_API_URL || "";
 
+if (typeof window !== 'undefined' && !PUBLIC_API_URL) {
+    console.warn(
+        '[api] PUBLIC_API_URL is not set. API calls will use relative paths, ' +
+        'which may route to the SvelteKit server instead of the Hono API.'
+    );
+}
+
 export async function api_fetch<ReturnType>(path: string, options?: RequestInit): Promise<ReturnType> {
     const response = await fetch(`${BASE_URL}${path}`, {
         ...options,
