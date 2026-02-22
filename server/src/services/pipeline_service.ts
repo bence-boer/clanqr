@@ -138,7 +138,7 @@ class PipelineService {
         const started_at = new Date().toISOString();
         const { data: run_record } = await supabase
             .from("agent_runs")
-            .insert({ type: "ralph", reference_id: task_id, status: "running", started_at, model })
+            .insert({ type: "ralph", task_id, status: "running", started_at, model })
             .select("id")
             .single();
 

@@ -38,7 +38,7 @@ class ChatService {
             .from("agent_runs")
             .insert({
                 type: "chat",
-                reference_id: session_id,
+                session_id,
                 status: "running",
                 model,
                 started_at,

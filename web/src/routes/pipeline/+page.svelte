@@ -185,6 +185,12 @@
     return 'muted';
   }
 
+  function get_run_ref_label(run: AgentRun): string {
+    const ref_id = run.feature_id ?? run.task_id ?? run.session_id;
+    if (ref_id) return `${run.type === 'manager' ? 'Feature' : run.type === 'ralph' ? 'Task' : 'Chat'} ${ref_id.slice(0, 8)}…`;
+    return run.type;
+  }
+
   let expanded_run = $state<string | null>(null);
 
   function toggle_run_log(id: string) {
@@ -345,7 +351,7 @@
                 <div class="history-item-left">
                   <span class="icon run-status-icon {run_status_class(run.status)}">{run_status_icon(run.status)}</span>
                   <div>
-                    <p class="run-ref">{run.reference_id ? `Task ${run.reference_id.slice(0, 8)}…` : run.type}</p>
+                    <p class="run-ref">{get_run_ref_label(run)}</p>
                     <p class="run-meta">{format_date(run.created_at)} · {format_ms(run.duration_ms)}</p>
                   </div>
                 </div>
