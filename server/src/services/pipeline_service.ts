@@ -2,21 +2,11 @@ import { type Subprocess } from "bun";
 import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import { create_supabase_client } from "../db";
+import { COPILOT_BIN, ENRICHED_PATH, WORKSPACE_DIR } from "../env";
 import { prompt_service } from "./prompt_service";
 
-const WORKSPACE_DIR = join(
-    process.env.WORKSPACE_DIR ?? join(import.meta.dir, "../../.."),
-    "agents/workspace"
-);
-
 const HOME = process.env.HOME ?? "/home/scoy";
-const COPILOT_BIN =
-    process.env.COPILOT_BIN ?? join(HOME, ".local/bin/copilot");
-const ENRICHED_PATH = [
-    join(HOME, ".local/bin"),
-    join(HOME, ".bun/bin"),
-    process.env.PATH ?? "/usr/local/bin:/usr/bin:/bin",
-].join(":");
+const PIPELINE_WORKSPACE_DIR = WORKSPACE_DIR;
 
 const TASK_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -114,7 +104,7 @@ class PipelineService {
     private async execute_task(task: any, supabase: any): Promise<void> {
         const task_id = task.id;
         const feature_id: string = task.feature_id;
-        const work_dir = join(WORKSPACE_DIR, `ralph-${task_id}`);
+        const work_dir = join(PIPELINE_WORKSPACE_DIR, `ralph-${task_id}`);
         mkdirSync(work_dir, { recursive: true });
 
         const task_spec = {
@@ -258,15 +248,10 @@ class PipelineService {
             console.log(`🔄 Retrying task (attempt ${retry_count + 1}/${max_retries})`);
             // process_next() at the end of execute_task will pick it up
         } else if (behavior === "skip") {
-            // Keep task as failed but continue pipeline
+            // Mark as skipped (treated as complete for pipeline progression) (BE-018)
             await supabase
                 .from("tasks")
-                .update({ status: "Approved" }) // reset so it stays in limbo but doesn't block
-                .eq("id", task.id);
-            // Actually for skip, we should mark as failed but not blocking
-            await supabase
-                .from("tasks")
-                .update({ status: "Complete" }) // treating as skipped = done for pipeline purposes
+                .update({ status: "Complete" })
                 .eq("id", task.id);
             console.log(`⏭ Skipping failed task, continuing pipeline`);
         } else {
@@ -289,15 +274,17 @@ class PipelineService {
                     if (done) break;
                     active_run.log += decoder.decode(value, { stream: true });
                 }
-            } catch {
-                // Stream closed
+            } catch (error) {
+                console.warn("[pipeline_service] Stream read error:", error);
             }
         };
 
         Promise.all([
             read_stream(proc.stdout as ReadableStream<Uint8Array> | null),
             read_stream(proc.stderr as ReadableStream<Uint8Array> | null),
-        ]).catch(() => { });
+        ]).catch((error) => {
+            console.error("[pipeline_service] collect_output failed:", error);
+        });
     }
 }
 

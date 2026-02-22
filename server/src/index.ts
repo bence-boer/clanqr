@@ -1,7 +1,9 @@
 import { Hono } from "hono";
+import { HTTPException } from "hono/http-exception";
 import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 import { logger } from "hono/logger";
+import { env } from "./env";
 import { supabase_middleware, type AppBindings } from "./middleware/supabase";
 import { auth_middleware, admin_middleware } from "./middleware/auth";
 import { auth_routes } from "./routes/auth";
@@ -23,13 +25,29 @@ import { create_supabase_client } from "./db";
 
 const app = new Hono<AppBindings>();
 
+// ── Error boundary (BE-001) ─────────────────────────────────────────────
+app.onError((error, context) => {
+    if (error instanceof HTTPException) {
+        return context.json({ error: error.message }, error.status);
+    }
+    console.error(`[Unhandled Error] ${context.req.method} ${context.req.path}`, error);
+    return context.json({ error: "Internal server error" }, 500);
+});
+
+app.notFound((context) => {
+    return context.json({ error: "Not found" }, 404);
+});
+
 // Global middleware
 app.use("*", logger());
 app.use("*", secureHeaders());
+
+// ── CORS with explicit origin allowlist (BE-002) ────────────────────────
+const allowed_origins = env.FRONTEND_URL.split(",").map((origin) => origin.trim());
 app.use(
     "*",
     cors({
-        origin: (origin) => origin ?? "*",
+        origin: allowed_origins,
         allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
         allowHeaders: ["Content-Type", "Authorization"],
         credentials: true,
@@ -96,8 +114,10 @@ async function boot() {
 
 boot().catch(console.error);
 
-const port = Number(process.env.PORT ?? 3001);
+const port = env.PORT;
 console.log(`🚀 Server running at http://localhost:${port}`);
+
+export { app };
 
 export default {
     port,

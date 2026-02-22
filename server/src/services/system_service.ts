@@ -12,34 +12,42 @@ export interface SystemStats {
     uptime_seconds: number;
 }
 
-function read_cpu_percent(): number {
-    try {
-        // Read /proc/stat twice with a small delay to compute usage
-        const parse_stat = () => {
-            const stat = readFileSync("/proc/stat", "utf-8");
-            const line = stat.split("\n")[0].trim().split(/\s+/);
-            const user = parseInt(line[1]);
-            const nice = parseInt(line[2]);
-            const system = parseInt(line[3]);
-            const idle = parseInt(line[4]);
-            const iowait = parseInt(line[5]);
-            const irq = parseInt(line[6]);
-            const softirq = parseInt(line[7]);
-            const total = user + nice + system + idle + iowait + irq + softirq;
-            return { idle, total };
-        };
+/** Cached CPU measurements for async sampling */
+let last_cpu_idle = 0;
+let last_cpu_total = 0;
+let last_cpu_percent = 0;
 
-        const s1 = parse_stat();
-        // Synchronous busy-wait for ~100ms sample
-        const start = Date.now();
-        while (Date.now() - start < 100) { }
-        const s2 = parse_stat();
+function parse_cpu_stat(): { idle: number; total: number } {
+    const stat = readFileSync("/proc/stat", "utf-8");
+    const line = stat.split("\n")[0].trim().split(/\s+/);
+    const user = parseInt(line[1]);
+    const nice = parseInt(line[2]);
+    const system = parseInt(line[3]);
+    const idle = parseInt(line[4]);
+    const iowait = parseInt(line[5]);
+    const irq = parseInt(line[6]);
+    const softirq = parseInt(line[7]);
+    const total = user + nice + system + idle + iowait + irq + softirq;
+    return { idle, total };
+}
+
+/** Non-blocking CPU measurement using async delay (BE-014) */
+async function read_cpu_percent(): Promise<number> {
+    try {
+        const s1 = parse_cpu_stat();
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        const s2 = parse_cpu_stat();
 
         const idle_delta = s2.idle - s1.idle;
         const total_delta = s2.total - s1.total;
-        if (total_delta === 0) return 0;
-        return Math.round((1 - idle_delta / total_delta) * 100);
-    } catch {
+        if (total_delta === 0) return last_cpu_percent;
+
+        last_cpu_idle = s2.idle;
+        last_cpu_total = s2.total;
+        last_cpu_percent = Math.round((1 - idle_delta / total_delta) * 100);
+        return last_cpu_percent;
+    } catch (error) {
+        console.warn("[system_service] Failed to read CPU stats:", error);
         return 0;
     }
 }
@@ -54,7 +62,9 @@ function read_cpu_temp(): number | null {
             try {
                 const raw = parseInt(readFileSync(p, "utf-8").trim());
                 return Math.round(raw / 1000);
-            } catch { }
+            } catch (error) {
+                console.warn(`[system_service] Failed to read CPU temp from ${p}:`, error);
+            }
         }
     }
     return null;
@@ -82,7 +92,8 @@ function read_memory(): Pick<
             memory_used_mb: used_mb,
             memory_percent: total_mb > 0 ? Math.round((used_mb / total_mb) * 100) : 0,
         };
-    } catch {
+    } catch (error) {
+        console.warn("[system_service] Failed to read memory stats:", error);
         return { memory_total_mb: 0, memory_used_mb: 0, memory_percent: 0 };
     }
 }
@@ -123,7 +134,8 @@ async function read_storage(): Promise<
             storage_percent:
                 total_gb > 0 ? Math.round((used_gb / total_gb) * 100) : 0,
         };
-    } catch {
+    } catch (error) {
+        console.warn("[system_service] Failed to read storage stats:", error);
         return { storage_total_gb: 0, storage_used_gb: 0, storage_percent: 0 };
     }
 }
@@ -132,18 +144,20 @@ function read_uptime(): number {
     try {
         const uptime = readFileSync("/proc/uptime", "utf-8");
         return Math.floor(parseFloat(uptime.split(" ")[0]));
-    } catch {
+    } catch (error) {
+        console.warn("[system_service] Failed to read uptime:", error);
         return 0;
     }
 }
 
 export async function get_system_stats(): Promise<SystemStats> {
-    const [storage] = await Promise.all([read_storage()]);
+    const [cpu_percent, storage] = await Promise.all([read_cpu_percent(), read_storage()]);
     return {
-        cpu_percent: read_cpu_percent(),
+        cpu_percent,
         cpu_temp_celsius: read_cpu_temp(),
         ...read_memory(),
         ...storage,
         uptime_seconds: read_uptime(),
     };
 }
+

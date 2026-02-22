@@ -2,15 +2,9 @@ import { type Subprocess } from "bun";
 import type { SupabaseClient } from "../db";
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
+import { COPILOT_BIN, ENRICHED_PATH, WORKSPACE_DIR } from "../env";
 
 const HOME = process.env.HOME ?? "/home/scoy";
-const COPILOT_BIN =
-    process.env.COPILOT_BIN ?? join(HOME, ".local/bin/copilot");
-const ENRICHED_PATH = [
-    join(HOME, ".local/bin"),
-    join(HOME, ".bun/bin"),
-    process.env.PATH ?? "/usr/local/bin:/usr/bin:/bin",
-].join(":");
 
 interface AgentProcess {
     task_id: string;
@@ -23,17 +17,14 @@ interface AgentProcess {
     log: string;
 }
 
-const WORKSPACE_DIR = join(
-    process.env.WORKSPACE_DIR ?? join(import.meta.dir, "../../.."),
-    "agents/workspace"
-);
+const AGENT_WORKSPACE_DIR = WORKSPACE_DIR;
 
 class AgentService {
     private processes: Map<string, AgentProcess> = new Map();
 
     constructor() {
-        if (!existsSync(WORKSPACE_DIR)) {
-            mkdirSync(WORKSPACE_DIR, { recursive: true });
+        if (!existsSync(AGENT_WORKSPACE_DIR)) {
+            mkdirSync(AGENT_WORKSPACE_DIR, { recursive: true });
         }
     }
 
@@ -52,7 +43,7 @@ class AgentService {
             return proc.log;
         }
 
-        const log_path = join(WORKSPACE_DIR, task_id, "agent.log");
+        const log_path = join(AGENT_WORKSPACE_DIR, task_id, "agent.log");
         if (existsSync(log_path)) {
             return readFileSync(log_path, "utf-8");
         }
@@ -61,7 +52,7 @@ class AgentService {
 
     async spawn_manager(feature: any, supabase: SupabaseClient) {
         const feature_id = feature.id;
-        const work_dir = join(WORKSPACE_DIR, `manager-${feature_id}`);
+        const work_dir = join(AGENT_WORKSPACE_DIR, `manager-${feature_id}`);
         mkdirSync(work_dir, { recursive: true });
 
         // Write feature spec for the manager agent
@@ -192,7 +183,7 @@ class AgentService {
 
     async spawn_ralph(task: any, supabase: SupabaseClient) {
         const task_id = task.id;
-        const work_dir = join(WORKSPACE_DIR, `ralph-${task_id}`);
+        const work_dir = join(AGENT_WORKSPACE_DIR, `ralph-${task_id}`);
         mkdirSync(work_dir, { recursive: true });
 
         const task_spec = {
@@ -355,27 +346,29 @@ class AgentService {
     }
 
     private async collect_output(agent_proc: AgentProcess, proc: Subprocess) {
-        const stdout_reader = proc.stdout instanceof ReadableStream ? (proc.stdout as ReadableStream<Uint8Array>).getReader() : undefined;
-        const stderr_reader = proc.stderr instanceof ReadableStream ? (proc.stderr as ReadableStream<Uint8Array>).getReader() : undefined;
         const decoder = new TextDecoder();
 
         const read_stream = async (
-            reader: ReadableStreamDefaultReader<Uint8Array> | undefined
+            stream: ReadableStream<Uint8Array> | null | undefined
         ) => {
-            if (!reader) return;
+            if (!stream) return;
+            const reader = stream.getReader();
             try {
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
                     agent_proc.log += decoder.decode(value, { stream: true });
                 }
-            } catch {
-                // Stream closed
+            } catch (error) {
+                console.warn("[agent_service] Stream read error:", error);
             }
         };
 
-        // Read both streams concurrently
-        Promise.all([read_stream(stdout_reader as any), read_stream(stderr_reader as any)]);
+        // Read both streams concurrently — await to propagate errors (BE-013)
+        await Promise.all([
+            read_stream(proc.stdout as ReadableStream<Uint8Array> | null),
+            read_stream(proc.stderr as ReadableStream<Uint8Array> | null),
+        ]);
     }
 
     private async parse_manager_output(
@@ -401,8 +394,8 @@ class AgentService {
 
                 await supabase.from("tasks").insert(task_rows);
             }
-        } catch {
-            // Failed to parse tasks file
+        } catch (error) {
+            console.error("[agent_service] Failed to parse manager tasks output:", error);
         }
     }
 }

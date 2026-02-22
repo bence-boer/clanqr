@@ -7,10 +7,11 @@ import {
     verifyAuthenticationResponse,
 } from "@simplewebauthn/server";
 import type { AppBindings } from "../middleware/supabase";
+import { env } from "../env";
 
 const RP_NAME = "Ralph Agent Workspace";
-const RP_ID = process.env.RP_ID ?? "localhost";
-const RP_ORIGIN = process.env.RP_ORIGIN ?? "http://localhost:5173";
+const RP_ID = env.RP_ID;
+const RP_ORIGIN = env.RP_ORIGIN;
 
 // In-memory challenge store (short-lived, per-session)
 const challenge_store = new Map<string, string>();
@@ -220,8 +221,9 @@ auth_routes.post("/register/verify", async (context) => {
         });
 
         return context.json({ verified: true });
-    } catch (err: any) {
-        return context.json({ error: err.message }, 400);
+    } catch (err) {
+        console.error("[Auth register/verify error]", err);
+        return context.json({ error: "Registration verification failed" }, 400);
     }
 });
 
@@ -319,8 +321,9 @@ auth_routes.post("/login/verify", async (context) => {
         });
 
         return context.json({ verified: true });
-    } catch (err: any) {
-        return context.json({ error: err.message }, 400);
+    } catch (err) {
+        console.error("[Auth login/verify error]", err);
+        return context.json({ error: "Authentication failed" }, 400);
     }
 });
 

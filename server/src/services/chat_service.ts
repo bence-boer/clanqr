@@ -1,14 +1,7 @@
 import type { SupabaseClient } from "../db";
-import { join } from "path";
+import { COPILOT_BIN, ENRICHED_PATH } from "../env";
 
 const HOME = process.env.HOME ?? "/home/scoy";
-const COPILOT_BIN =
-    process.env.COPILOT_BIN ?? join(HOME, ".local/bin/copilot");
-const ENRICHED_PATH = [
-    join(HOME, ".local/bin"),
-    join(HOME, ".bun/bin"),
-    process.env.PATH ?? "/usr/local/bin:/usr/bin:/bin",
-].join(":");
 
 interface ActiveChat {
     session_id: string;
@@ -71,8 +64,8 @@ class ChatService {
                     full_response += chunk;
                     on_token(chunk);
                 }
-            } catch {
-                // Stream closed
+            } catch (error) {
+                console.warn("[chat_service] Stream read error:", error);
             }
         }
 

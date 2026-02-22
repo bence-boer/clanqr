@@ -9,56 +9,59 @@ export const prompts_routes = new Hono<AppBindings>();
 
 // List all prompts
 prompts_routes.get("/", async (context) => {
-  const supabase = context.get("supabase");
-  const { data, error } = await supabase
-    .from("prompts")
-    .select("*")
-    .order("role");
+    const supabase = context.get("supabase");
+    const { data, error } = await supabase
+        .from("prompts")
+        .select("*")
+        .order("role");
 
-  if (error) return context.json({ error: error.message }, 500);
-  return context.json(data);
+    if (error) {
+        console.error(`[GET /api/prompts]`, error);
+        return context.json({ error: "Failed to fetch prompts" }, 500);
+    }
+    return context.json(data);
 });
 
 // Re-sync prompts from repo files (before /:role to avoid conflict)
 prompts_routes.post("/sync", async (_context) => {
-  await prompt_service.sync_from_repo();
-  return _context.json({ success: true, message: "Prompts synced from repo" });
+    await prompt_service.sync_from_repo();
+    return _context.json({ success: true, message: "Prompts synced from repo" });
 });
 
 // Get prompt by role
 prompts_routes.get("/:role", async (context) => {
-  const role = context.req.param("role");
-  const supabase = context.get("supabase");
+    const role = context.req.param("role");
+    const supabase = context.get("supabase");
 
-  const { data, error } = await supabase
-    .from("prompts")
-    .select("*")
-    .eq("role", role)
-    .single();
+    const { data, error } = await supabase
+        .from("prompts")
+        .select("*")
+        .eq("role", role)
+        .single();
 
-  if (error || !data) return context.json({ error: "Prompt not found" }, 404);
-  return context.json(data);
+    if (error || !data) return context.json({ error: "Prompt not found" }, 404);
+    return context.json(data);
 });
 
 // Update prompt content
 prompts_routes.patch("/:role", async (context) => {
-  const role = context.req.param("role");
-  const body = await context.req.json();
-  const result = update_schema.safeParse(body);
+    const role = context.req.param("role");
+    const body = await context.req.json();
+    const result = update_schema.safeParse(body);
 
-  if (!result.success) {
-    return context.json({ error: result.error.format() }, 400);
-  }
+    if (!result.success) {
+        return context.json({ error: result.error.format() }, 400);
+    }
 
-  const ok = await prompt_service.update_prompt(role, result.data.content);
-  if (!ok) return context.json({ error: "Failed to update prompt" }, 500);
+    const ok = await prompt_service.update_prompt(role, result.data.content);
+    if (!ok) return context.json({ error: "Failed to update prompt" }, 500);
 
-  const supabase = context.get("supabase");
-  const { data } = await supabase
-    .from("prompts")
-    .select("*")
-    .eq("role", role)
-    .single();
+    const supabase = context.get("supabase");
+    const { data } = await supabase
+        .from("prompts")
+        .select("*")
+        .eq("role", role)
+        .single();
 
-  return context.json(data);
+    return context.json(data);
 });
