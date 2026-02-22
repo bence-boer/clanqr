@@ -96,7 +96,7 @@ class AgentService {
             .from("agent_runs")
             .insert({
                 type: "manager",
-                reference_id: feature_id,
+                feature_id,
                 status: "running",
                 started_at,
                 model,
@@ -222,7 +222,7 @@ class AgentService {
             .from("agent_runs")
             .insert({
                 type: "ralph",
-                reference_id: task_id,
+                task_id,
                 status: "running",
                 started_at,
                 model: ralph_model,
