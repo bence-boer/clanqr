@@ -49,6 +49,18 @@ jobs:
     needs: sanity-checks
     runs-on: [self-hosted, pi]
     steps:
+      - name: Setup environment
+        run: |
+          cat > /tmp/ralph-api.env << EOF
+          SUPABASE_URL=http://172.17.0.1:54321
+          SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
+          RP_ID=agents.benceboer.com
+          RP_ORIGIN=https://agents.benceboer.com
+          PORT=3001
+          EOF
+          sudo cp /tmp/ralph-api.env /etc/ralph-api.env
+          sudo chmod 600 /etc/ralph-api.env
+
       - name: Apply database migrations
         run: |
           cd /home/scoy/Developer/repositories/ralph-agent-workspace
