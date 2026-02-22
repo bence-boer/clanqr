@@ -166,12 +166,11 @@ auth_routes.post("/register/verify", async (context) => {
             // First-time setup: admin
             role = "admin";
         } else {
-            // Invite flow: atomically claim the token and get role
+            // Invite flow: atomically claim the token (without FK reference yet)
             const { data: claimed } = await db
                 .from("invite_tokens")
                 .update({
                     used_at: new Date().toISOString(),
-                    used_by_passkey_id: passkey_id,
                 })
                 .eq("token", invite_token)
                 .is("used_at", null)
@@ -199,6 +198,14 @@ auth_routes.post("/register/verify", async (context) => {
 
         if (error) {
             return context.json({ error: "Failed to store passkey" }, 500);
+        }
+
+        // Now update invite with the passkey reference (FK is satisfied)
+        if (passkeys_exist && invite_token) {
+            await db
+                .from("invite_tokens")
+                .update({ used_by_passkey_id: passkey_id })
+                .eq("token", invite_token);
         }
 
         challenge_store.delete(challenge_key);

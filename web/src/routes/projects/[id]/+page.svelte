@@ -1,21 +1,13 @@
 <script lang="ts">
   import { page } from '$app/state';
+  import { onMount } from 'svelte';
   import { api } from '$lib/api/client';
   import { use_polling } from '$lib/utils/polling';
   import type { Project, Feature, Task } from '$lib/types';
   import FeatureForm from './FeatureForm.svelte';
   import TaskArtifacts from './TaskArtifacts.svelte';
 
-  const MODELS = [
-    { value: '', label: 'Default (auto)' },
-    { value: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5' },
-    { value: 'claude-haiku-4-5', label: 'Claude Haiku 4.5' },
-    { value: 'claude-opus-4', label: 'Claude Opus 4' },
-    { value: 'claude-sonnet-4', label: 'Claude Sonnet 4' },
-    { value: 'gpt-4.1', label: 'GPT-4.1' },
-    { value: 'gpt-4.1-mini', label: 'GPT-4.1 Mini' },
-    { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
-  ];
+  let MODELS: { value: string; label: string }[] = $state([{ value: '', label: 'Default (auto)' }]);
 
   let project = $state<Project | null>(null);
   let features = $state<Feature[]>([]);
@@ -42,6 +34,44 @@
 
   let managing_task_id: string | null = $state(null);
 
+  let selected_feature_ids = $state<Set<string>>(new Set());
+  let deleting_features = $state(false);
+  let all_features_selected = $derived(features.length > 0 && selected_feature_ids.size === features.length);
+
+  function toggle_feature_select(id: string, event: MouseEvent) {
+    event.stopPropagation();
+    const next = new Set(selected_feature_ids);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    selected_feature_ids = next;
+  }
+
+  function toggle_all_features() {
+    if (all_features_selected) {
+      selected_feature_ids = new Set();
+    } else {
+      selected_feature_ids = new Set(features.map(f => f.id));
+    }
+  }
+
+  async function delete_selected_features() {
+    if (selected_feature_ids.size === 0) return;
+    if (!confirm(`Delete ${selected_feature_ids.size} feature(s)?`)) return;
+    deleting_features = true;
+    try {
+      await Promise.all([...selected_feature_ids].map(id => api.delete_feature(id)));
+      if (selected_feature && selected_feature_ids.has(selected_feature.id)) {
+        selected_feature = null;
+        show_mobile_detail = false;
+      }
+      selected_feature_ids = new Set();
+      await load_data();
+    } catch (error) {
+      console.error('Failed to delete features:', error);
+    } finally {
+      deleting_features = false;
+    }
+  }
+
   const project_id = $derived(page.params.id);
 
   async function load_data() {
@@ -62,6 +92,14 @@
       loading = false;
     }
   }
+
+  onMount(async () => {
+    try {
+      MODELS = await api.list_models();
+    } catch (err) {
+      console.error('Failed to load models:', err);
+    }
+  });
 
   use_polling(() => {
     loading = true;
@@ -289,7 +327,22 @@
 
     <div class="content-grid" class:show-detail={show_mobile_detail}>
       <div class="features-panel">
-        <h3><span class="icon" style="font-size:18px">category</span> Features ({features.length})</h3>
+        <div class="features-panel-header">
+          <h3><span class="icon" style="font-size:18px">category</span> Features ({features.length})</h3>
+          <div class="features-panel-actions">
+            {#if features.length > 0}
+              <label class="select-all-label">
+                <input type="checkbox" checked={all_features_selected} onchange={toggle_all_features} />
+                All
+              </label>
+            {/if}
+            {#if selected_feature_ids.size > 0}
+              <button class="btn btn-danger btn-sm" onclick={delete_selected_features} disabled={deleting_features}>
+                <span class="icon" style="font-size:14px">delete</span> {selected_feature_ids.size}
+              </button>
+            {/if}
+          </div>
+        </div>
         {#if features.length === 0}
           <p class="empty">No features yet.</p>
         {:else}
@@ -300,7 +353,10 @@
               onclick={() => select_feature(feature)}
             >
               <div class="feature-item-header">
-                <span class="feature-name">{feature.title}</span>
+                <div class="feature-name-row">
+                  <input type="checkbox" checked={selected_feature_ids.has(feature.id)} onclick={(e: MouseEvent) => toggle_feature_select(feature.id, e)} />
+                  <span class="feature-name">{feature.title}</span>
+                </div>
                 <span class="badge badge-{status_class(feature.status)}">
                   <span class="icon" style="font-size:12px">{status_icon(feature.status)}</span>
                   {feature.status.replace('_', ' ')}
@@ -366,6 +422,11 @@
             <div class="detail-section">
               <h4><span class="icon" style="font-size:16px">description</span> Description</h4>
               <div class="description-text">{selected_feature.description ?? 'No description'}</div>
+            </div>
+
+            <div class="detail-section">
+              <h4><span class="icon" style="font-size:16px">smart_toy</span> Model</h4>
+              <span class="badge badge-info">{selected_feature.model || 'Default (auto)'}</span>
             </div>
 
             {#if selected_feature.resources && selected_feature.resources.length > 0}
@@ -568,7 +629,25 @@
     border-radius: var(--radius); padding: 1rem;
   }
   .features-panel h3 {
-    font-size: 0.95rem; color: var(--fg); margin-bottom: 0.75rem;
+    font-size: 0.95rem; color: var(--fg); margin-bottom: 0;
+    display: flex; align-items: center; gap: 0.4rem;
+  }
+
+  .features-panel-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;
+  }
+
+  .features-panel-actions {
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+
+  .select-all-label {
+    display: flex; align-items: center; gap: 0.3rem;
+    font-size: 0.75rem; color: var(--fg-muted); cursor: pointer;
+  }
+
+  .feature-name-row {
     display: flex; align-items: center; gap: 0.4rem;
   }
 

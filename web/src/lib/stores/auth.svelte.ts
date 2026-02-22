@@ -8,14 +8,11 @@ class AuthStore {
     error: string = $state("");
     role: string | null = $state(null);
     passkey_id: string | null = $state(null);
+    pending: boolean = $state(false);
 
     is_admin = $derived(this.role === "admin");
 
-    async check(is_invite_page: boolean): Promise<void> {
-        if (is_invite_page) {
-            this.state = "authenticated";
-            return;
-        }
+    async check(): Promise<void> {
         try {
             const status: AuthStatus = await check_auth();
             if (status.authenticated) {
@@ -34,7 +31,9 @@ class AuthStore {
     }
 
     async register(display_name: string): Promise<boolean> {
+        if (this.pending) return false;
         this.error = "";
+        this.pending = true;
         try {
             const ok = await register_passkey(display_name || "Admin");
             if (ok) this.state = "authenticated";
@@ -42,11 +41,15 @@ class AuthStore {
         } catch (err: any) {
             this.error = err.message;
             return false;
+        } finally {
+            this.pending = false;
         }
     }
 
     async login(): Promise<boolean> {
+        if (this.pending) return false;
         this.error = "";
+        this.pending = true;
         try {
             const ok = await login_passkey();
             if (ok) {
@@ -59,6 +62,8 @@ class AuthStore {
         } catch (err: any) {
             this.error = err.message;
             return false;
+        } finally {
+            this.pending = false;
         }
     }
 
