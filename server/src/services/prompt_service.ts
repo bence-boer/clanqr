@@ -1,13 +1,11 @@
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
 import { create_supabase_client } from "../db";
-import { resolve_task_traits } from "../routes/traits";
+import { env, WORKSPACE_DIR } from "../env";
+import { resolve_task_traits } from "./trait_service";
 import { skill_service } from "./skill_service";
 
-const PROMPTS_DIR = join(
-    process.env.WORKSPACE_DIR ?? join(import.meta.dir, "../../.."),
-    "agents/prompts"
-);
+const PROMPTS_DIR = join(WORKSPACE_DIR, "..", "prompts");
 
 const PROMPT_FILES: Record<string, string> = {
     manager: join(PROMPTS_DIR, "manager.md"),

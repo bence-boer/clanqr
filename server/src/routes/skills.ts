@@ -40,7 +40,10 @@ skills_routes.get("/task/:task_id", async (context) => {
         .eq("task_id", task_id)
         .order("created_at");
 
-    if (error) return context.json({ error: error.message }, 500);
+    if (error) {
+        console.error(`[GET /api/skills/task/${task_id}]`, error);
+        return context.json({ error: "Failed to fetch task skills" }, 500);
+    }
     return context.json(data ?? []);
 });
 
@@ -62,7 +65,10 @@ skills_routes.post("/link", async (context) => {
         .select("*")
         .single();
 
-    if (error) return context.json({ error: error.message }, 500);
+    if (error) {
+        console.error(`[POST /api/skills/link]`, error);
+        return context.json({ error: "Failed to link skill" }, 500);
+    }
     return context.json(data, 201);
 });
 
@@ -72,7 +78,10 @@ skills_routes.delete("/link/:id", async (context) => {
     const supabase = context.get("supabase");
 
     const { error } = await supabase.from("skill_links").delete().eq("id", id);
-    if (error) return context.json({ error: error.message }, 500);
+    if (error) {
+        console.error(`[DELETE /api/skills/link/${id}]`, error);
+        return context.json({ error: "Failed to unlink skill" }, 500);
+    }
     return context.json({ success: true });
 });
 

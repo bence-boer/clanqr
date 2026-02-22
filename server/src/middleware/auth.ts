@@ -3,42 +3,39 @@ import { getCookie } from "hono/cookie";
 import type { AppBindings } from "./supabase";
 
 export function auth_middleware() {
-  return createMiddleware<AppBindings>(async (context, next) => {
-    const token = getCookie(context, "session");
-    if (!token) {
-      return context.json({ error: "Authentication required" }, 401);
-    }
+    return createMiddleware<AppBindings>(async (context, next) => {
+        const token = getCookie(context, "session");
+        if (!token) {
+            return context.json({ error: "Authentication required" }, 401);
+        }
 
-    const db = context.get("supabase");
-    const { data: session } = await db
-      .from("sessions")
-      .select("id, passkey_id, expires_at")
-      .eq("token", token)
-      .gt("expires_at", new Date().toISOString())
-      .single();
+        const db = context.get("supabase");
 
-    if (!session) {
-      return context.json({ error: "Session expired" }, 401);
-    }
+        // Single query with join to get session + role (BE-012)
+        const { data: session } = await db
+            .from("sessions")
+            .select("id, passkey_id, expires_at, passkeys(role)")
+            .eq("token", token)
+            .gt("expires_at", new Date().toISOString())
+            .single();
 
-    const { data: passkey } = await db
-      .from("passkeys")
-      .select("role")
-      .eq("id", session.passkey_id)
-      .single();
+        if (!session) {
+            return context.json({ error: "Session expired" }, 401);
+        }
 
-    context.set("passkey_id", session.passkey_id);
-    context.set("role", passkey?.role ?? "user");
+        const role = (session as Record<string, any>).passkeys?.role ?? "user";
+        context.set("passkey_id", session.passkey_id);
+        context.set("role", role);
 
-    await next();
-  });
+        await next();
+    });
 }
 
 export function admin_middleware() {
-  return createMiddleware<AppBindings>(async (context, next) => {
-    if (context.get("role") !== "admin") {
-      return context.json({ error: "Forbidden" }, 403);
-    }
-    await next();
-  });
+    return createMiddleware<AppBindings>(async (context, next) => {
+        if (context.get("role") !== "admin") {
+            return context.json({ error: "Forbidden" }, 403);
+        }
+        await next();
+    });
 }
