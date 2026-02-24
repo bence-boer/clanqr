@@ -63,6 +63,44 @@ agents_routes.get("/queue/log", (context) => {
     return context.json({ log });
 });
 
+// Get agent status for a specific feature
+agents_routes.get("/feature/:feature_id", (context) => {
+    const feature_id = context.req.param("feature_id");
+    const processes = agent_service.get_all_processes();
+
+    // Find any process related to this feature
+    // Manager task_id is `manager-${feature_id}`
+    // Ralph task_id is `ralph-${task_id}` but we'd need to lookup task -> feature
+    // For simplicity, let's just return all processes and filter in the service or here
+    
+    const feature_processes = Object.entries(processes)
+        .filter(([id, proc]) => {
+            if (id === `manager-${feature_id}`) return true;
+            // For ralph, we might need a better way, but agent_service doesn't store feature_id in the Map
+            // Let's assume the UI only cares about the manager for now, or we can improve agent_service
+            return false;
+        })
+        .map(([id, proc]) => ({
+            id,
+            type: proc.type,
+            status: proc.status,
+            started_at: proc.started_at,
+            finished_at: proc.finished_at,
+        }));
+
+    // Also check the pipeline_service for currently running ralph task for this feature
+    const pipeline_status = pipeline_service.get_status();
+    
+    return context.json({
+        processes: feature_processes,
+        pipeline: {
+            state: pipeline_status.state,
+            is_active_feature: pipeline_status.current_feature_id === feature_id,
+            current_task_id: pipeline_status.current_task_id,
+        },
+    });
+});
+
 // ── Legacy agent management ───────────────────────────────────────────────
 
 agents_routes.get("/status", (context) => {

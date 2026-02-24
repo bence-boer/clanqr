@@ -5,18 +5,46 @@
   }
 
   interface Props {
-    models: ModelOption[];
-    on_create: (data: { title: string; description?: string; model: string | null; resources: { url: string; title?: string }[] }) => Promise<void>;
+    on_create: (data: { title: string; description?: string; cli: string; model: string | null; resources: { url: string; title?: string }[] }) => Promise<void>;
     on_cancel: () => void;
   }
 
-  let { models, on_create, on_cancel }: Props = $props();
+  let { on_create, on_cancel }: Props = $props();
 
   let title = $state('');
   let description = $state('');
+  let cli = $state('copilot');
   let model = $state('');
+  let models = $state<ModelOption[]>([]);
   let resources = $state<{ url: string; title: string }[]>([]);
   let creating = $state(false);
+  let loading_models = $state(false);
+
+  import { api } from '$lib/api/client';
+  import { onMount } from 'svelte';
+
+  let last_cli = $state('');
+
+  async function load_models(target_cli: string) {
+    if (target_cli === last_cli) return;
+    loading_models = true;
+    try {
+      models = await api.list_models(target_cli);
+      last_cli = target_cli;
+      // Select the first model if current model is not in the new list
+      if (!models.find(m => m.value === model) && models.length > 0) {
+        model = models[0].value;
+      }
+    } catch (err) {
+      console.error('Failed to load models:', err);
+    } finally {
+      loading_models = false;
+    }
+  }
+
+  $effect(() => {
+    load_models(cli);
+  });
 
   function add_resource_field() {
     resources = [...resources, { url: '', title: '' }];
@@ -37,11 +65,13 @@
       await on_create({
         title: title.trim(),
         description: description.trim() || undefined,
+        cli,
         model: model || null,
         resources: clean_resources,
       });
       title = '';
       description = '';
+      cli = 'copilot';
       model = '';
       resources = [];
     } finally {
@@ -53,11 +83,25 @@
 <form class="create-form" onsubmit={(e) => { e.preventDefault(); handle_submit(); }}>
   <input type="text" placeholder="Feature title" bind:value={title} class="input" required />
   <textarea placeholder="Description" bind:value={description} class="input textarea" rows="4"></textarea>
-  <select bind:value={model} class="input select">
-    {#each models as m}
-      <option value={m.value}>{m.label}</option>
-    {/each}
-  </select>
+  
+  <div class="selection-grid">
+    <div class="field">
+      <label class="field-label" for="cli-select">CLI Engine</label>
+      <select id="cli-select" bind:value={cli} class="input select">
+        <option value="copilot">Copilot CLI</option>
+        <option value="gemini">Gemini CLI</option>
+      </select>
+    </div>
+    <div class="field">
+      <label class="field-label" for="model-select">Model {loading_models ? '(loading...)' : ''}</label>
+      <select id="model-select" bind:value={model} class="input select" disabled={loading_models}>
+        {#each models as m}
+          <option value={m.value}>{m.label}</option>
+        {/each}
+      </select>
+    </div>
+  </div>
+
   <div class="resources-section">
     <div class="resources-header">
       <span><span class="icon" style="font-size:16px">link</span> Resources</span>
@@ -129,5 +173,21 @@
   @media (max-width: 768px) {
     .resource-row { flex-direction: column; }
     .input-title { max-width: 100%; }
+    .selection-grid { grid-template-columns: 1fr; }
+  }
+  .selection-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .field-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--fg-muted);
   }
 </style>

@@ -2,7 +2,7 @@ import { type Subprocess } from "bun";
 import type { SupabaseClient } from "../db";
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
-import { COPILOT_BIN, ENRICHED_PATH, WORKSPACE_DIR } from "../env";
+import { COPILOT_BIN, GEMINI_BIN, ENRICHED_PATH, WORKSPACE_DIR } from "../env";
 
 const HOME = process.env.HOME ?? "/home/scoy";
 
@@ -10,6 +10,7 @@ interface AgentProcess {
     task_id: string;
     run_id?: string; // agent_runs table id
     type: "manager" | "ralph";
+    cli: string;
     process: Subprocess | null;
     status: "running" | "completed" | "failed" | "stopped";
     started_at: string;
@@ -81,7 +82,8 @@ class AgentService {
         const prompt = build_manager_prompt(spec, work_dir);
 
         // Create agent_runs record
-        const model = feature.model ?? null;
+        const cli = feature.cli || "copilot";
+        const model = feature.model || (cli === "gemini" ? "gemini-3-flash-preview" : "gpt-4o");
         const started_at = new Date().toISOString();
         const { data: run_record } = await supabase
             .from("agent_runs")
@@ -90,6 +92,7 @@ class AgentService {
                 feature_id,
                 status: "running",
                 started_at,
+                cli,
                 model,
             })
             .select("id")
@@ -99,6 +102,7 @@ class AgentService {
             task_id: `manager-${feature_id}`,
             run_id: run_record?.id,
             type: "manager",
+            cli,
             process: null,
             status: "running",
             started_at,
@@ -108,7 +112,15 @@ class AgentService {
         this.processes.set(agent_proc.task_id, agent_proc);
 
         try {
-            const manager_spawn_args = [COPILOT_BIN, "-p", prompt, "--allow-all-tools"];
+            const bin = cli === "gemini" ? GEMINI_BIN : COPILOT_BIN;
+            const manager_spawn_args = [bin, "-p", prompt];
+            
+            if (cli === "gemini") {
+                manager_spawn_args.push("--yolo");
+            } else {
+                manager_spawn_args.push("--allow-all-tools");
+            }
+            
             if (model) manager_spawn_args.push("--model", model);
 
             const proc = Bun.spawn(
@@ -207,7 +219,8 @@ class AgentService {
         const prompt = build_ralph_prompt(task_spec, work_dir);
 
         // Create agent_runs record
-        const ralph_model = task.features?.model ?? null;
+        const cli = task.features?.cli || "copilot";
+        const model = task.features?.model || (cli === "gemini" ? "gemini-3-flash-preview" : "gpt-4o");
         const started_at = new Date().toISOString();
         const { data: run_record } = await supabase
             .from("agent_runs")
@@ -216,7 +229,8 @@ class AgentService {
                 task_id,
                 status: "running",
                 started_at,
-                model: ralph_model,
+                cli,
+                model,
             })
             .select("id")
             .single();
@@ -225,6 +239,7 @@ class AgentService {
             task_id: `ralph-${task_id}`,
             run_id: run_record?.id,
             type: "ralph",
+            cli,
             process: null,
             status: "running",
             started_at,
@@ -234,8 +249,16 @@ class AgentService {
         this.processes.set(agent_proc.task_id, agent_proc);
 
         try {
-            const ralph_spawn_args = [COPILOT_BIN, "-p", prompt, "--allow-all-tools"];
-            if (ralph_model) ralph_spawn_args.push("--model", ralph_model);
+            const bin = cli === "gemini" ? GEMINI_BIN : COPILOT_BIN;
+            const ralph_spawn_args = [bin, "-p", prompt];
+            
+            if (cli === "gemini") {
+                ralph_spawn_args.push("--yolo");
+            } else {
+                ralph_spawn_args.push("--allow-all-tools");
+            }
+            
+            if (model) ralph_spawn_args.push("--model", model);
 
             const proc = Bun.spawn(
                 ralph_spawn_args,

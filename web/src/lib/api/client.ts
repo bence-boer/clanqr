@@ -105,6 +105,8 @@ export const api = {
 
     // ── Agents / Pipeline ─────────────────────────────────────────────────────
     agent_status: () => api_fetch<Record<string, any>>("/api/agents/status"),
+    feature_agent_status: (feature_id: string) => 
+        api_fetch<{ processes: any[]; pipeline: any }> (`/api/agents/feature/${feature_id}`),
     agent_log: (task_id: string) => api_fetch<{ log: string }>(`/api/agents/log/${task_id}`),
     spawn_manager: (feature_id: string) =>
         api_fetch<any>(`/api/agents/spawn/manager/${feature_id}`, { method: "POST" }),
@@ -177,7 +179,7 @@ export const api = {
 
     // ── System ────────────────────────────────────────────────────────────────
     system_stats: () => api_fetch<SystemStats>("/api/system/stats"),
-    list_models: () => api_fetch<{ value: string; label: string }[]>("/api/system/models"),
+    list_models: (cli = "copilot") => api_fetch<{ value: string; label: string }[]>(`/api/system/models?cli=${cli}`),
 
     // ── Usage ─────────────────────────────────────────────────────────────────
     usage_summary: () => api_fetch<UsageSummary>("/api/usage/summary"),

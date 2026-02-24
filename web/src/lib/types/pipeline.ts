@@ -16,6 +16,7 @@ export interface AgentRun {
     task_id: string | null;
     session_id: string | null;
     status: "queued" | "running" | "completed" | "failed" | "stopped";
+    cli: string;
     model: string | null;
     prompt_tokens: number | null;
     completion_tokens: number | null;

@@ -9,6 +9,7 @@ const env_schema = z.object({
     FRONTEND_URL: z.string().default("http://localhost:5173"),
     HOME: z.string().default("/home/scoy"),
     COPILOT_BIN: z.string().optional(),
+    GEMINI_BIN: z.string().optional(),
     PORT: z.coerce.number().default(3001),
     WORKSPACE_DIR: z.string().optional(),
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
@@ -33,6 +34,9 @@ export const env = parse_env();
 
 /** Resolved path to copilot binary */
 export const COPILOT_BIN = env.COPILOT_BIN ?? join(env.HOME, ".local/bin/copilot");
+
+/** Resolved path to gemini binary */
+export const GEMINI_BIN = env.GEMINI_BIN ?? "/home/scoy/.local/share/fnm/node-versions/v25.2.1/installation/bin/gemini";
 
 /** Enriched PATH for spawned processes */
 export const ENRICHED_PATH = [

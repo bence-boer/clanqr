@@ -7,8 +7,6 @@
   import FeatureForm from './FeatureForm.svelte';
   import TaskArtifacts from './TaskArtifacts.svelte';
 
-  let MODELS: { value: string; label: string }[] = $state([{ value: '', label: 'Default (auto)' }]);
-
   let project = $state<Project | null>(null);
   let features = $state<Feature[]>([]);
   let loading = $state(true);
@@ -22,6 +20,36 @@
   let edit_title = $state('');
   let edit_description = $state('');
   let edit_model = $state('');
+  let edit_cli = $state('copilot');
+  let edit_models = $state<{ value: string; label: string }[]>([]);
+  let loading_edit_models = $state(false);
+
+  let last_edit_cli = $state('');
+  let last_edit_feature_id = $state('');
+
+  async function load_edit_models(cli: string) {
+    if (cli === last_edit_cli && selected_feature?.id === last_edit_feature_id) return;
+    loading_edit_models = true;
+    try {
+      edit_models = await api.list_models(cli);
+      if (!edit_models.find(m => m.value === edit_model) && edit_models.length > 0) {
+        edit_model = edit_models[0].value;
+      }
+      last_edit_cli = cli;
+      last_edit_feature_id = selected_feature?.id ?? '';
+    } catch (err) {
+      console.error('Failed to load edit models:', err);
+    } finally {
+      loading_edit_models = false;
+    }
+  }
+
+  $effect(() => {
+    if (editing_feature) {
+      load_edit_models(edit_cli);
+    }
+  });
+
   let saving_edit = $state(false);
   let new_resource_url = $state('');
   let new_resource_title = $state('');
@@ -94,24 +122,44 @@
   }
 
   onMount(async () => {
-    try {
-      MODELS = await api.list_models();
-    } catch (err) {
-      console.error('Failed to load models:', err);
-    }
+    // Models are now handled by FeatureForm and edit state
   });
 
+  let agent_info = $state<{ processes: any[]; pipeline: any } | null>(null);
+
+  async function load_agent_status() {
+    if (!selected_feature) {
+      agent_info = null;
+      return;
+    }
+    try {
+      agent_info = await api.feature_agent_status(selected_feature.id);
+      
+      // If manager or ralph is running, refresh tasks more frequently or just once
+      const is_running = agent_info.processes.some(p => p.status === 'running') || 
+                        (agent_info.pipeline.is_active_feature && agent_info.pipeline.state === 'running');
+      
+      if (is_running) {
+        // Refresh tasks and feature data to see new tasks appearing
+        load_data();
+      }
+    } catch (err) {
+      console.error('Failed to load feature agent status:', err);
+    }
+  }
+
   use_polling(() => {
-    loading = true;
     load_data();
+    if (selected_feature) load_agent_status();
   }, 5000);
 
-  async function create_feature(data: { title: string; description?: string; model: string | null; resources: { url: string; title?: string }[] }) {
+  async function create_feature(data: { title: string; description?: string; cli: string; model: string | null; resources: { url: string; title?: string }[] }) {
     try {
       await api.create_feature({
         project_id: project_id,
         title: data.title,
         description: data.description,
+        cli: data.cli,
         model: data.model,
         resources: data.resources.length > 0 ? (data.resources as any) : undefined,
       });
@@ -225,6 +273,7 @@
     if (!selected_feature) return;
     edit_title = selected_feature.title;
     edit_description = selected_feature.description ?? '';
+    edit_cli = selected_feature.cli ?? 'copilot';
     edit_model = selected_feature.model ?? '';
     editing_feature = true;
   }
@@ -240,6 +289,7 @@
       await api.update_feature(selected_feature.id, {
         title: edit_title.trim(),
         description: edit_description.trim() || null,
+        cli: edit_cli,
         model: edit_model || null,
       } as Partial<Feature>);
       editing_feature = false;
@@ -322,7 +372,7 @@
     </div>
 
     {#if show_feature_form}
-      <FeatureForm models={MODELS} on_create={create_feature} on_cancel={() => show_feature_form = false} />
+      <FeatureForm on_create={create_feature} on_cancel={() => show_feature_form = false} />
     {/if}
 
     <div class="content-grid" class:show-detail={show_mobile_detail}>
@@ -363,10 +413,11 @@
                 </span>
               </div>
               <div class="feature-item-meta">
-                <span class="icon" style="font-size:12px">task</span> {feature.tasks?.length ?? 0} tasks
-                <span class="icon" style="font-size:12px;margin-left:0.5rem">link</span> {feature.resources?.length ?? 0} resources
+                <span class="icon" style="font-size:12px">task</span> {feature.tasks?.length ?? 0}
+                <span class="icon" style="font-size:12px;margin-left:0.5rem">link</span> {feature.resources?.length ?? 0}
+                <span class="badge badge-muted" style="margin-left:0.5rem; transform: scale(0.9)">{feature.cli || 'copilot'}</span>
                 {#if feature.model}
-                  <span class="badge badge-info" style="margin-left:0.5rem">{feature.model}</span>
+                  <span class="badge badge-info" style="margin-left:0.25rem; transform: scale(0.9)">{feature.model}</span>
                 {/if}
               </div>
             </button>
@@ -382,7 +433,17 @@
             </button>
           </div>
           <div class="detail-header">
-            <h3>{selected_feature.title}</h3>
+            <div style="display:flex; flex-direction:column; gap:0.25rem">
+              <h3>{selected_feature.title}</h3>
+              {#if agent_info && (agent_info.processes.some(p => p.status === 'running') || (agent_info.pipeline.is_active_feature && agent_info.pipeline.state === 'running'))}
+                <div class="agent-running-indicator">
+                  <span class="icon spin" style="font-size:12px; color:var(--accent)">progress_activity</span>
+                  <span style="font-size:0.65rem; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:0.05em">
+                    {agent_info.processes.some(p => p.status === 'running' && p.type === 'manager') ? 'Manager Processing' : 'Ralph Working'}
+                  </span>
+                </div>
+              {/if}
+            </div>
             <div class="detail-actions">
               {#if selected_feature.status === 'Draft' && !editing_feature}
                 <button class="btn btn-secondary btn-sm" onclick={start_editing}>
@@ -405,12 +466,25 @@
                 <input id="edit-title" type="text" class="input" bind:value={edit_title} required />
                 <label class="edit-label" for="edit-desc">Description</label>
                 <textarea id="edit-desc" class="input textarea" bind:value={edit_description} rows={4}></textarea>
-                <label class="edit-label" for="edit-model">Model</label>
-                <select id="edit-model" bind:value={edit_model} class="input select">
-                  {#each MODELS as m}
-                    <option value={m.value}>{m.label}</option>
-                  {/each}
-                </select>
+                
+                <div class="selection-grid">
+                  <div class="field">
+                    <label class="edit-label" for="edit-cli">CLI Engine</label>
+                    <select id="edit-cli" bind:value={edit_cli} class="input select">
+                      <option value="copilot">Copilot CLI</option>
+                      <option value="gemini">Gemini CLI</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label class="edit-label" for="edit-model">Model {loading_edit_models ? '(...)' : ''}</label>
+                    <select id="edit-model" bind:value={edit_model} class="input select" disabled={loading_edit_models}>
+                      {#each edit_models as m}
+                        <option value={m.value}>{m.label}</option>
+                      {/each}
+                    </select>
+                  </div>
+                </div>
+
                 <div class="form-actions">
                   <button type="button" class="btn btn-secondary btn-sm" onclick={cancel_editing}>Cancel</button>
                   <button type="submit" class="btn btn-primary btn-sm" disabled={saving_edit || !edit_title.trim()}>
@@ -425,8 +499,11 @@
             </div>
 
             <div class="detail-section">
-              <h4><span class="icon" style="font-size:16px">smart_toy</span> Model</h4>
-              <span class="badge badge-info">{selected_feature.model || 'Default (auto)'}</span>
+              <h4><span class="icon" style="font-size:16px">smart_toy</span> Engine & Model</h4>
+              <div style="display:flex; gap:0.5rem">
+                <span class="badge badge-muted">{selected_feature.cli || 'copilot'}</span>
+                <span class="badge badge-info">{selected_feature.model || 'Default (auto)'}</span>
+              </div>
             </div>
 
             {#if selected_feature.resources && selected_feature.resources.length > 0}
@@ -677,7 +754,13 @@
     margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border);
     flex-wrap: wrap; gap: 0.5rem;
   }
-  .detail-header h3 { font-size: 1.05rem; color: var(--fg); }
+  .detail-header h3 { font-size: 1.25rem; color: var(--fg); }
+  .agent-running-indicator {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    padding: 0.15rem 0.5rem; background: rgba(212, 175, 55, 0.1);
+    border-radius: 4px; border: 1px solid rgba(212, 175, 55, 0.2);
+  }
+
   .detail-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 
   .detail-section { margin-bottom: 1.25rem; }
