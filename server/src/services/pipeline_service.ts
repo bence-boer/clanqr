@@ -2,7 +2,7 @@ import { type Subprocess } from "bun";
 import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import { create_supabase_client } from "../db";
-import { COPILOT_BIN, ENRICHED_PATH, WORKSPACE_DIR } from "../env";
+import { COPILOT_BIN, GEMINI_BIN, ENRICHED_PATH, WORKSPACE_DIR } from "../env";
 import { prompt_service } from "./prompt_service";
 
 const HOME = process.env.HOME ?? "/home/scoy";
@@ -31,6 +31,7 @@ class PipelineService {
             state: this.state,
             current_task_id: this.active_run?.task_id ?? null,
             current_run_id: this.active_run?.run_id ?? null,
+            current_feature_id: this.active_run?.feature_id ?? null,
         };
     }
 
@@ -124,19 +125,27 @@ class PipelineService {
         const prompt = await prompt_service.resolve_for_task(task_id, task_spec);
 
         // Create agent_runs record
-        const model = task.features?.model ?? null;
+        const cli = task.features?.cli || "copilot";
+        const model = task.features?.model || (cli === "gemini" ? "gemini-3-flash-preview" : "gpt-4o");
         const started_at = new Date().toISOString();
         const { data: run_record } = await supabase
             .from("agent_runs")
-            .insert({ type: "ralph", task_id, status: "running", started_at, model })
+            .insert({ type: "ralph", task_id, status: "running", started_at, cli, model })
             .select("id")
             .single();
 
         const run_id: string = run_record?.id ?? "";
 
         try {
-            const spawn_args = [COPILOT_BIN, "-p", prompt, "--allow-all-tools"];
-            const model = task.features?.model ?? null;
+            const bin = cli === "gemini" ? GEMINI_BIN : COPILOT_BIN;
+            const spawn_args = [bin, "-p", prompt];
+            
+            if (cli === "gemini") {
+                spawn_args.push("--yolo");
+            } else {
+                spawn_args.push("--allow-all-tools");
+            }
+
             if (model) spawn_args.push("--model", model);
 
             const proc = Bun.spawn(spawn_args, {

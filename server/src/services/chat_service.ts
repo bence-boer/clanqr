@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "../db";
-import { COPILOT_BIN, ENRICHED_PATH } from "../env";
+import { COPILOT_BIN, GEMINI_BIN, ENRICHED_PATH } from "../env";
 
 const HOME = process.env.HOME ?? "/home/scoy";
 
@@ -25,6 +25,9 @@ class ChatService {
             content,
         });
 
+        const cli = "copilot"; // Chat is currently hardcoded to copilot cli
+        const resolved_model = model || "gpt-4o";
+
         // Create agent_runs record
         const started_at = new Date().toISOString();
         const { data: run_record } = await supabase
@@ -33,14 +36,15 @@ class ChatService {
                 type: "chat",
                 session_id,
                 status: "running",
-                model,
+                cli,
+                model: resolved_model,
                 started_at,
             })
             .select("id")
             .single();
 
         const proc = Bun.spawn(
-            [COPILOT_BIN, "-p", content, "--model", model, "--allow-all-tools"],
+            [COPILOT_BIN, "-p", content, "--model", resolved_model, "--allow-all-tools"],
             {
                 cwd: HOME,
                 stdout: "pipe",

@@ -6,6 +6,7 @@ const create_feature_schema = z.object({
     project_id: z.string().uuid(),
     title: z.string().min(1).max(255),
     description: z.string().optional(),
+    cli: z.string().default("copilot"),
     model: z.string().optional(),
     resources: z
         .array(z.object({ url: z.string().url(), title: z.string().optional() }))
@@ -16,6 +17,7 @@ const update_feature_schema = z.object({
     title: z.string().min(1).max(255).optional(),
     description: z.string().optional(),
     status: z.enum(["Draft", "Submitted", "In_Progress", "Done"]).optional(),
+    cli: z.string().optional(),
     model: z.string().nullable().optional(),
 });
 

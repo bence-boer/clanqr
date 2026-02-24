@@ -106,7 +106,7 @@ usage_routes.get("/breakdown", async (context) => {
     for (const run of runs ?? []) {
         by_type[run.type] = (by_type[run.type] ?? 0) + 1;
         by_status[run.status] = (by_status[run.status] ?? 0) + 1;
-        const model_name = run.model || "default";
+        const model_name = run.model || "unknown";
         by_model[model_name] = (by_model[model_name] ?? 0) + 1;
     }
 

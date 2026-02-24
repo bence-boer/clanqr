@@ -14,6 +14,7 @@ export interface Feature {
     title: string;
     description: string | null;
     status: "Draft" | "Submitted" | "In_Progress" | "Done";
+    cli: string;
     model: string | null;
     on_task_failure: "stop" | "skip" | "retry";
     auto_approve: boolean;
