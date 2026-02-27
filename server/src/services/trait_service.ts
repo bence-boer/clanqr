@@ -2,6 +2,23 @@ import type { SupabaseClient } from "../db";
 import type { ResolvedTrait, TraitTarget, TraitRow, TraitAssignmentRow } from "../types";
 
 /**
+ * Resolves the effective set of traits for a feature (used by manager agents).
+ */
+export async function resolve_feature_traits(
+    supabase: SupabaseClient,
+    feature_id: string,
+    project_id: string,
+    target: TraitTarget
+): Promise<ResolvedTrait[]> {
+    return resolve_scope_traits(supabase, {
+        scope: "feature",
+        feature_id,
+        project_id,
+        target,
+    });
+}
+
+/**
  * Resolves the effective set of traits for a task by walking the
  * inheritance chain: global → project → feature → task.
  */

@@ -23,6 +23,8 @@ export interface AgentRun {
     duration_ms: number | null;
     log: string | null;
     error: string | null;
+    summary: string | null;
+    files_changed: string[] | null;
     started_at: string | null;
     finished_at: string | null;
     created_at: string;
