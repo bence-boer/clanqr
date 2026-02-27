@@ -71,6 +71,8 @@ export interface AgentRunRow {
     completion_tokens: number | null;
     log: string | null;
     error: string | null;
+    summary: string | null;
+    files_changed: string[] | null;
     created_at: string;
 }
 

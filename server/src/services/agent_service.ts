@@ -1,10 +1,31 @@
 import { type Subprocess } from "bun";
+import { z } from "zod";
 import type { SupabaseClient } from "../db";
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import { COPILOT_BIN, GEMINI_BIN, ENRICHED_PATH, WORKSPACE_DIR } from "../env";
+import { prompt_service } from "./prompt_service";
 
 const HOME = process.env.HOME ?? "/home/scoy";
+
+// --- Zod schemas for agent output validation ---
+
+const task_output_schema = z.object({
+    description: z.string().min(20, "Task description must be at least 20 characters").max(5000, "Task description must not exceed 5000 characters"),
+}).strict();
+
+const manager_output_schema = z.array(task_output_schema)
+    .min(1, "At least one task is required")
+    .max(50, "Maximum 50 tasks allowed");
+
+const progress_schema = z.object({
+    status: z.enum(["completed", "failed", "partial"]),
+    summary: z.string().optional(),
+    files_changed: z.array(z.string()).optional(),
+    error_details: z.string().nullable().optional(),
+});
+
+const MAX_OUTPUT_FILE_SIZE = 1024 * 1024; // 1MB
 
 interface AgentProcess {
     task_id: string;
@@ -79,7 +100,7 @@ class AgentService {
             .update({ status: "In_Progress" })
             .eq("id", feature_id);
 
-        const prompt = build_manager_prompt(spec, work_dir);
+        const prompt = await prompt_service.resolve_for_manager(spec, feature_id, feature.project_id);
 
         // Create agent_runs record
         const cli = feature.cli || "copilot";
@@ -162,7 +183,7 @@ class AgentService {
 
             // Parse tasks from output file
             if (exit_code === 0) {
-                await this.parse_manager_output(feature_id, work_dir, supabase);
+                await this.parse_manager_output(feature_id, work_dir, supabase, run_record?.id);
             } else {
                 // Reset feature to Submitted so watcher can retry
                 await supabase
@@ -216,7 +237,7 @@ class AgentService {
             .update({ status: "In_Progress" })
             .eq("id", task_id);
 
-        const prompt = build_ralph_prompt(task_spec, work_dir);
+        const prompt = await prompt_service.resolve_for_task(task_id, task_spec);
 
         // Create agent_runs record
         const cli = task.features?.cli || "copilot";
@@ -282,6 +303,7 @@ class AgentService {
             // Update agent_runs record
             if (run_record?.id) {
                 const duration_ms = Date.now() - new Date(started_at).getTime();
+                const progress_data = this.read_progress(work_dir);
                 await supabase
                     .from("agent_runs")
                     .update({
@@ -289,6 +311,8 @@ class AgentService {
                         log: agent_proc.log.slice(-10000),
                         finished_at: agent_proc.finished_at,
                         duration_ms,
+                        summary: progress_data?.summary ?? null,
+                        files_changed: progress_data?.files_changed ?? null,
                     })
                     .eq("id", run_record.id);
             }
@@ -397,88 +421,96 @@ class AgentService {
     private async parse_manager_output(
         feature_id: string,
         work_dir: string,
-        supabase: SupabaseClient
+        supabase: SupabaseClient,
+        run_id?: string
     ) {
         const tasks_file = join(work_dir, "tasks.json");
+
+        // M-1.2: Missing tasks.json after successful exit is an error
         if (!existsSync(tasks_file)) {
+            console.error(`[agent] Manager exited 0 but no tasks.json for feature ${feature_id}`);
+            await supabase.from("features")
+                .update({ status: "Draft" })
+                .eq("id", feature_id);
+            if (run_id) {
+                await supabase.from("agent_runs")
+                    .update({ status: "failed", error: "Manager completed but produced no tasks.json" })
+                    .eq("id", run_id);
+            }
             return;
         }
 
         try {
-            const content = readFileSync(tasks_file, "utf-8");
-            const tasks = JSON.parse(content);
-
-            if (Array.isArray(tasks)) {
-                const task_rows = tasks.map((t: any) => ({
-                    feature_id,
-                    description: typeof t === "string" ? t : t.description ?? String(t),
-                    status: "Pending_Approval" as const,
-                }));
-
-                await supabase.from("tasks").insert(task_rows);
+            // M-1.1: Size limit check before parsing
+            const { size } = Bun.file(tasks_file);
+            if (size > MAX_OUTPUT_FILE_SIZE) {
+                const error_msg = `tasks.json exceeds maximum size (${size} bytes > ${MAX_OUTPUT_FILE_SIZE})`;
+                console.error(`[agent] ${error_msg}`);
+                await supabase.from("features")
+                    .update({ status: "Draft" })
+                    .eq("id", feature_id);
+                if (run_id) {
+                    await supabase.from("agent_runs")
+                        .update({ status: "failed", error: error_msg })
+                        .eq("id", run_id);
+                }
+                return;
             }
+
+            const content = readFileSync(tasks_file, "utf-8");
+            const raw = JSON.parse(content);
+
+            // M-1.1: Zod schema validation
+            const result = manager_output_schema.safeParse(raw);
+
+            if (!result.success) {
+                const error_msg = `Invalid tasks.json: ${result.error.issues.map(i => i.message).join("; ")}`;
+                console.error(`[agent] ${error_msg}`);
+                await supabase.from("features")
+                    .update({ status: "Draft" })
+                    .eq("id", feature_id);
+                if (run_id) {
+                    await supabase.from("agent_runs")
+                        .update({ status: "failed", error: error_msg })
+                        .eq("id", run_id);
+                }
+                return;
+            }
+
+            const task_rows = result.data.map(t => ({
+                feature_id,
+                description: t.description,
+                status: "Pending_Approval" as const,
+            }));
+
+            await supabase.from("tasks").insert(task_rows);
         } catch (error) {
-            console.error("[agent_service] Failed to parse manager tasks output:", error);
+            const error_msg = error instanceof Error ? error.message : "Unknown parse error";
+            console.error("[agent_service] Failed to parse manager tasks output:", error_msg);
+            await supabase.from("features")
+                .update({ status: "Draft" })
+                .eq("id", feature_id);
+            if (run_id) {
+                await supabase.from("agent_runs")
+                    .update({ status: "failed", error: `Failed to parse tasks.json: ${error_msg}` })
+                    .eq("id", run_id);
+            }
         }
     }
-}
 
-function build_manager_prompt(spec: any, work_dir: string): string {
-    const resources_text =
-        spec.resources.length > 0
-            ? `\n\nResearch these resources:\n${spec.resources.map((r: any) => `- ${r.url}${r.title ? ` (${r.title})` : ""}`).join("\n")}`
-            : "";
+    /** Read and validate progress.json from a ralph work directory (M-1.3) */
+    private read_progress(work_dir: string): z.infer<typeof progress_schema> | null {
+        const progress_file = join(work_dir, "progress.json");
+        if (!existsSync(progress_file)) return null;
 
-    return `You are a Manager Agent. Your role is to research and plan — you NEVER write implementation code.
-
-PROJECT: ${spec.project}
-FEATURE: ${spec.title}
-DESCRIPTION: ${spec.description ?? "No description provided"}
-${resources_text}
-
-YOUR TASK:
-1. Read and understand the feature specification above
-2. If resources are provided, fetch and read each URL to understand the requirements
-3. Break down this feature into concrete, actionable implementation tasks
-4. Each task should be a single, clear unit of work that a coding agent can execute
-
-OUTPUT:
-Write a JSON file called "tasks.json" in the current directory (${work_dir}).
-The file must contain an array of objects, each with a "description" field.
-Example: [{"description": "Create the user model with email and password fields"}, {"description": "Add login API endpoint with JWT authentication"}]
-
-RULES:
-- Do NOT write any implementation code
-- Do NOT create any source files
-- ONLY output the tasks.json file
-- Keep tasks focused and actionable
-- Order tasks logically (dependencies first)`;
-}
-
-function build_ralph_prompt(spec: any, work_dir: string): string {
-    return `You are Ralph, a coding agent. Your job is to execute a specific task.
-
-PROJECT: ${spec.project_name}
-FEATURE: ${spec.feature_title}
-TASK: ${spec.description}
-
-YOUR TASK:
-1. Read the task description carefully
-2. Execute the task by writing code, running commands, or making changes as needed
-3. Write a brief progress update to "progress.json" in ${work_dir}
-
-OUTPUT:
-When complete, write a file called "progress.json" in ${work_dir} with:
-{"status": "complete", "summary": "Brief description of what was done"}
-
-If you encounter an error:
-{"status": "error", "summary": "Description of the problem"}
-
-RULES:
-- Focus only on this specific task
-- Write clean, well-structured code
-- Test your work when possible
-- Do not modify unrelated files`;
+        try {
+            const raw = JSON.parse(readFileSync(progress_file, "utf-8"));
+            const result = progress_schema.safeParse(raw);
+            return result.success ? result.data : null;
+        } catch {
+            return null;
+        }
+    }
 }
 
 export const agent_service = new AgentService();

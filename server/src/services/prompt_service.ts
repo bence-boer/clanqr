@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
 import { create_supabase_client } from "../db";
 import { env, WORKSPACE_DIR } from "../env";
-import { resolve_task_traits } from "./trait_service";
+import { resolve_task_traits, resolve_feature_traits } from "./trait_service";
 import { skill_service } from "./skill_service";
 
 const PROMPTS_DIR = join(WORKSPACE_DIR, "..", "prompts");
@@ -69,7 +69,7 @@ class PromptService {
     // Build the full composed prompt for a Ralph task execution
     async resolve_for_task(
         task_id: string,
-        task_spec: { description: string; feature_title: string; project_name: string; work_dir: string }
+        task_spec: { description: string; feature_title: string; project_name: string }
     ): Promise<string> {
         const supabase = create_supabase_client();
 
@@ -111,7 +111,7 @@ class PromptService {
         }
 
         parts.push(
-            `---\nPROJECT: ${task_spec.project_name}\nFEATURE: ${task_spec.feature_title}\nTASK: ${task_spec.description}\n\nRead task-spec.json in ${task_spec.work_dir} for full details.\n\nWhen complete, write progress.json to ${task_spec.work_dir} with:\n{"status": "complete", "summary": "Brief description of what was done"}\n\nIf you encounter an error:\n{"status": "error", "summary": "Description of the problem"}`
+            `---\nPROJECT: ${task_spec.project_name}\nFEATURE: ${task_spec.feature_title}\nTASK: ${task_spec.description}\n\nRead task-spec.json in the current working directory for full details.\n\nWhen complete, write progress.json to the current working directory with:\n{"status": "completed", "summary": "Brief description of what was done", "files_changed": ["list", "of", "files"]}\n\nIf you encounter an error:\n{"status": "failed", "summary": "Description of the problem", "error_details": "Detailed error info"}`
         );
 
         return parts.join("\n\n");
@@ -120,21 +120,38 @@ class PromptService {
     // Build the composed prompt for a manager agent
     async resolve_for_manager(
         feature_spec: { title: string; description: string; project: string; resources: any[] },
-        work_dir: string
+        feature_id: string,
+        project_id: string
     ): Promise<string> {
+        const supabase = create_supabase_client();
+
         const base_prompt = await this.get_prompt("manager");
         const base_section = base_prompt
             ? base_prompt
             : "You are a Manager Agent. Research and plan — never write implementation code.";
+
+        // Resolve traits for this feature (manager target)
+        const traits = await resolve_feature_traits(supabase, feature_id, project_id, "manager");
+
+        const parts: string[] = [base_section];
+
+        if (traits.length > 0) {
+            const traits_text = traits
+                .map((trait) => `### ${trait.name}\n${trait.content}`)
+                .join("\n\n");
+            parts.push(`---\nADDITIONAL INSTRUCTIONS:\n\n${traits_text}`);
+        }
 
         const resources_text =
             feature_spec.resources.length > 0
                 ? `\nResearch these resources:\n${feature_spec.resources.map((resource: any) => `- ${resource.url}${resource.title ? ` (${resource.title})` : ""}`).join("\n")}`
                 : "";
 
-        const task_instructions = `---\nPROJECT: ${feature_spec.project}\nFEATURE: ${feature_spec.title}\nDESCRIPTION: ${feature_spec.description ?? "No description provided"}${resources_text}\n\nYOUR TASK:\n1. Read and understand the feature specification\n2. If resources are provided, fetch and read each URL\n3. Break down this feature into concrete, actionable implementation tasks\n\nOUTPUT:\nWrite a JSON file called "tasks.json" in ${work_dir}.\nFormat: [{"description": "task description"}, ...]\n\nRULES:\n- Do NOT write any implementation code\n- Do NOT create any source files\n- ONLY output the tasks.json file\n- Keep tasks focused and actionable\n- Order tasks logically (dependencies first)`;
+        const task_instructions = `---\nPROJECT: ${feature_spec.project}\nFEATURE: ${feature_spec.title}\nDESCRIPTION: ${feature_spec.description ?? "No description provided"}${resources_text}\n\nYOUR TASK:\n1. Read and understand the feature specification\n2. If resources are provided, fetch and read each URL\n3. Break down this feature into concrete, actionable implementation tasks\n\nOUTPUT:\nWrite a JSON file called "tasks.json" in the current working directory.\nFormat: [{"description": "task description"}, ...]\n\nRULES:\n- Do NOT write any implementation code\n- Do NOT create any source files\n- ONLY output the tasks.json file\n- Keep tasks focused and actionable\n- Order tasks logically (dependencies first)`;
 
-        return [base_section, task_instructions].join("\n\n");
+        parts.push(task_instructions);
+
+        return parts.join("\n\n");
     }
 }
 

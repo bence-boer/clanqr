@@ -1,6 +1,7 @@
 import { type Subprocess } from "bun";
-import { existsSync, mkdirSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, writeFileSync, readFileSync } from "fs";
 import { join } from "path";
+import { z } from "zod";
 import { create_supabase_client } from "../db";
 import { COPILOT_BIN, GEMINI_BIN, ENRICHED_PATH, WORKSPACE_DIR } from "../env";
 import { prompt_service } from "./prompt_service";
@@ -9,6 +10,13 @@ const HOME = process.env.HOME ?? "/home/scoy";
 const PIPELINE_WORKSPACE_DIR = WORKSPACE_DIR;
 
 const TASK_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+
+const progress_schema = z.object({
+    status: z.enum(["completed", "failed", "partial"]),
+    summary: z.string().optional(),
+    files_changed: z.array(z.string()).optional(),
+    error_details: z.string().nullable().optional(),
+});
 
 type PipelineState = "idle" | "running" | "paused";
 
@@ -113,7 +121,6 @@ class PipelineService {
             description: task.description,
             feature_title: task.features?.title ?? "Unknown",
             project_name: task.features?.projects?.name ?? "Unknown",
-            work_dir,
         };
 
         writeFileSync(join(work_dir, "task-spec.json"), JSON.stringify(task_spec, null, 2));
@@ -186,6 +193,9 @@ class PipelineService {
             // Save log file
             writeFileSync(join(work_dir, "agent.log"), log);
 
+            // Read progress.json if available (M-1.3)
+            const progress_data = this.read_progress(work_dir);
+
             // Update agent_runs
             await supabase
                 .from("agent_runs")
@@ -194,6 +204,8 @@ class PipelineService {
                     log: log.slice(-10000),
                     finished_at,
                     duration_ms,
+                    summary: progress_data?.summary ?? null,
+                    files_changed: progress_data?.files_changed ?? null,
                     ...(exit_code === -1 ? { error: "Task timed out after 10 minutes" } : {}),
                 })
                 .eq("id", run_id);
@@ -294,6 +306,20 @@ class PipelineService {
         ]).catch((error) => {
             console.error("[pipeline_service] collect_output failed:", error);
         });
+    }
+
+    /** Read and validate progress.json from a ralph work directory (M-1.3) */
+    private read_progress(work_dir: string): z.infer<typeof progress_schema> | null {
+        const progress_file = join(work_dir, "progress.json");
+        if (!existsSync(progress_file)) return null;
+
+        try {
+            const raw = JSON.parse(readFileSync(progress_file, "utf-8"));
+            const result = progress_schema.safeParse(raw);
+            return result.success ? result.data : null;
+        } catch {
+            return null;
+        }
     }
 }
 
