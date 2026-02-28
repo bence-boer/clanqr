@@ -38,7 +38,7 @@
     align-items: center;
     gap: 12px;
     padding: 16px;
-    background: var(--surface);
+    background: var(--bg-surface);
     border: 1px solid var(--border);
     border-radius: 8px;
   }
@@ -56,7 +56,7 @@
 
   .stat-icon {
     font-size: 24px;
-    color: var(--text-muted);
+    color: var(--fg-muted);
   }
 
   .stat-content {
@@ -68,13 +68,13 @@
   .stat-value {
     font-size: 20px;
     font-weight: 600;
-    color: var(--text);
+    color: var(--fg);
     line-height: 1;
   }
 
   .stat-label {
     font-size: 12px;
-    color: var(--text-muted);
+    color: var(--fg-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }

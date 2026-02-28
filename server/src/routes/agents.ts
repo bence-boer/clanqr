@@ -1,7 +1,9 @@
 import { Hono } from "hono";
 import type { AppBindings } from "../middleware/supabase";
+import { validate_uuid_params } from "../middleware/validate_params";
 import { agent_service } from "../services/agent_service";
 import { pipeline_service } from "../services/pipeline_service";
+import { logger } from "../utils/logger";
 
 export const agents_routes = new Hono<AppBindings>();
 
@@ -64,7 +66,7 @@ agents_routes.get("/queue/log", (context) => {
 });
 
 // Get agent status for a specific feature
-agents_routes.get("/feature/:feature_id", (context) => {
+agents_routes.get("/feature/:feature_id", validate_uuid_params("feature_id"), (context) => {
     const feature_id = context.req.param("feature_id");
     const processes = agent_service.get_all_processes();
 
@@ -108,14 +110,14 @@ agents_routes.get("/status", (context) => {
     return context.json(processes);
 });
 
-agents_routes.get("/log/:task_id", (context) => {
+agents_routes.get("/log/:task_id", validate_uuid_params("task_id"), (context) => {
     const task_id = context.req.param("task_id");
     const log = agent_service.get_log(task_id);
     return context.json({ task_id, log });
 });
 
 // Manually spawn manager agent for a feature
-agents_routes.post("/spawn/manager/:feature_id", async (context) => {
+agents_routes.post("/spawn/manager/:feature_id", validate_uuid_params("feature_id"), async (context) => {
     const feature_id = context.req.param("feature_id");
     const supabase = context.get("supabase");
 
@@ -131,7 +133,7 @@ agents_routes.post("/spawn/manager/:feature_id", async (context) => {
         await agent_service.spawn_manager(feature, supabase);
         return context.json({ success: true, message: "Manager agent spawned" });
     } catch (spawn_error) {
-        console.error(`[POST /api/agents/spawn/manager/${feature_id}]`, spawn_error);
+        logger.error("Failed to spawn manager agent", { route: "POST /api/agents/spawn/manager/:feature_id", feature_id, error: String(spawn_error) });
         return context.json({ error: "Failed to spawn manager agent" }, 500);
     }
 });
@@ -141,7 +143,7 @@ agents_routes.post("/stop-all", (_context) => {
     return _context.json({ success: true, message: "All agents stopped" });
 });
 
-agents_routes.post("/stop/:task_id", (context) => {
+agents_routes.post("/stop/:task_id", validate_uuid_params("task_id"), (context) => {
     const task_id = context.req.param("task_id");
     agent_service.stop_process(task_id);
     return context.json({ success: true, message: `Agent ${task_id} stopped` });

@@ -24,7 +24,7 @@
     justify-content: center;
     padding: 48px 24px;
     text-align: center;
-    color: var(--text-muted);
+    color: var(--fg-muted);
     gap: 8px;
   }
 
@@ -36,13 +36,13 @@
   .empty-message {
     font-size: 15px;
     font-weight: 500;
-    color: var(--text-muted);
+    color: var(--fg-muted);
     margin: 0;
   }
 
   .empty-detail {
     font-size: 13px;
-    color: var(--text-muted);
+    color: var(--fg-muted);
     opacity: 0.7;
     margin: 0;
   }

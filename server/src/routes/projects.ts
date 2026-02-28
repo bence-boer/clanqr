@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppBindings } from "../middleware/supabase";
+import { validate_uuid_params } from "../middleware/validate_params";
+import { logger } from "../utils/logger";
 
 const create_project_schema = z.object({
     name: z.string().min(1).max(255),
@@ -24,14 +26,14 @@ projects_routes.get("/", async (context) => {
         .order("created_at", { ascending: false });
 
     if (error) {
-        console.error(`[GET /api/projects]`, error);
+        logger.error("Failed to fetch projects", { route: "GET /api/projects", error: String(error) });
         return context.json({ error: "Failed to fetch projects" }, 500);
     }
     return context.json(data);
 });
 
 // Get single project with features
-projects_routes.get("/:id", async (context) => {
+projects_routes.get("/:id", validate_uuid_params("id"), async (context) => {
     const supabase = context.get("supabase");
     const id = context.req.param("id");
 
@@ -42,7 +44,7 @@ projects_routes.get("/:id", async (context) => {
         .single();
 
     if (error) {
-        console.error(`[GET /api/projects/${id}]`, error);
+        logger.error("Project not found", { route: "GET /api/projects/:id", id, error: String(error) });
         return context.json({ error: "Project not found" }, 404);
     }
     return context.json(data);
@@ -65,14 +67,14 @@ projects_routes.post("/", async (context) => {
         .single();
 
     if (error) {
-        console.error(`[POST /api/projects]`, error);
+        logger.error("Failed to create project", { route: "POST /api/projects", error: String(error) });
         return context.json({ error: "Failed to create project" }, 500);
     }
     return context.json(data, 201);
 });
 
 // Update project
-projects_routes.patch("/:id", async (context) => {
+projects_routes.patch("/:id", validate_uuid_params("id"), async (context) => {
     const id = context.req.param("id");
     const body = await context.req.json();
     const parsed = update_project_schema.safeParse(body);
@@ -90,21 +92,21 @@ projects_routes.patch("/:id", async (context) => {
         .single();
 
     if (error) {
-        console.error(`[PATCH /api/projects/${id}]`, error);
+        logger.error("Failed to update project", { route: "PATCH /api/projects/:id", id, error: String(error) });
         return context.json({ error: "Failed to update project" }, 500);
     }
     return context.json(data);
 });
 
 // Delete project
-projects_routes.delete("/:id", async (context) => {
+projects_routes.delete("/:id", validate_uuid_params("id"), async (context) => {
     const id = context.req.param("id");
     const supabase = context.get("supabase");
 
     const { error } = await supabase.from("projects").delete().eq("id", id);
 
     if (error) {
-        console.error(`[DELETE /api/projects/${id}]`, error);
+        logger.error("Failed to delete project", { route: "DELETE /api/projects/:id", id, error: String(error) });
         return context.json({ error: "Failed to delete project" }, 500);
     }
     return context.json({ success: true });

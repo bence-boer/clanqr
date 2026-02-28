@@ -1,8 +1,12 @@
 import { create_supabase_client } from "../db";
+import type { SupabaseClient } from "../db";
+import type { FeatureRow } from "../types";
 import { agent_service } from "./agent_service";
 import { pipeline_service } from "./pipeline_service";
+import { logger } from "../utils/logger";
 
 const POLL_INTERVAL_MS = 5000;
+const MAX_MANAGER_RETRIES = 3;
 
 class WatcherService {
     private interval: ReturnType<typeof setInterval> | null = null;
@@ -11,16 +15,16 @@ class WatcherService {
     start() {
         if (this.is_running) return;
         this.is_running = true;
-        console.log("👁️ Watcher service started (polling every 5s for submitted features)");
+        logger.info("Watcher service started", { service: "watcher", poll_interval_ms: POLL_INTERVAL_MS });
 
         this.interval = setInterval(() => {
             this.poll().catch((error) => {
-                console.error("Watcher poll error:", error);
+                logger.error("Watcher poll error", { service: "watcher", error: String(error) });
             });
         }, POLL_INTERVAL_MS);
 
         // Run immediately
-        this.poll().catch(console.error);
+        this.poll().catch((err) => logger.error("Watcher initial poll error", { service: "watcher", error: String(err) }));
     }
 
     stop() {
@@ -29,7 +33,7 @@ class WatcherService {
             this.interval = null;
         }
         this.is_running = false;
-        console.log("👁️ Watcher service stopped");
+        logger.info("Watcher service stopped", { service: "watcher" });
     }
 
     private async poll() {
@@ -37,9 +41,7 @@ class WatcherService {
         await this.check_submitted_features(supabase);
     }
 
-    private spawned_features = new Set<string>();
-
-    private async check_submitted_features(supabase: any) {
+    private async check_submitted_features(supabase: SupabaseClient) {
         const { data: features, error } = await supabase
             .from("features")
             .select("*, resources(*), projects(*)")
@@ -48,8 +50,14 @@ class WatcherService {
         if (error || !features) return;
 
         for (const feature of features) {
-            // Skip if we already spawned a manager for this feature in this server lifetime
-            if (this.spawned_features.has(feature.id)) continue;
+            // M-6.1: Enforce manager retry cap
+            if ((feature.manager_retry_count ?? 0) >= MAX_MANAGER_RETRIES) {
+                await supabase.from("features").update({
+                    status: "Draft",
+                    last_error: `Manager failed after ${MAX_MANAGER_RETRIES} attempts`,
+                }).eq("id", feature.id);
+                continue;
+            }
 
             const process_id = `manager-${feature.id}`;
             const existing = agent_service.get_all_processes()[process_id];
@@ -70,13 +78,14 @@ class WatcherService {
 
             if (recent_run) continue;
 
-            console.log(`📋 Spawning manager for feature: ${feature.title}`);
-            this.spawned_features.add(feature.id);
-            this.spawn_manager_and_maybe_auto_approve(feature, supabase).catch(console.error);
+            logger.info("Spawning manager for feature", { service: "watcher", feature_id: feature.id, title: feature.title });
+            this.spawn_manager_and_maybe_auto_approve(feature, supabase).catch(
+                (err) => logger.error("Manager spawn error", { service: "watcher", feature_id: feature.id, error: String(err) })
+            );
         }
     }
 
-    private async spawn_manager_and_maybe_auto_approve(feature: any, supabase: any) {
+    private async spawn_manager_and_maybe_auto_approve(feature: FeatureRow & { resources?: { url: string; title: string | null }[]; projects?: { name: string } }, supabase: SupabaseClient) {
         await agent_service.spawn_manager(feature, supabase);
 
         // If auto_approve is enabled, approve all created tasks and kick the pipeline
@@ -94,8 +103,10 @@ class WatcherService {
                     .eq("feature_id", feature.id)
                     .eq("status", "Pending_Approval");
 
-                console.log(`✅ Auto-approved ${tasks.length} tasks for feature: ${feature.title}`);
-                pipeline_service.process_next().catch(console.error);
+                logger.info("Auto-approved tasks", { service: "watcher", feature_id: feature.id, count: tasks.length, title: feature.title });
+                pipeline_service.process_next().catch(
+                    (err) => logger.error("Pipeline process_next error after auto-approve", { service: "watcher", error: String(err) })
+                );
             }
         }
     }

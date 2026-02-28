@@ -8,46 +8,49 @@ on:
 jobs:
   sanity-checks:
     runs-on: [self-hosted, pi]
+    env:
+      APP_DIR: /home/scoy/Developer/repositories/ralph-agent-workspace
+      BUN_INSTALL: /home/scoy/.bun
     steps:
       - name: Pull latest code
         run: |
-          git config --global --add safe.directory /home/scoy/Developer/repositories/ralph-agent-workspace
-          cd /home/scoy/Developer/repositories/ralph-agent-workspace
+          git config --global --add safe.directory $APP_DIR
+          cd $APP_DIR
           git fetch https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/bence-boer/ralph-agent-workspace.git main
           git reset --hard FETCH_HEAD
 
       - name: Install dependencies
         run: |
-          export BUN_INSTALL="/home/scoy/.bun"
           export PATH="$BUN_INSTALL/bin:$PATH"
-          cd /home/scoy/Developer/repositories/ralph-agent-workspace
+          cd $APP_DIR
           cd server && bun install --frozen-lockfile
           cd ../web && bun install --frozen-lockfile
 
       - name: Type-check server
         run: |
-          export BUN_INSTALL="/home/scoy/.bun"
           export PATH="$BUN_INSTALL/bin:$PATH"
-          cd /home/scoy/Developer/repositories/ralph-agent-workspace/server
+          cd $APP_DIR/server
           bun run --bun tsc --noEmit
 
       - name: Type-check web
         run: |
-          export BUN_INSTALL="/home/scoy/.bun"
           export PATH="$BUN_INSTALL/bin:$PATH"
-          cd /home/scoy/Developer/repositories/ralph-agent-workspace/web
+          cd $APP_DIR/web
           bun run --bun check
 
       - name: Run unit tests
         run: |
-          export BUN_INSTALL="/home/scoy/.bun"
           export PATH="$BUN_INSTALL/bin:$PATH"
-          cd /home/scoy/Developer/repositories/ralph-agent-workspace/server
+          cd $APP_DIR/server
           bun test
 
   deploy:
     needs: sanity-checks
     runs-on: [self-hosted, pi]
+    env:
+      APP_DIR: /home/scoy/Developer/repositories/ralph-agent-workspace
+      BUN_INSTALL: /home/scoy/.bun
+      ENV_FILE: /etc/ralph-api.env
     steps:
       - name: Setup environment
         run: |
@@ -58,31 +61,90 @@ jobs:
           RP_ORIGIN=https://agents.benceboer.com
           PORT=3001
           EOF
-          sudo cp /tmp/ralph-api.env /etc/ralph-api.env
-          sudo chmod 600 /etc/ralph-api.env
+          sudo cp /tmp/ralph-api.env $ENV_FILE
+          sudo chmod 600 $ENV_FILE
 
       - name: Apply database migrations
         run: |
-          cd /home/scoy/Developer/repositories/ralph-agent-workspace
+          set -e
+          cd $APP_DIR
           for f in supabase/supabase/migrations/*.sql; do
             version=$(basename "$f" | cut -d_ -f1)
+            name=$(basename "${f%.sql}" | sed 's/^[0-9]*_//')
             already=$(docker exec supabase_db_supabase psql -U postgres -d postgres -tAc \
               "SELECT 1 FROM supabase_migrations.schema_migrations WHERE version='$version'" 2>/dev/null)
             if [ "$already" != "1" ]; then
-              echo "Applying migration: $(basename $f)"
-              docker exec -i supabase_db_supabase psql -U postgres -d postgres < "$f"
-              docker exec supabase_db_supabase psql -U postgres -d postgres -c \
-                "INSERT INTO supabase_migrations.schema_migrations (version, name) VALUES ('$version', '$(basename ${f%.sql} | sed "s/^[0-9]*_//")')"
+              echo "Applying migration: $(basename "$f")"
+              # Wrap migration + version record in a single transaction for atomicity
+              if ! {
+                echo "BEGIN;"
+                sed '/^BEGIN;$/d; /^COMMIT;$/d' "$f"
+                echo "INSERT INTO supabase_migrations.schema_migrations (version, name) VALUES ('${version}', '${name}');"
+                echo "COMMIT;"
+              } | docker exec -i supabase_db_supabase psql -U postgres -d postgres --set ON_ERROR_STOP=1; then
+                echo "❌ Migration failed: $(basename "$f") — transaction rolled back"
+                exit 1
+              fi
+              echo "✅ Applied: $(basename "$f")"
             fi
           done
 
       - name: Build web
         run: |
-          export BUN_INSTALL="/home/scoy/.bun"
           export PATH="$BUN_INSTALL/bin:$PATH"
-          cd /home/scoy/Developer/repositories/ralph-agent-workspace/web
+          cd $APP_DIR/web
           PUBLIC_API_URL= bun --bun run build
 
       - name: Trigger service restart
         run: |
-          touch /home/scoy/Developer/repositories/ralph-agent-workspace/.deploy-trigger
+          touch $APP_DIR/.deploy-trigger
+
+      - name: Verify deployment
+        run: |
+          echo "Waiting for services to restart..."
+          sleep 10
+
+          # Check API health
+          for i in 1 2 3 4 5 6; do
+            if curl -sf http://localhost:3001/health > /dev/null 2>&1; then
+              echo "✅ API is healthy"
+              break
+            fi
+            if [ "$i" -eq 6 ]; then
+              echo "❌ API health check failed after 30 seconds"
+              journalctl -u ralph-api -n 30 --no-pager || true
+              exit 1
+            fi
+            sleep 5
+          done
+
+          # Check web health
+          for i in 1 2 3 4 5 6; do
+            if curl -sf http://localhost:3002 > /dev/null 2>&1; then
+              echo "✅ Web is healthy"
+              break
+            fi
+            if [ "$i" -eq 6 ]; then
+              echo "❌ Web health check failed after 30 seconds"
+              journalctl -u ralph-web -n 30 --no-pager || true
+              exit 1
+            fi
+            sleep 5
+          done
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          cd $APP_DIR
+          echo "⚠️ Deploy failed, rolling back to previous commit..."
+          git reset --hard HEAD~1
+
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          cd server && bun install --frozen-lockfile
+          cd ../web && bun install --frozen-lockfile
+          PUBLIC_API_URL="" bun --bun run build
+
+          # Restart services with previous version
+          touch $APP_DIR/.deploy-trigger
+
+          echo "Rollback complete. Note: database migrations cannot be automatically rolled back."

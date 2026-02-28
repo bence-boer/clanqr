@@ -1,8 +1,10 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppBindings } from "../middleware/supabase";
+import { validate_uuid_params } from "../middleware/validate_params";
 import { resolve_task_traits, resolve_scope_traits } from "../services/trait_service";
 import type { ResolvedTrait } from "../types";
+import { logger } from "../utils/logger";
 
 const create_trait_schema = z.object({
     name: z.string().min(1),
@@ -38,7 +40,7 @@ traits_routes.get("/", async (context) => {
 
     const { data, error } = await query;
     if (error) {
-        console.error(`[GET /api/traits]`, error);
+        logger.error("Failed to fetch traits", { route: "GET /api/traits", error: String(error) });
         return context.json({ error: "Failed to fetch traits" }, 500);
     }
     return context.json(data);
@@ -57,7 +59,7 @@ traits_routes.post("/", async (context) => {
         .single();
 
     if (error) {
-        console.error(`[POST /api/traits]`, error);
+        logger.error("Failed to create trait", { route: "POST /api/traits", error: String(error) });
         return context.json({ error: "Failed to create trait" }, 500);
     }
     return context.json(data, 201);
@@ -75,7 +77,7 @@ traits_routes.get("/assign", async (context) => {
     if (project_id) query = query.eq("project_id", project_id);
     const { data, error } = await query;
     if (error) {
-        console.error(`[GET /api/traits/assign]`, error);
+        logger.error("Failed to fetch assignments", { route: "GET /api/traits/assign", error: String(error) });
         return context.json({ error: "Failed to fetch assignments" }, 500);
     }
     return context.json(data);
@@ -99,6 +101,21 @@ traits_routes.post("/assign", async (context) => {
     }
 
     const supabase = context.get("supabase");
+
+    // Verify referenced entities exist
+    if (project_id) {
+        const { data: proj } = await supabase.from("projects").select("id").eq("id", project_id).single();
+        if (!proj) return context.json({ error: "Project not found" }, 404);
+    }
+    if (feature_id) {
+        const { data: feat } = await supabase.from("features").select("id").eq("id", feature_id).single();
+        if (!feat) return context.json({ error: "Feature not found" }, 404);
+    }
+    if (task_id) {
+        const { data: tsk } = await supabase.from("tasks").select("id").eq("id", task_id).single();
+        if (!tsk) return context.json({ error: "Task not found" }, 404);
+    }
+
     const { data, error } = await supabase
         .from("trait_assignments")
         .insert(result.data)
@@ -106,14 +123,14 @@ traits_routes.post("/assign", async (context) => {
         .single();
 
     if (error) {
-        console.error(`[POST /api/traits/assign]`, error);
+        logger.error("Failed to assign trait", { route: "POST /api/traits/assign", error: String(error) });
         return context.json({ error: "Failed to assign trait" }, 500);
     }
     return context.json(data, 201);
 });
 
 // Resolve effective traits for a task (walks inheritance chain)
-traits_routes.get("/resolve/:task_id", async (context) => {
+traits_routes.get("/resolve/:task_id", validate_uuid_params("task_id"), async (context) => {
     const task_id = context.req.param("task_id");
     const supabase = context.get("supabase");
 
@@ -122,7 +139,7 @@ traits_routes.get("/resolve/:task_id", async (context) => {
 });
 
 // Resolve effective traits for a feature
-traits_routes.get("/resolve/feature/:id", async (context) => {
+traits_routes.get("/resolve/feature/:id", validate_uuid_params("id"), async (context) => {
     const feature_id = context.req.param("id");
     const supabase = context.get("supabase");
 
@@ -144,7 +161,7 @@ traits_routes.get("/resolve/feature/:id", async (context) => {
 });
 
 // Get trait by ID
-traits_routes.get("/:id", async (context) => {
+traits_routes.get("/:id", validate_uuid_params("id"), async (context) => {
     const id = context.req.param("id");
     const supabase = context.get("supabase");
 
@@ -159,7 +176,7 @@ traits_routes.get("/:id", async (context) => {
 });
 
 // Update trait
-traits_routes.patch("/:id", async (context) => {
+traits_routes.patch("/:id", validate_uuid_params("id"), async (context) => {
     const id = context.req.param("id");
     const result = update_trait_schema.safeParse(await context.req.json());
     if (!result.success) return context.json({ error: result.error.format() }, 400);
@@ -177,26 +194,26 @@ traits_routes.patch("/:id", async (context) => {
 });
 
 // Delete trait
-traits_routes.delete("/:id", async (context) => {
+traits_routes.delete("/:id", validate_uuid_params("id"), async (context) => {
     const id = context.req.param("id");
     const supabase = context.get("supabase");
 
     const { error } = await supabase.from("traits").delete().eq("id", id);
     if (error) {
-        console.error(`[DELETE /api/traits/${id}]`, error);
+        logger.error("Failed to delete trait", { route: "DELETE /api/traits/:id", id, error: String(error) });
         return context.json({ error: "Failed to delete trait" }, 500);
     }
     return context.json({ success: true });
 });
 
 // Remove assignment
-traits_routes.delete("/assign/:id", async (context) => {
+traits_routes.delete("/assign/:id", validate_uuid_params("id"), async (context) => {
     const id = context.req.param("id");
     const supabase = context.get("supabase");
 
     const { error } = await supabase.from("trait_assignments").delete().eq("id", id);
     if (error) {
-        console.error(`[DELETE /api/traits/assign/${id}]`, error);
+        logger.error("Failed to remove assignment", { route: "DELETE /api/traits/assign/:id", id, error: String(error) });
         return context.json({ error: "Failed to remove assignment" }, 500);
     }
     return context.json({ success: true });

@@ -1,4 +1,6 @@
 import { PUBLIC_API_URL } from "$env/static/public";
+import { auth_store } from "$lib/stores/auth.svelte";
+import { toast_store } from "$lib/stores/toast.svelte";
 import type {
     User,
     InviteToken,
@@ -13,6 +15,7 @@ import type {
     ResolvedTrait,
     SkillInfo,
     SkillLink,
+    SystemAlert,
     SystemStats,
     Task,
     Trait,
@@ -41,6 +44,20 @@ export async function api_fetch<ReturnType>(path: string, options?: RequestInit)
     });
 
     if (!response.ok) {
+        // M-2.5: Handle 401 — clear auth state and redirect to login
+        if (response.status === 401) {
+            auth_store.state = "login";
+            auth_store.role = null;
+            auth_store.passkey_id = null;
+            toast_store.error("Session expired — please sign in again");
+            throw new Error("Session expired");
+        }
+
+        if (response.status === 403) {
+            toast_store.error("You don't have permission to perform this action");
+            throw new Error("Forbidden");
+        }
+
         const error = await response.json().catch(() => ({ error: response.statusText }));
         throw new Error(error.error ?? `API error: ${response.status}`);
     }
@@ -74,7 +91,7 @@ export const api = {
     delete_feature: (id: string) =>
         api_fetch<{ success: boolean }>(`/api/features/${id}`, { method: "DELETE" }),
     add_resource: (feature_id: string, data: { url: string; title?: string }) =>
-        api_fetch<any>(`/api/features/${feature_id}/resources`, {
+        api_fetch<{ id: string; feature_id: string; url: string; title: string | null }>(`/api/features/${feature_id}/resources`, {
             method: "POST",
             body: JSON.stringify(data),
         }),
@@ -104,15 +121,15 @@ export const api = {
         api_fetch<{ success: boolean }>(`/api/tasks/${id}`, { method: "DELETE" }),
 
     // ── Agents / Pipeline ─────────────────────────────────────────────────────
-    agent_status: () => api_fetch<Record<string, any>>("/api/agents/status"),
+    agent_status: () => api_fetch<Record<string, AgentRun>>("/api/agents/status"),
     feature_agent_status: (feature_id: string) => 
-        api_fetch<{ processes: any[]; pipeline: any }> (`/api/agents/feature/${feature_id}`),
+        api_fetch<{ processes: AgentRun[]; pipeline: PipelineStatus }> (`/api/agents/feature/${feature_id}`),
     agent_log: (task_id: string) => api_fetch<{ log: string }>(`/api/agents/log/${task_id}`),
     spawn_manager: (feature_id: string) =>
-        api_fetch<any>(`/api/agents/spawn/manager/${feature_id}`, { method: "POST" }),
-    stop_all_agents: () => api_fetch<any>("/api/agents/stop-all", { method: "POST" }),
+        api_fetch<{ success: boolean }>(`/api/agents/spawn/manager/${feature_id}`, { method: "POST" }),
+    stop_all_agents: () => api_fetch<{ success: boolean }>("/api/agents/stop-all", { method: "POST" }),
     stop_agent: (task_id: string) =>
-        api_fetch<any>(`/api/agents/stop/${task_id}`, { method: "POST" }),
+        api_fetch<{ success: boolean }>(`/api/agents/stop/${task_id}`, { method: "POST" }),
     pipeline_status: () => api_fetch<PipelineStatus>("/api/agents/queue"),
     pipeline_log: () => api_fetch<{ log: string }>("/api/agents/queue/log"),
     pipeline_pause: () => api_fetch<{ success: boolean }>("/api/agents/pause", { method: "POST" }),
@@ -179,6 +196,7 @@ export const api = {
 
     // ── System ────────────────────────────────────────────────────────────────
     system_stats: () => api_fetch<SystemStats>("/api/system/stats"),
+    system_alerts: () => api_fetch<{ alerts: SystemAlert[] }>("/api/system/alerts"),
     list_models: (cli = "copilot") => api_fetch<{ value: string; label: string }[]>(`/api/system/models?cli=${cli}`),
 
     // ── Usage ─────────────────────────────────────────────────────────────────
@@ -208,12 +226,21 @@ export const api = {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ content, ...(model ? { model } : {}) }),
         });
+        if (response.status === 401) {
+            auth_store.state = "login";
+            auth_store.role = null;
+            auth_store.passkey_id = null;
+            toast_store.error("Session expired — please sign in again");
+            throw new Error("Session expired");
+        }
         if (!response.ok) {
             const error = await response.json().catch(() => ({ error: response.statusText }));
             throw new Error(error.error ?? `API error: ${response.status}`);
         }
         return response;
     },
+    cancel_chat: (session_id: string) =>
+        api_fetch<{ success: boolean }>(`/api/chat/sessions/${session_id}/cancel`, { method: "POST" }),
     chat_stream_url: (session_id: string) =>
         `${BASE_URL}/api/chat/sessions/${session_id}/stream`,
 
@@ -236,6 +263,9 @@ export const api = {
         const response = await fetch(`${BASE_URL}/api/auth/invite/status?token=${encodeURIComponent(token)}`, {
             credentials: 'include',
         });
+        if (!response.ok) {
+            throw new Error(`Failed to check invite status: ${response.status}`);
+        }
         return response.json() as Promise<InviteStatus>;
     },
 };

@@ -1,8 +1,10 @@
+import type { ProjectStatus, FeatureStatus, TaskStatus, FailureBehavior } from "@shared/types";
+
 export interface Project {
     id: string;
     name: string;
     description: string | null;
-    status: "Active" | "Archived";
+    status: ProjectStatus;
     created_at: string;
     updated_at: string;
     features?: Feature[];
@@ -13,11 +15,14 @@ export interface Feature {
     project_id: string;
     title: string;
     description: string | null;
-    status: "Draft" | "Submitted" | "In_Progress" | "Done";
+    status: FeatureStatus;
     cli: string;
     model: string | null;
-    on_task_failure: "stop" | "skip" | "retry";
+    on_task_failure: FailureBehavior;
     auto_approve: boolean;
+    last_error: string | null;
+    manager_retry_count: number;
+    task_timeout_minutes: number;
     created_at: string;
     updated_at: string;
     resources?: Resource[];
@@ -38,7 +43,7 @@ export interface Task {
     id: string;
     feature_id: string;
     description: string;
-    status: "Pending_Approval" | "Approved" | "In_Progress" | "Complete";
+    status: TaskStatus;
     agent_log: string | null;
     sort_order: number;
     retry_count: number;

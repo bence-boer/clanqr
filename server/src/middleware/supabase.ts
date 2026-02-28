@@ -6,12 +6,13 @@ export type AppBindings = {
     supabase: SupabaseClient;
     passkey_id: string;
     role: string;
+    request_id: string;
   };
 };
 
 export const supabase_middleware = (): MiddlewareHandler<AppBindings> => {
+  const supabase = create_supabase_client();
   return async (context, next) => {
-    const supabase = create_supabase_client();
     context.set("supabase", supabase);
     await next();
   };
