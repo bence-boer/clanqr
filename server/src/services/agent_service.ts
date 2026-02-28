@@ -8,6 +8,7 @@ import { WORKSPACE_DIR } from "../env";
 import { prompt_service } from "./prompt_service";
 import { check_and_complete_feature } from "./feature_utils";
 import { spawn_agent } from "./spawn_agent";
+import { logger } from "../utils/logger";
 
 // --- Zod schemas for agent output validation ---
 
@@ -35,6 +36,24 @@ interface AgentProcess {
 }
 
 const AGENT_WORKSPACE_DIR = WORKSPACE_DIR;
+const MAX_CONCURRENT_AGENTS = parseInt(process.env.MAX_CONCURRENT_AGENTS ?? "3", 10);
+let active_agent_count = 0;
+
+/** Check if another agent process can be spawned */
+export function can_spawn_agent(): boolean {
+    return active_agent_count < MAX_CONCURRENT_AGENTS;
+}
+
+/** Increment the active agent counter (call before spawning) */
+export function increment_agent_count() { active_agent_count++; }
+
+/** Decrement the active agent counter (call in finally block after spawn) */
+export function decrement_agent_count() { active_agent_count = Math.max(0, active_agent_count - 1); }
+
+/** Current concurrency info for diagnostics */
+export function get_agent_concurrency() {
+    return { active: active_agent_count, max: MAX_CONCURRENT_AGENTS };
+}
 
 class AgentService {
     private processes: Map<string, AgentProcess> = new Map();
@@ -201,7 +220,7 @@ class AgentService {
         const tasks_file = join(work_dir, "tasks.json");
 
         if (!existsSync(tasks_file)) {
-            console.error(`[agent] Manager exited 0 but no tasks.json for feature ${feature_id}`);
+            logger.error("Manager exited 0 but no tasks.json", { service: "agent", feature_id });
             await supabase.from("features")
                 .update({ status: "Draft" })
                 .eq("id", feature_id);
@@ -217,7 +236,7 @@ class AgentService {
             const { size } = Bun.file(tasks_file);
             if (size > MAX_OUTPUT_FILE_SIZE) {
                 const error_msg = `tasks.json exceeds maximum size (${size} bytes > ${MAX_OUTPUT_FILE_SIZE})`;
-                console.error(`[agent] ${error_msg}`);
+                logger.error("tasks.json exceeds size limit", { service: "agent", feature_id, size, max: MAX_OUTPUT_FILE_SIZE });
                 await supabase.from("features")
                     .update({ status: "Draft" })
                     .eq("id", feature_id);
@@ -235,7 +254,7 @@ class AgentService {
 
             if (!result.success) {
                 const error_msg = `Invalid tasks.json: ${result.error.issues.map(i => i.message).join("; ")}`;
-                console.error(`[agent] ${error_msg}`);
+                logger.error("Invalid tasks.json schema", { service: "agent", feature_id, error: error_msg });
                 await supabase.from("features")
                     .update({ status: "Draft" })
                     .eq("id", feature_id);
@@ -256,7 +275,7 @@ class AgentService {
             await supabase.from("tasks").insert(task_rows);
         } catch (error) {
             const error_msg = error instanceof Error ? error.message : "Unknown parse error";
-            console.error("[agent_service] Failed to parse manager tasks output:", error_msg);
+            logger.error("Failed to parse manager tasks output", { service: "agent", feature_id, error: error_msg });
             await supabase.from("features")
                 .update({ status: "Draft" })
                 .eq("id", feature_id);
@@ -304,7 +323,7 @@ class AgentService {
         }
 
         if (cleaned > 0) {
-            console.log(`🧹 Cleaned ${cleaned} old workspace(s)`);
+            logger.info("Cleaned old workspaces", { service: "agent", cleaned });
         }
         return cleaned;
     }

@@ -6,7 +6,7 @@
   import { toast_store } from "$lib/stores/toast.svelte";
   import { Toast } from "$lib/components";
   import "$lib/styles/global.css";
-  import type { SystemStats } from "$lib/types";
+  import type { SystemStats, SystemAlert } from "$lib/types";
   import AuthScreen from "./AuthScreen.svelte";
   import Sidebar from "./Sidebar.svelte";
 
@@ -14,6 +14,7 @@
 
   let sidebar_open: boolean = $state(false);
   let system_stats: SystemStats | null = $state(null);
+  let critical_alerts: SystemAlert[] = $state([]);
   let current_path = $derived(page.url.pathname);
 
   let auth_check_done = $state(false);
@@ -42,9 +43,13 @@
 
   async function load_system_stats() {
     try {
-      system_stats = await api.system_stats();
+      const [stats, alerts_resp] = await Promise.all([
+        api.system_stats(),
+        api.system_alerts().catch(() => ({ alerts: [] })),
+      ]);
+      system_stats = stats;
+      critical_alerts = alerts_resp.alerts.filter((a: SystemAlert) => a.severity === "critical");
     } catch (err) {
-      console.error('Failed to load system stats:', err);
       toast_store.error('Failed to load system stats');
     }
   }
@@ -99,6 +104,12 @@
       onlogout={handle_logout}
     />
     <main class="content">
+      {#if critical_alerts.length > 0}
+        <div class="critical-banner" role="alert">
+          <span class="icon" style="font-size:16px">error</span>
+          {critical_alerts.map(a => a.message).join(' · ')}
+        </div>
+      {/if}
       {@render children()}
     </main>
   </div>
@@ -142,6 +153,20 @@
     margin-left: 220px;
     padding: 2rem;
     max-width: 1200px;
+  }
+
+  .critical-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    margin-bottom: 1rem;
+    background: rgba(201, 84, 74, 0.12);
+    color: var(--danger);
+    border: 1px solid rgba(201, 84, 74, 0.3);
+    border-radius: var(--radius);
+    font-size: 0.8rem;
+    font-weight: 600;
   }
 
   @media (max-width: 768px) {

@@ -6,6 +6,7 @@ export type AppBindings = {
     supabase: SupabaseClient;
     passkey_id: string;
     role: string;
+    request_id: string;
   };
 };
 

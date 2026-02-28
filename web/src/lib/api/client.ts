@@ -15,6 +15,7 @@ import type {
     ResolvedTrait,
     SkillInfo,
     SkillLink,
+    SystemAlert,
     SystemStats,
     Task,
     Trait,
@@ -195,6 +196,7 @@ export const api = {
 
     // ── System ────────────────────────────────────────────────────────────────
     system_stats: () => api_fetch<SystemStats>("/api/system/stats"),
+    system_alerts: () => api_fetch<{ alerts: SystemAlert[] }>("/api/system/alerts"),
     list_models: (cli = "copilot") => api_fetch<{ value: string; label: string }[]>(`/api/system/models?cli=${cli}`),
 
     // ── Usage ─────────────────────────────────────────────────────────────────

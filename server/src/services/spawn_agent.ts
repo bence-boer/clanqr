@@ -5,6 +5,7 @@ import { join } from "path";
 import type { SupabaseClient } from "../db";
 import type { AgentRunType } from "../types";
 import { COPILOT_BIN, GEMINI_BIN, ENRICHED_PATH, WORKSPACE_DIR, build_agent_env } from "../env";
+import { logger } from "../utils/logger";
 
 export const progress_schema = z.object({
     status: z.enum(["completed", "failed", "partial"]),
@@ -96,7 +97,13 @@ export async function spawn_agent(
             proc.exited,
             new Promise<number>((resolve) =>
                 setTimeout(() => {
-                    proc.kill();
+                    // M-10.5: Kill process group (negative PID) to clean up all children
+                    try {
+                        process.kill(-proc.pid, "SIGKILL");
+                    } catch {
+                        // Process may have already exited or group kill unsupported
+                        try { proc.kill(); } catch { /* already dead */ }
+                    }
                     resolve(-1);
                 }, timeout_ms)
             ),
@@ -161,7 +168,7 @@ async function collect_output(
                 on_chunk(decoder.decode(value, { stream: true }));
             }
         } catch (error) {
-            console.warn("[spawn_agent] Stream read error:", error);
+            logger.warn("Stream read error", { service: "spawn_agent", error: String(error) });
         }
     };
 

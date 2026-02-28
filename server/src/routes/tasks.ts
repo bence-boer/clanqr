@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { AppBindings } from "../middleware/supabase";
 import { validate_uuid_params } from "../middleware/validate_params";
 import { pipeline_service } from "../services/pipeline_service";
+import { logger } from "../utils/logger";
 
 const update_task_schema = z.object({
     status: z
@@ -41,7 +42,7 @@ tasks_routes.get("/", async (context) => {
     const { data, error } = await query;
 
     if (error) {
-        console.error(`[GET /api/tasks]`, error);
+        logger.error("Failed to fetch tasks", { route: "GET /api/tasks", error: String(error) });
         return context.json({ error: "Failed to fetch tasks" }, 500);
     }
     return context.json(data);
@@ -59,7 +60,7 @@ tasks_routes.get("/:id", validate_uuid_params("id"), async (context) => {
         .single();
 
     if (error) {
-        console.error(`[GET /api/tasks/${id}]`, error);
+        logger.error("Task not found", { route: "GET /api/tasks/:id", id, error: String(error) });
         return context.json({ error: "Task not found" }, 404);
     }
     return context.json(data);
@@ -84,7 +85,7 @@ tasks_routes.patch("/:id", validate_uuid_params("id"), async (context) => {
         .single();
 
     if (error) {
-        console.error(`[PATCH /api/tasks/${id}]`, error);
+        logger.error("Failed to update task", { route: "PATCH /api/tasks/:id", id, error: String(error) });
         return context.json({ error: "Failed to update task" }, 500);
     }
     return context.json(data);
@@ -104,16 +105,16 @@ tasks_routes.post("/:id/approve", validate_uuid_params("id"), async (context) =>
         .single();
 
     if (error) {
-        console.error(`[POST /api/tasks/${id}/approve]`, error);
+        logger.error("Failed to approve task", { route: "POST /api/tasks/:id/approve", id, error: String(error) });
         return context.json({ error: "Failed to approve task" }, 500);
     }
-    pipeline_service.process_next().catch(console.error);
+    pipeline_service.process_next().catch((err) => logger.error("Pipeline process_next error", { error: String(err) }));
     return context.json(data);
 });
 
 // Manually trigger pipeline to run a specific approved task
 tasks_routes.post("/:id/run", validate_uuid_params("id"), (context) => {
-    pipeline_service.process_next().catch(console.error);
+    pipeline_service.process_next().catch((err) => logger.error("Pipeline process_next error", { error: String(err) }));
     return context.json({ success: true });
 });
 
@@ -130,12 +131,12 @@ tasks_routes.post("/approve-all/:feature_id", validate_uuid_params("feature_id")
         .select();
 
     if (error) {
-        console.error(`[POST /api/tasks/approve-all/${feature_id}]`, error);
+        logger.error("Failed to approve tasks", { route: "POST /api/tasks/approve-all/:feature_id", feature_id, error: String(error) });
         return context.json({ error: "Failed to approve tasks" }, 500);
     }
 
     // Kick pipeline
-    pipeline_service.process_next().catch(console.error);
+    pipeline_service.process_next().catch((err) => logger.error("Pipeline process_next error", { error: String(err) }));
     return context.json(data);
 });
 
@@ -168,7 +169,7 @@ tasks_routes.post("/", async (context) => {
         .single();
 
     if (error) {
-        console.error(`[POST /api/tasks]`, error);
+        logger.error("Failed to create task", { route: "POST /api/tasks", error: String(error) });
         return context.json({ error: "Failed to create task" }, 500);
     }
     return context.json(data, 201);
@@ -186,7 +187,7 @@ tasks_routes.delete("/:id", validate_uuid_params("id"), async (context) => {
         .single();
 
     if (fetch_error) {
-        console.error(`[DELETE /api/tasks/${id}]`, fetch_error);
+        logger.error("Task not found", { route: "DELETE /api/tasks/:id", id, error: String(fetch_error) });
         return context.json({ error: "Task not found" }, 404);
     }
     if (!["Pending_Approval", "Approved"].includes(task.status)) {
@@ -195,7 +196,7 @@ tasks_routes.delete("/:id", validate_uuid_params("id"), async (context) => {
 
     const { error } = await supabase.from("tasks").delete().eq("id", id);
     if (error) {
-        console.error(`[DELETE /api/tasks/${id}]`, error);
+        logger.error("Failed to delete task", { route: "DELETE /api/tasks/:id", id, error: String(error) });
         return context.json({ error: "Failed to delete task" }, 500);
     }
     return context.json({ success: true });

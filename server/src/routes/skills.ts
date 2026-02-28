@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { AppBindings } from "../middleware/supabase";
 import { validate_uuid_params } from "../middleware/validate_params";
 import { skill_service } from "../services/skill_service";
+import { logger } from "../utils/logger";
 
 const link_schema = z.object({
     task_id: z.string().uuid(),
@@ -42,7 +43,7 @@ skills_routes.get("/task/:task_id", validate_uuid_params("task_id"), async (cont
         .order("created_at");
 
     if (error) {
-        console.error(`[GET /api/skills/task/${task_id}]`, error);
+        logger.error("Failed to fetch task skills", { route: "GET /api/skills/task/:task_id", task_id, error: String(error) });
         return context.json({ error: "Failed to fetch task skills" }, 500);
     }
     return context.json(data ?? []);
@@ -71,7 +72,7 @@ skills_routes.post("/link", async (context) => {
         .single();
 
     if (error) {
-        console.error(`[POST /api/skills/link]`, error);
+        logger.error("Failed to link skill", { route: "POST /api/skills/link", error: String(error) });
         return context.json({ error: "Failed to link skill" }, 500);
     }
     return context.json(data, 201);
@@ -84,7 +85,7 @@ skills_routes.delete("/link/:id", validate_uuid_params("id"), async (context) =>
 
     const { error } = await supabase.from("skill_links").delete().eq("id", id);
     if (error) {
-        console.error(`[DELETE /api/skills/link/${id}]`, error);
+        logger.error("Failed to unlink skill", { route: "DELETE /api/skills/link/:id", id, error: String(error) });
         return context.json({ error: "Failed to unlink skill" }, 500);
     }
     return context.json({ success: true });

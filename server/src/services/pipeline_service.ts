@@ -7,6 +7,8 @@ import { WORKSPACE_DIR } from "../env";
 import { prompt_service } from "./prompt_service";
 import { check_and_complete_feature } from "./feature_utils";
 import { spawn_agent } from "./spawn_agent";
+import { logger } from "../utils/logger";
+import { can_spawn_agent, increment_agent_count, decrement_agent_count } from "./agent_service";
 
 const PIPELINE_WORKSPACE_DIR = WORKSPACE_DIR;
 
@@ -52,7 +54,7 @@ class PipelineService {
             this.state = "running";
             await this.execute_task(task, supabase);
         } catch (error) {
-            console.error("Pipeline process_next error:", error);
+            logger.error("Pipeline process_next error", { service: "pipeline", error: String(error) });
             this.state = "idle";
         } finally {
             this.is_processing = false;
@@ -62,22 +64,21 @@ class PipelineService {
     pause() {
         if (this.state === "running") {
             this.state = "paused";
-            console.log("⏸ Pipeline paused");
+            logger.info("Pipeline paused", { service: "pipeline" });
         }
     }
 
     resume() {
         if (this.state === "paused") {
             this.state = "idle";
-            console.log("▶ Pipeline resumed");
-            this.process_next().catch(console.error);
+            logger.info("Pipeline resumed", { service: "pipeline" });
+            this.process_next().catch((err) => logger.error("Pipeline resume error", { service: "pipeline", error: String(err) }));
         }
     }
 
     stop_current() {
-        // Pipeline stop — active_run tracking only (process is managed by spawn_agent)
         if (this.active_run) {
-            console.log(`⏹ Stopping current run: ${this.active_run.task_id}`);
+            logger.info("Stopping current run", { service: "pipeline", task_id: this.active_run.task_id });
         }
     }
 
@@ -100,6 +101,12 @@ class PipelineService {
     }
 
     private async execute_task(task: PipelineTask, supabase: SupabaseClient): Promise<void> {
+        // M-10.4: Check agent concurrency limit before spawning
+        if (!can_spawn_agent()) {
+            logger.warn("Agent concurrency limit reached, deferring task", { service: "pipeline", task_id: task.id });
+            return; // Will be retried on next process_next() call
+        }
+
         const task_id = task.id;
         const feature_id: string = task.feature_id;
         const work_dir = join(PIPELINE_WORKSPACE_DIR, `ralph-${task_id}`);
@@ -120,6 +127,7 @@ class PipelineService {
 
         this.active_run = { task_id, run_id: "", feature_id };
 
+        increment_agent_count();
         try {
             const result = await spawn_agent({
                 agent_type: "ralph",
@@ -144,6 +152,7 @@ class PipelineService {
             const error_message = error instanceof Error ? error.message : "Unknown error";
             await this.handle_failure(task, supabase, this.active_run.run_id, error_message);
         } finally {
+            decrement_agent_count();
             this.active_run = null;
         }
 
@@ -156,7 +165,7 @@ class PipelineService {
 
         const done = await check_and_complete_feature(task.feature_id, supabase);
         if (done) {
-            console.log(`✅ Feature complete: ${task.features?.title}`);
+            logger.info("Feature complete", { service: "pipeline", feature: task.features?.title, feature_id: task.feature_id });
         }
     }
 
@@ -170,31 +179,35 @@ class PipelineService {
         const retry_count: number = task.retry_count ?? 0;
         const max_retries: number = task.max_retries ?? 1;
 
-        console.error(
-            `❌ Task failed: ${task.description.slice(0, 50)} | behavior: ${behavior} | reason: ${reason ?? "non-zero exit"}`
-        );
+        logger.error("Task failed", {
+            service: "pipeline",
+            task_id: task.id,
+            description: task.description.slice(0, 50),
+            behavior,
+            reason: reason ?? "non-zero exit",
+        });
 
         if (behavior === "retry" && retry_count < max_retries) {
             await supabase
                 .from("tasks")
                 .update({ status: "Approved", retry_count: retry_count + 1 })
                 .eq("id", task.id);
-            console.log(`🔄 Retrying task (attempt ${retry_count + 1}/${max_retries})`);
+            logger.info("Retrying task", { service: "pipeline", task_id: task.id, attempt: retry_count + 1, max_retries });
         } else if (behavior === "skip") {
             await supabase
                 .from("tasks")
                 .update({ status: "Skipped", agent_log: `Skipped after failure: ${reason ?? "non-zero exit"}` })
                 .eq("id", task.id);
-            console.log(`⏭ Skipping failed task, continuing pipeline`);
+            logger.info("Skipping failed task", { service: "pipeline", task_id: task.id });
 
             const done = await check_and_complete_feature(task.feature_id, supabase);
             if (done) {
-                console.log(`✅ Feature complete (some tasks skipped): ${task.features?.title}`);
+                logger.info("Feature complete (some tasks skipped)", { service: "pipeline", feature: task.features?.title });
             }
         } else {
             await supabase.from("tasks").update({ status: "Approved" }).eq("id", task.id);
             this.state = "paused";
-            console.log(`⏸ Pipeline paused due to task failure (stop behavior)`);
+            logger.info("Pipeline paused due to task failure", { service: "pipeline", task_id: task.id });
         }
     }
 }

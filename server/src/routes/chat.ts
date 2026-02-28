@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { AppBindings } from "../middleware/supabase";
 import { validate_uuid_params } from "../middleware/validate_params";
 import { chat_service } from "../services/chat_service";
+import { logger } from "../utils/logger";
 
 const create_session_schema = z.object({
     title: z.string().optional(),
@@ -45,7 +46,7 @@ chat_routes.post("/sessions", async (context) => {
         .single();
 
     if (error) {
-        console.error(`[POST /api/chat/sessions]`, error);
+        logger.error("Failed to create session", { route: "POST /api/chat/sessions", error: String(error) });
         return context.json({ error: "Failed to create session" }, 500);
     }
     return context.json(data, 201);
@@ -74,7 +75,7 @@ chat_routes.delete("/sessions/:id", validate_uuid_params("id"), async (context) 
 
     const { error } = await supabase.from("chat_sessions").delete().eq("id", id);
     if (error) {
-        console.error(`[DELETE /api/chat/sessions/${id}]`, error);
+        logger.error("Failed to delete session", { route: "DELETE /api/chat/sessions/:id", id, error: String(error) });
         return context.json({ error: "Failed to delete session" }, 500);
     }
     return context.json({ success: true });

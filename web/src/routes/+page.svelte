@@ -3,7 +3,7 @@
   import { api } from '$lib/api/client';
   import { toast_store } from '$lib/stores/toast.svelte';
   import { use_polling } from '$lib/utils/polling.svelte';
-  import type { PipelineStatus, Project, SystemStats } from '$lib/types';
+  import type { PipelineStatus, Project, SystemStats, SystemAlert } from '$lib/types';
   import PipelineCard from './PipelineCard.svelte';
   import SystemStatsCard from './SystemStatsCard.svelte';
 
@@ -11,6 +11,7 @@
   let loading = $state(true);
   let pipeline = $state<PipelineStatus | null>(null);
   let system_stats = $state<SystemStats | null>(null);
+  let system_alerts = $state<SystemAlert[]>([]);
   let stats_auto_refresh = $state(false);
   let stats_interval_id: ReturnType<typeof setInterval> | null = null;
 
@@ -33,9 +34,13 @@
 
   async function load_system_stats() {
     try {
-      system_stats = await api.system_stats();
+      const [stats, alerts_resp] = await Promise.all([
+        api.system_stats(),
+        api.system_alerts().catch(() => ({ alerts: [] })),
+      ]);
+      system_stats = stats;
+      system_alerts = alerts_resp.alerts;
     } catch (err) {
-      console.error('Failed to load system stats:', err);
       toast_store.error('Failed to load system stats');
     }
   }
@@ -112,6 +117,7 @@
 
     <SystemStatsCard
       {system_stats}
+      {system_alerts}
       {stats_auto_refresh}
       onrefresh={load_system_stats}
       ontoggle_auto_refresh={toggle_stats_refresh}

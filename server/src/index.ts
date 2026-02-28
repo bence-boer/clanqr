@@ -2,11 +2,13 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
-import { logger } from "hono/logger";
+import { logger as hono_logger } from "hono/logger";
 import { env } from "./env";
 import { supabase_middleware, type AppBindings } from "./middleware/supabase";
 import { auth_middleware, admin_middleware } from "./middleware/auth";
 import { rate_limit } from "./middleware/rate_limit";
+import { request_id_middleware } from "./middleware/request_id";
+import { metrics_middleware } from "./middleware/metrics";
 import { auth_routes } from "./routes/auth";
 import { projects_routes } from "./routes/projects";
 import { features_routes } from "./routes/features";
@@ -24,6 +26,7 @@ import { prompt_service } from "./services/prompt_service";
 import { pipeline_service } from "./services/pipeline_service";
 import { agent_service } from "./services/agent_service";
 import { create_supabase_client } from "./db";
+import { logger } from "./utils/logger";
 
 const app = new Hono<AppBindings>();
 
@@ -35,7 +38,7 @@ app.onError((error, context) => {
             error.status,
         );
     }
-    console.error(`[Unhandled Error] ${context.req.method} ${context.req.path}`, error);
+    logger.error("Unhandled error", { method: context.req.method, path: context.req.path, error: String(error) });
     return context.json(
         { error: { code: 500, message: "Internal server error" } },
         500,
@@ -50,8 +53,10 @@ app.notFound((context) => {
 });
 
 // Global middleware
-app.use("*", logger());
+app.use("*", hono_logger());
 app.use("*", secureHeaders());
+app.use("*", request_id_middleware());
+app.use("*", metrics_middleware());
 
 // ── CORS with explicit origin allowlist (BE-002) ────────────────────────
 const allowed_origins = env.FRONTEND_URL.split(",").map((origin) => origin.trim());
@@ -156,11 +161,11 @@ async function boot() {
                 .from("features")
                 .update({ status: "Submitted" })
                 .eq("id", feature.id);
-            console.log(`[boot] Reset feature ${feature.id} to Submitted (no tasks found)`);
+            logger.info("Reset feature to Submitted (no tasks found)", { service: "boot", feature_id: feature.id });
         }
     }
 
-    console.log("✅ Stale process recovery complete");
+    logger.info("Stale process recovery complete", { service: "boot" });
 
     // 2. Sync base prompts from repo files → DB
     await prompt_service.sync_from_repo();
@@ -172,15 +177,15 @@ async function boot() {
     // Schedule daily cleanup
     setInterval(() => {
         agent_service.cleanup_old_workspaces(7);
-        cleanup_expired_data(supabase).catch(console.error);
+        cleanup_expired_data(supabase).catch((err) => logger.error("Cleanup error", { service: "boot", error: String(err) }));
     }, 24 * 60 * 60 * 1000);
 
     // 4. Start watcher service (manager-only — pipeline handles task execution)
     watcher_service.start();
 
     // 5. Start pipeline service — trigger on any already-approved tasks
-    pipeline_service.process_next().catch(console.error);
-    console.log("✅ Pipeline service started");
+    pipeline_service.process_next().catch((err) => logger.error("Pipeline start error", { service: "boot", error: String(err) }));
+    logger.info("Pipeline service started", { service: "boot" });
 }
 
 /** M-5.5: Clean expired sessions and used/expired invite tokens */
@@ -210,14 +215,18 @@ async function cleanup_expired_data(supabase: ReturnType<typeof create_supabase_
 
     const total = (sessions_deleted ?? 0) + (used_invites_deleted ?? 0) + (expired_invites_deleted ?? 0);
     if (total > 0) {
-        console.log(`🧹 Cleaned ${sessions_deleted ?? 0} expired session(s), ${(used_invites_deleted ?? 0) + (expired_invites_deleted ?? 0)} stale invite(s)`);
+        logger.info("Cleaned expired data", {
+            service: "boot",
+            sessions_deleted: sessions_deleted ?? 0,
+            invites_deleted: (used_invites_deleted ?? 0) + (expired_invites_deleted ?? 0),
+        });
     }
 }
 
-boot().catch(console.error);
+boot().catch((err) => logger.error("Boot failed", { error: String(err) }));
 
 const port = env.PORT;
-console.log(`🚀 Server running at http://localhost:${port}`);
+logger.info("Server running", { port, url: `http://localhost:${port}` });
 
 export { app };
 

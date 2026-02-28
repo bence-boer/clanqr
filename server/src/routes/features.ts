@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { AppBindings } from "../middleware/supabase";
 import { validate_uuid_params } from "../middleware/validate_params";
+import { logger } from "../utils/logger";
 
 /** Validate that a resource URL is safe (no SSRF) */
 function validate_resource_url(url_string: string): boolean {
@@ -70,7 +71,7 @@ features_routes.get("/", async (context) => {
     const { data, error } = await query;
 
     if (error) {
-        console.error(`[GET /api/features]`, error);
+        logger.error("Failed to fetch features", { route: "GET /api/features", error: String(error) });
         return context.json({ error: "Failed to fetch features" }, 500);
     }
     return context.json(data);
@@ -88,7 +89,7 @@ features_routes.get("/:id", validate_uuid_params("id"), async (context) => {
         .single();
 
     if (error) {
-        console.error(`[GET /api/features/${id}]`, error);
+        logger.error("Feature not found", { route: "GET /api/features/:id", id, error: String(error) });
         return context.json({ error: "Feature not found" }, 404);
     }
     return context.json(data);
@@ -113,7 +114,7 @@ features_routes.post("/", async (context) => {
         .single();
 
     if (feature_error) {
-        console.error(`[POST /api/features]`, feature_error);
+        logger.error("Failed to create feature", { route: "POST /api/features", error: String(feature_error) });
         return context.json({ error: "Failed to create feature" }, 500);
     }
 
@@ -158,7 +159,7 @@ features_routes.patch("/:id", validate_uuid_params("id"), async (context) => {
         .single();
 
     if (error) {
-        console.error(`[PATCH /api/features/${id}]`, error);
+        logger.error("Failed to update feature", { route: "PATCH /api/features/:id", id, error: String(error) });
         return context.json({ error: "Failed to update feature" }, 500);
     }
     return context.json(data);
@@ -177,7 +178,7 @@ features_routes.post("/:id/submit", validate_uuid_params("id"), async (context) 
         .single();
 
     if (error) {
-        console.error(`[POST /api/features/${id}/submit]`, error);
+        logger.error("Failed to submit feature", { route: "POST /api/features/:id/submit", id, error: String(error) });
         return context.json({ error: "Failed to submit feature" }, 500);
     }
     return context.json(data);
@@ -191,7 +192,7 @@ features_routes.delete("/:id", validate_uuid_params("id"), async (context) => {
     const { error } = await supabase.from("features").delete().eq("id", id);
 
     if (error) {
-        console.error(`[DELETE /api/features/${id}]`, error);
+        logger.error("Failed to delete feature", { route: "DELETE /api/features/:id", id, error: String(error) });
         return context.json({ error: "Failed to delete feature" }, 500);
     }
     return context.json({ success: true });
@@ -221,7 +222,7 @@ features_routes.post("/:id/resources", validate_uuid_params("id"), async (contex
         .single();
 
     if (error) {
-        console.error(`[POST /api/features/${feature_id}/resources]`, error);
+        logger.error("Failed to add resource", { route: "POST /api/features/:id/resources", feature_id, error: String(error) });
         return context.json({ error: "Failed to add resource" }, 500);
     }
     return context.json(data, 201);
@@ -235,7 +236,7 @@ features_routes.delete("/:feature_id/resources/:id", validate_uuid_params("featu
     const { error } = await supabase.from("resources").delete().eq("id", id);
 
     if (error) {
-        console.error(`[DELETE /api/features/resources/${id}]`, error);
+        logger.error("Failed to delete resource", { route: "DELETE /api/features/resources/:id", id, error: String(error) });
         return context.json({ error: "Failed to delete resource" }, 500);
     }
     return context.json({ success: true });

@@ -8,6 +8,7 @@ import {
 } from "@simplewebauthn/server";
 import type { AppBindings } from "../middleware/supabase";
 import { env } from "../env";
+import { logger } from "../utils/logger";
 
 const RP_NAME = "Ralph Agent Workspace";
 const RP_ID = env.RP_ID;
@@ -229,7 +230,7 @@ auth_routes.post("/register/verify", async (context) => {
 
         return context.json({ verified: true });
     } catch (err) {
-        console.error("[Auth register/verify error]", err);
+        logger.error("Auth register/verify error", { route: "POST /api/auth/register/verify", error: String(err) });
         return context.json({ error: "Registration verification failed" }, 400);
     }
 });
@@ -329,7 +330,7 @@ auth_routes.post("/login/verify", async (context) => {
 
         return context.json({ verified: true });
     } catch (err) {
-        console.error("[Auth login/verify error]", err);
+        logger.error("Auth login/verify error", { route: "POST /api/auth/login/verify", error: String(err) });
         return context.json({ error: "Authentication failed" }, 400);
     }
 });

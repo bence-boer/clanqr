@@ -4,6 +4,7 @@ import { create_supabase_client } from "../db";
 import { env, WORKSPACE_DIR } from "../env";
 import { resolve_task_traits, resolve_feature_traits } from "./trait_service";
 import { skill_service } from "./skill_service";
+import { logger } from "../utils/logger";
 
 const PROMPTS_DIR = join(WORKSPACE_DIR, "..", "prompts");
 
@@ -18,7 +19,7 @@ class PromptService {
 
         for (const [role, file_path] of Object.entries(PROMPT_FILES)) {
             if (!existsSync(file_path)) {
-                console.warn(`Prompt file not found: ${file_path}`);
+                logger.warn("Prompt file not found", { service: "prompt", file_path });
                 continue;
             }
 
@@ -30,9 +31,9 @@ class PromptService {
             );
 
             if (error) {
-                console.error(`Failed to sync prompt '${role}':`, error.message);
+                logger.error("Failed to sync prompt", { service: "prompt", role, error: error.message });
             } else {
-                console.log(`✅ Synced prompt: ${role}`);
+                logger.info("Synced prompt", { service: "prompt", role });
             }
         }
     }

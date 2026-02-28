@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
+import { logger } from "../utils/logger";
 
 const SKILLS_DIR = join(homedir(), ".copilot", "skills");
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -60,7 +61,7 @@ class SkillService {
                 if (skill) skills.push(skill);
             }
         } catch (error) {
-            console.error("Failed to scan skills directory:", error);
+            logger.error("Failed to scan skills directory", { service: "skill", error: String(error) });
         }
 
         this.cache = { skills, cached_at: Date.now() };
@@ -97,12 +98,12 @@ class SkillService {
                                     const file_content = readFileSync(join(dir_path, entry.name), "utf-8");
                                     files.push({ name: rel_name, content: file_content });
                                 } catch (error) {
-                                    console.warn(`[skill_service] Failed to read file ${rel_name}:`, error);
+                                    logger.warn("Failed to read skill file", { service: "skill", file: rel_name, error: String(error) });
                                 }
                             }
                         }
                     } catch (error) {
-                        console.warn(`[skill_service] Failed to scan directory ${dir_path}:`, error);
+                        logger.warn("Failed to scan skill directory", { service: "skill", dir: dir_path, error: String(error) });
                     }
                 };
                 scan_dir(skill_path, "");
@@ -115,7 +116,7 @@ class SkillService {
                     files,
                 };
             } catch (error) {
-                console.warn(`[skill_service] Failed to read skill from ${skill_path}:`, error);
+                logger.warn("Failed to read skill", { service: "skill", path: skill_path, error: String(error) });
                 continue;
             }
         }
