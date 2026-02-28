@@ -20,6 +20,7 @@ export interface Feature {
     auto_approve: boolean;
     last_error: string | null;
     manager_retry_count: number;
+    task_timeout_minutes: number;
     created_at: string;
     updated_at: string;
     resources?: Resource[];

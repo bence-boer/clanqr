@@ -20,6 +20,7 @@ const manager_output_schema = z.array(task_output_schema)
     .max(50, "Maximum 50 tasks allowed");
 
 const MAX_OUTPUT_FILE_SIZE = 1024 * 1024; // 1MB
+const MANAGER_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 
 interface AgentProcess {
     task_id: string;
@@ -114,6 +115,7 @@ class AgentService {
                 cli,
                 model,
                 feature_id,
+                timeout_ms: MANAGER_TIMEOUT_MS,
             }, supabase);
 
             agent_proc.run_id = result.run_id;
@@ -123,8 +125,15 @@ class AgentService {
 
             if (result.exit_code === 0) {
                 await this.parse_manager_output(feature_id, work_dir, supabase, result.run_id);
+                // M-6.1: Reset retry count on successful completion
+                await supabase
+                    .from("features")
+                    .update({ manager_retry_count: 0 })
+                    .eq("id", feature_id);
             } else {
-                const error_msg = `Manager failed with exit code ${result.exit_code}`;
+                const error_msg = result.exit_code === -1
+                    ? "Manager timed out after 15 minutes"
+                    : `Manager failed with exit code ${result.exit_code}`;
                 await supabase
                     .from("features")
                     .update({

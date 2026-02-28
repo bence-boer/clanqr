@@ -5,6 +5,7 @@ import { agent_service } from "./agent_service";
 import { pipeline_service } from "./pipeline_service";
 
 const POLL_INTERVAL_MS = 5000;
+const MAX_MANAGER_RETRIES = 3;
 
 class WatcherService {
     private interval: ReturnType<typeof setInterval> | null = null;
@@ -50,6 +51,15 @@ class WatcherService {
         if (error || !features) return;
 
         for (const feature of features) {
+            // M-6.1: Enforce manager retry cap
+            if ((feature.manager_retry_count ?? 0) >= MAX_MANAGER_RETRIES) {
+                await supabase.from("features").update({
+                    status: "Draft",
+                    last_error: `Manager failed after ${MAX_MANAGER_RETRIES} attempts`,
+                }).eq("id", feature.id);
+                continue;
+            }
+
             // Skip if we already spawned a manager for this feature in this server lifetime
             if (this.spawned_features.has(feature.id)) continue;
 
