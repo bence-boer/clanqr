@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { EmptyState, LoadingSpinner } from '$lib/components';
   import type { ChatMessage } from '$lib/types';
 
   let {
@@ -33,9 +34,13 @@
 
 <div class="messages" bind:this={messages_container}>
   {#if loading_messages}
-    <p class="muted-sm center">Loading messages...</p>
+    <div class="thread-center">
+      <LoadingSpinner size="sm" label="Loading messages..." />
+    </div>
   {:else if messages.length === 0}
-    <p class="muted-sm center">No messages yet. Say something!</p>
+    <div class="thread-center">
+      <EmptyState icon="chat" message="No messages yet. Say something!" />
+    </div>
   {:else}
     {#each messages as message (message.id)}
       <div class="message" class:user={message.role === 'user'} class:assistant={message.role === 'assistant'}>
@@ -66,12 +71,11 @@
     gap: 0.75rem;
   }
 
-  .center { text-align: center; margin: auto; }
-
-  .muted-sm {
-    font-size: 0.8rem;
-    color: var(--fg-muted);
-    padding: 1rem;
+  .thread-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 1;
   }
 
   .message {

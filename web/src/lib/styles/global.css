@@ -58,90 +58,9 @@ body {
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-/* ── Buttons ─────────────────────────────────────────────────────────────── */
-
-.btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.5rem 1rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--bg-elevated);
-    color: var(--fg);
-    font-size: 0.8rem;
-    cursor: pointer;
-    font-family: var(--font);
-    transition: all 0.15s;
-}
-
-.btn:hover {
-    background: var(--bg-surface);
-}
-
-.btn-primary {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.65rem 1.25rem;
-    background: var(--accent);
-    color: var(--bg);
-    border: none;
-    border-radius: var(--radius);
-    font-size: 0.875rem;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: var(--font);
-    transition: opacity 0.15s;
-}
-
-.btn-primary:hover {
-    opacity: 0.9;
-}
-
-.btn-danger {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.5rem 1rem;
-    border: 1px solid var(--danger);
-    border-radius: var(--radius);
-    background: transparent;
-    color: var(--danger);
-    font-size: 0.8rem;
-    cursor: pointer;
-    font-family: var(--font);
-    transition: all 0.15s;
-}
-
-.btn-danger:hover {
-    background: var(--danger);
-    color: var(--fg);
-}
-
-.btn-sm {
-    padding: 0.35rem 0.65rem;
-    font-size: 0.75rem;
-}
-
-.btn-icon {
-    background: none;
-    border: none;
-    color: var(--fg-muted);
-    cursor: pointer;
-    padding: 0.35rem;
-    border-radius: var(--radius);
-    line-height: 1;
-    display: inline-flex;
-    align-items: center;
-}
-
-.btn-icon:hover {
-    color: var(--fg);
-    background: var(--bg-elevated);
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* ── Page Header ─────────────────────────────────────────────────────────── */
@@ -161,27 +80,6 @@ body {
 }
 
 /* ── Forms ────────────────────────────────────────────────────────────────── */
-
-.input {
-    width: 100%;
-    padding: 0.55rem 0.75rem;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--fg);
-    font-size: 0.85rem;
-    font-family: var(--font);
-}
-
-.input:focus {
-    outline: none;
-    border-color: var(--accent);
-}
-
-.textarea {
-    resize: vertical;
-    min-height: 60px;
-}
 
 .form-field {
     display: flex;
@@ -253,22 +151,32 @@ body {
     letter-spacing: 0.04em;
 }
 
-.badge-active, .badge-running, .badge-completed, .badge-complete {
+.badge-active,
+.badge-running,
+.badge-completed,
+.badge-complete {
     background: rgba(74, 158, 110, 0.15);
     color: var(--success);
 }
 
-.badge-archived, .badge-failed, .badge-stopped {
+.badge-archived,
+.badge-failed,
+.badge-stopped {
     background: rgba(201, 84, 74, 0.15);
     color: var(--danger);
 }
 
-.badge-draft, .badge-idle, .badge-pending_approval {
+.badge-draft,
+.badge-idle,
+.badge-pending_approval {
     background: rgba(158, 151, 138, 0.15);
     color: var(--fg-muted);
 }
 
-.badge-submitted, .badge-in_progress, .badge-approved, .badge-queued {
+.badge-submitted,
+.badge-in_progress,
+.badge-approved,
+.badge-queued {
     background: var(--accent-dim);
     color: var(--accent);
 }
