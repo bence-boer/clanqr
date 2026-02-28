@@ -1,8 +1,8 @@
 /** Shared domain types for the backend */
 
 export type FeatureStatus = "Draft" | "Submitted" | "In_Progress" | "Done";
-export type TaskStatus = "Pending_Approval" | "Approved" | "In_Progress" | "Complete" | "Skipped";
-export type AgentRunStatus = "running" | "completed" | "failed" | "stopped";
+export type TaskStatus = "Pending_Approval" | "Approved" | "In_Progress" | "Complete" | "Failed" | "Skipped";
+export type AgentRunStatus = "queued" | "running" | "completed" | "failed" | "stopped";
 export type AgentRunType = "manager" | "ralph" | "chat";
 export type UserRole = "admin" | "user";
 export type TraitTarget = "manager" | "ralph";

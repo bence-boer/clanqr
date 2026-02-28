@@ -2,7 +2,7 @@ import { type Subprocess } from "bun";
 import { z } from "zod";
 import type { SupabaseClient } from "../db";
 import type { FeatureRow, TaskRow } from "../types";
-import { readFileSync, existsSync, mkdirSync } from "fs";
+import { readFileSync, existsSync, mkdirSync, readdirSync, statSync, rmSync } from "fs";
 import { join } from "path";
 import { WORKSPACE_DIR } from "../env";
 import { prompt_service } from "./prompt_service";
@@ -257,6 +257,47 @@ class AgentService {
                     .eq("id", run_id);
             }
         }
+    }
+
+    /** Remove workspace directories older than max_age_days, skipping active ones */
+    cleanup_old_workspaces(max_age_days: number = 7): number {
+        const cutoff = Date.now() - (max_age_days * 24 * 60 * 60 * 1000);
+        let cleaned = 0;
+
+        if (!existsSync(AGENT_WORKSPACE_DIR)) return 0;
+
+        // Collect IDs of actively running processes to skip
+        const active_ids = new Set<string>();
+        for (const [id, proc] of this.processes) {
+            if (proc.status === "running") {
+                active_ids.add(id);
+            }
+        }
+
+        for (const entry of readdirSync(AGENT_WORKSPACE_DIR, { withFileTypes: true })) {
+            if (!entry.isDirectory()) continue;
+
+            // Skip active workspaces
+            const dir_name = entry.name;
+            const is_active = [...active_ids].some(id => dir_name.includes(id));
+            if (is_active) continue;
+
+            const dir_path = join(AGENT_WORKSPACE_DIR, dir_name);
+            try {
+                const stat = statSync(dir_path);
+                if (stat.mtimeMs < cutoff) {
+                    rmSync(dir_path, { recursive: true, force: true });
+                    cleaned++;
+                }
+            } catch {
+                // Skip directories we can't stat
+            }
+        }
+
+        if (cleaned > 0) {
+            console.log(`🧹 Cleaned ${cleaned} old workspace(s)`);
+        }
+        return cleaned;
     }
 }
 

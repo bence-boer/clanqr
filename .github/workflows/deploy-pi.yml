@@ -65,6 +65,7 @@ jobs:
 
       - name: Apply database migrations
         run: |
+          set -e
           cd $APP_DIR
           for f in supabase/supabase/migrations/*.sql; do
             version=$(basename "$f" | cut -d_ -f1)
@@ -72,7 +73,10 @@ jobs:
               "SELECT 1 FROM supabase_migrations.schema_migrations WHERE version='$version'" 2>/dev/null)
             if [ "$already" != "1" ]; then
               echo "Applying migration: $(basename $f)"
-              docker exec -i supabase_db_supabase psql -U postgres -d postgres < "$f"
+              if ! docker exec -i supabase_db_supabase psql -U postgres -d postgres --set ON_ERROR_STOP=1 < "$f"; then
+                echo "❌ Migration failed: $(basename $f)"
+                exit 1
+              fi
               docker exec supabase_db_supabase psql -U postgres -d postgres -c \
                 "INSERT INTO supabase_migrations.schema_migrations (version, name) VALUES ('$version', '$(basename ${f%.sql} | sed "s/^[0-9]*_//")')"
             fi

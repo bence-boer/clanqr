@@ -40,7 +40,7 @@ export interface Task {
     id: string;
     feature_id: string;
     description: string;
-    status: "Pending_Approval" | "Approved" | "In_Progress" | "Complete" | "Skipped";
+    status: "Pending_Approval" | "Approved" | "In_Progress" | "Complete" | "Failed" | "Skipped";
     agent_log: string | null;
     sort_order: number;
     retry_count: number;

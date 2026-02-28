@@ -3,6 +3,7 @@ import { z } from "zod";
 import { admin_middleware } from "../middleware/auth";
 import type { AppBindings } from "../middleware/supabase";
 import { get_users, check_last_admin, get_invites, generate_invite } from "../services/admin_service";
+import { agent_service } from "../services/agent_service";
 
 const update_role_schema = z.object({
     role: z.enum(["admin", "user"]),
@@ -197,4 +198,10 @@ admin_routes.delete("/invites/:id", async (context) => {
         return context.json({ error: "Failed to delete invite" }, 500);
     }
     return context.json({ success: true });
+});
+
+// M-5.4: Trigger workspace cleanup manually
+admin_routes.post("/cleanup-workspaces", async (context) => {
+    const cleaned = agent_service.cleanup_old_workspaces(7);
+    return context.json({ cleaned });
 });
