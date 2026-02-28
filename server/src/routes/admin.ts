@@ -2,6 +2,11 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { admin_middleware } from "../middleware/auth";
 import type { AppBindings } from "../middleware/supabase";
+import { validate_uuid_params } from "../middleware/validate_params";
+import { get_users, check_last_admin, get_invites, generate_invite } from "../services/admin_service";
+import { agent_service } from "../services/agent_service";
+import { get_metrics } from "../middleware/metrics";
+import { logger } from "../utils/logger";
 
 const update_role_schema = z.object({
     role: z.enum(["admin", "user"]),
@@ -20,29 +25,17 @@ admin_routes.use("*", admin_middleware());
 // List all passkeys as users
 admin_routes.get("/", async (context) => {
     const db = context.get("supabase");
-    const { data, error } = await db
-        .from("passkeys")
-        .select("id, display_name, role, created_at, sessions(count)")
-        .order("created_at", { ascending: true });
-
-    if (error) {
-        console.error(`[GET /api/admin]`, error);
+    try {
+        const users = await get_users(db);
+        return context.json(users);
+    } catch (error) {
+        logger.error("Failed to fetch users", { route: "GET /api/admin", error: String(error) });
         return context.json({ error: "Failed to fetch users" }, 500);
     }
-
-    const users = (data ?? []).map((p: any) => ({
-        id: p.id,
-        display_name: p.display_name,
-        role: p.role,
-        created_at: p.created_at,
-        session_count: p.sessions?.[0]?.count ?? 0,
-    }));
-
-    return context.json(users);
 });
 
 // Update a user's role
-admin_routes.patch("/:id", async (context) => {
+admin_routes.patch("/:id", validate_uuid_params("id"), async (context) => {
     const id = context.req.param("id");
     const current_passkey_id = context.get("passkey_id");
 
@@ -58,13 +51,9 @@ admin_routes.patch("/:id", async (context) => {
 
     const db = context.get("supabase");
 
-    // Check if this would remove the last admin
     if (role !== "admin") {
-        const { count } = await db
-            .from("passkeys")
-            .select("*", { count: "exact", head: true })
-            .eq("role", "admin");
-        if ((count ?? 0) <= 1) {
+        const is_last = await check_last_admin(db);
+        if (is_last) {
             return context.json({ error: "Cannot demote the last admin" }, 400);
         }
     }
@@ -77,14 +66,14 @@ admin_routes.patch("/:id", async (context) => {
         .single();
 
     if (error) {
-        console.error(`[PATCH /api/admin/${id}]`, error);
+        logger.error("Failed to update role", { route: "PATCH /api/admin/:id", id, error: String(error) });
         return context.json({ error: "Failed to update role" }, 500);
     }
     return context.json(data);
 });
 
 // Revoke all sessions for a user
-admin_routes.delete("/:id/sessions", async (context) => {
+admin_routes.delete("/:id/sessions", validate_uuid_params("id"), async (context) => {
     const id = context.req.param("id");
     const current_passkey_id = context.get("passkey_id");
 
@@ -95,14 +84,14 @@ admin_routes.delete("/:id/sessions", async (context) => {
     const db = context.get("supabase");
     const { error } = await db.from("sessions").delete().eq("passkey_id", id);
     if (error) {
-        console.error(`[DELETE /api/admin/${id}/sessions]`, error);
+        logger.error("Failed to revoke sessions", { route: "DELETE /api/admin/:id/sessions", id, error: String(error) });
         return context.json({ error: "Failed to revoke sessions" }, 500);
     }
     return context.json({ success: true });
 });
 
 // Delete a passkey
-admin_routes.delete("/:id", async (context) => {
+admin_routes.delete("/:id", validate_uuid_params("id"), async (context) => {
     const id = context.req.param("id");
     const current_passkey_id = context.get("passkey_id");
 
@@ -112,7 +101,6 @@ admin_routes.delete("/:id", async (context) => {
 
     const db = context.get("supabase");
 
-    // Check if this would remove the last admin
     const { data: target } = await db
         .from("passkeys")
         .select("role")
@@ -120,24 +108,21 @@ admin_routes.delete("/:id", async (context) => {
         .single();
 
     if (target?.role === "admin") {
-        const { count } = await db
-            .from("passkeys")
-            .select("*", { count: "exact", head: true })
-            .eq("role", "admin");
-        if ((count ?? 0) <= 1) {
+        const is_last = await check_last_admin(db);
+        if (is_last) {
             return context.json({ error: "Cannot delete the last admin" }, 400);
         }
     }
 
     const { error } = await db.from("passkeys").delete().eq("id", id);
     if (error) {
-        console.error(`[DELETE /api/admin/${id}]`, error);
+        logger.error("Failed to delete user", { route: "DELETE /api/admin/:id", id, error: String(error) });
         return context.json({ error: "Failed to delete user" }, 500);
     }
     return context.json({ success: true });
 });
 
-// Bulk clear expired and used invites — MUST be before /:id routes
+// Bulk clear expired and used invites
 admin_routes.delete("/invites/bulk-clear", async (context) => {
     const db = context.get("supabase");
     const now = new Date().toISOString();
@@ -158,36 +143,13 @@ admin_routes.delete("/invites/bulk-clear", async (context) => {
 // List invite tokens
 admin_routes.get("/invites", async (context) => {
     const db = context.get("supabase");
-    const now = new Date().toISOString();
-
-    const { data, error } = await db
-        .from("invite_tokens")
-        .select(
-            "id, label, role, expires_at, used_at, created_at, token, created_by_passkey_id, used_by_passkey_id, passkeys!invite_tokens_created_by_passkey_id_fkey(display_name), used_by:passkeys!invite_tokens_used_by_passkey_id_fkey(display_name)"
-        )
-        .order("created_at", { ascending: false });
-
-    if (error) {
-        console.error(`[GET /api/admin/invites]`, error);
+    try {
+        const invites = await get_invites(db);
+        return context.json(invites);
+    } catch (error) {
+        logger.error("Failed to fetch invites", { route: "GET /api/admin/invites", error: String(error) });
         return context.json({ error: "Failed to fetch invites" }, 500);
     }
-
-    const invites = (data ?? []).map((inv: any) => {
-        const is_active = !inv.used_at && inv.expires_at > now;
-        return {
-            id: inv.id,
-            label: inv.label,
-            role: inv.role,
-            expires_at: inv.expires_at,
-            used_at: inv.used_at,
-            created_at: inv.created_at,
-            created_by_display_name: inv.passkeys?.display_name ?? null,
-            used_by_display_name: inv.used_by?.display_name ?? null,
-            token_preview: is_active ? inv.token.slice(0, 8) + "..." : null,
-        };
-    });
-
-    return context.json(invites);
 });
 
 // Create invite token
@@ -207,28 +169,20 @@ admin_routes.post("/invites", async (context) => {
         return context.json({ error: "expires_at must be at most 24 hours from now" }, 400);
     }
 
-    const bytes = new Uint8Array(32);
-    crypto.getRandomValues(bytes);
-    const token = Buffer.from(bytes).toString("base64url");
-
     const db = context.get("supabase");
     const created_by_passkey_id = context.get("passkey_id");
 
-    const { data, error } = await db
-        .from("invite_tokens")
-        .insert({ role, expires_at, label: label ?? null, token, created_by_passkey_id })
-        .select("id, label, role, expires_at, created_at")
-        .single();
-
-    if (error) {
-        console.error(`[POST /api/admin/invites]`, error);
+    try {
+        const invite = await generate_invite(db, { role, expires_at, label, created_by_passkey_id });
+        return context.json(invite, 201);
+    } catch (error) {
+        logger.error("Failed to create invite", { route: "POST /api/admin/invites", error: String(error) });
         return context.json({ error: "Failed to create invite" }, 500);
     }
-    return context.json({ ...data, token }, 201);
 });
 
 // Delete invite token
-admin_routes.delete("/invites/:id", async (context) => {
+admin_routes.delete("/invites/:id", validate_uuid_params("id"), async (context) => {
     const id = context.req.param("id");
     const db = context.get("supabase");
 
@@ -243,8 +197,19 @@ admin_routes.delete("/invites/:id", async (context) => {
 
     const { error } = await db.from("invite_tokens").delete().eq("id", id);
     if (error) {
-        console.error(`[DELETE /api/admin/invites/${id}]`, error);
+        logger.error("Failed to delete invite", { route: "DELETE /api/admin/invites/:id", id, error: String(error) });
         return context.json({ error: "Failed to delete invite" }, 500);
     }
     return context.json({ success: true });
+});
+
+// M-5.4: Trigger workspace cleanup manually
+admin_routes.post("/cleanup-workspaces", async (context) => {
+    const cleaned = agent_service.cleanup_old_workspaces(7);
+    return context.json({ cleaned });
+});
+
+// M-10.3: Request metrics endpoint
+admin_routes.get("/metrics", async (context) => {
+    return context.json(get_metrics());
 });

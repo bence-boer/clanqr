@@ -1,7 +1,9 @@
 import { Hono } from "hono";
+import { z } from "zod";
 import type { AppBindings } from "../middleware/supabase";
-import { get_system_stats } from "../services/system_service";
-import { COPILOT_BIN, GEMINI_BIN, ENRICHED_PATH } from "../env";
+import { get_system_stats, get_models, check_system_alerts } from "../services/system_service";
+
+const cli_schema = z.enum(["copilot", "gemini"]);
 
 export const system_routes = new Hono<AppBindings>();
 
@@ -10,54 +12,18 @@ system_routes.get("/stats", async (context) => {
   return context.json(stats);
 });
 
-// Available models cache
-let cached_copilot_models: { value: string; label: string }[] | null = null;
-let cached_gemini_models: { value: string; label: string }[] | null = [
-  { value: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro Preview" },
-  { value: "gemini-3-flash-preview", label: "Gemini 3 Flash Preview" },
-  { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
-  { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-  { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite" },
-];
-
-system_routes.get("/models", async (context) => {
-  const cli = context.req.query("cli") || "copilot";
-
-  if (cli === "gemini") {
-    return context.json(cached_gemini_models);
-  }
-
-  if (cached_copilot_models) return context.json(cached_copilot_models);
-
-  try {
-    const proc = Bun.spawn([COPILOT_BIN, "--help"], {
-      stdout: "pipe",
-      stderr: "pipe",
-      env: { ...process.env, PATH: ENRICHED_PATH },
-    });
-    const output = await new Response(proc.stdout).text();
-    await proc.exited;
-
-    const match = output.match(/--model\s+<model>\s+.*?\(choices:\s*([\s\S]*?)\)/);
-    if (match) {
-      const choices_str = match[1];
-      const model_ids = [...choices_str.matchAll(/"([^"]+)"/g)].map(m => m[1]);
-      cached_copilot_models = model_ids.map(id => ({ value: id, label: format_model_label(id) }));
-    }
-  } catch (err) {
-    console.error("[GET /api/system/models] Failed to parse models from Copilot CLI:", err);
-  }
-
-  if (!cached_copilot_models) {
-    cached_copilot_models = [];
-  }
-
-  return context.json(cached_copilot_models);
+system_routes.get("/alerts", async (context) => {
+  const stats = await get_system_stats();
+  const alerts = check_system_alerts(stats);
+  return context.json({ alerts });
 });
 
-function format_model_label(id: string): string {
-  return id
-    .split("-")
-    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
+system_routes.get("/models", async (context) => {
+  const raw = context.req.query("cli") ?? "copilot";
+  const result = cli_schema.safeParse(raw);
+  if (!result.success) {
+    return context.json({ error: "Invalid cli parameter: must be 'copilot' or 'gemini'" }, 400);
+  }
+  const models = await get_models(result.data);
+  return context.json(models);
+});

@@ -1,7 +1,9 @@
+import type { UserRole } from "@shared/types";
+
 export interface User {
     id: string;
     display_name: string | null;
-    role: 'admin' | 'user';
+    role: UserRole;
     created_at: string;
     session_count: number;
 }
@@ -9,7 +11,7 @@ export interface User {
 export interface InviteToken {
     id: string;
     label: string | null;
-    role: 'admin' | 'user';
+    role: UserRole;
     expires_at: string;
     used_at: string | null;
     created_at: string;
@@ -21,7 +23,7 @@ export interface InviteToken {
 export interface InviteStatus {
     valid: boolean;
     reason?: 'missing' | 'not_found' | 'used' | 'expired';
-    role?: 'admin' | 'user';
+    role?: UserRole;
     label?: string | null;
     expires_at?: string;
 }

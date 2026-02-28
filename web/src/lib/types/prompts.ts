@@ -1,8 +1,10 @@
+import type { TraitTarget, TraitScope } from "@shared/types";
+
 export interface Trait {
     id: string;
     name: string;
     description: string | null;
-    target: "manager" | "ralph";
+    target: TraitTarget;
     content: string;
     is_global: boolean;
     created_at: string;
@@ -13,7 +15,7 @@ export interface Trait {
 export interface TraitAssignment {
     id: string;
     trait_id: string;
-    scope: "project" | "feature" | "task";
+    scope: TraitScope;
     project_id: string | null;
     feature_id: string | null;
     task_id: string | null;
@@ -35,7 +37,7 @@ export interface ResolvedTrait {
 
 export interface PromptRecord {
     id: string;
-    role: "manager" | "ralph";
+    role: TraitTarget;
     content: string;
     version: number;
     updated_at: string;

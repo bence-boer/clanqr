@@ -1,4 +1,5 @@
 import { readFileSync, existsSync } from "fs";
+import { logger } from "../utils/logger";
 
 export interface SystemStats {
     cpu_percent: number;
@@ -47,7 +48,7 @@ async function read_cpu_percent(): Promise<number> {
         last_cpu_percent = Math.round((1 - idle_delta / total_delta) * 100);
         return last_cpu_percent;
     } catch (error) {
-        console.warn("[system_service] Failed to read CPU stats:", error);
+        logger.warn("Failed to read CPU stats", { service: "system", error: String(error) });
         return 0;
     }
 }
@@ -63,7 +64,7 @@ function read_cpu_temp(): number | null {
                 const raw = parseInt(readFileSync(p, "utf-8").trim());
                 return Math.round(raw / 1000);
             } catch (error) {
-                console.warn(`[system_service] Failed to read CPU temp from ${p}:`, error);
+                logger.warn("Failed to read CPU temp", { service: "system", path: p, error: String(error) });
             }
         }
     }
@@ -93,7 +94,7 @@ function read_memory(): Pick<
             memory_percent: total_mb > 0 ? Math.round((used_mb / total_mb) * 100) : 0,
         };
     } catch (error) {
-        console.warn("[system_service] Failed to read memory stats:", error);
+        logger.warn("Failed to read memory stats", { service: "system", error: String(error) });
         return { memory_total_mb: 0, memory_used_mb: 0, memory_percent: 0 };
     }
 }
@@ -135,7 +136,7 @@ async function read_storage(): Promise<
                 total_gb > 0 ? Math.round((used_gb / total_gb) * 100) : 0,
         };
     } catch (error) {
-        console.warn("[system_service] Failed to read storage stats:", error);
+        logger.warn("Failed to read storage stats", { service: "system", error: String(error) });
         return { storage_total_gb: 0, storage_used_gb: 0, storage_percent: 0 };
     }
 }
@@ -145,7 +146,7 @@ function read_uptime(): number {
         const uptime = readFileSync("/proc/uptime", "utf-8");
         return Math.floor(parseFloat(uptime.split(" ")[0]));
     } catch (error) {
-        console.warn("[system_service] Failed to read uptime:", error);
+        logger.warn("Failed to read uptime", { service: "system", error: String(error) });
         return 0;
     }
 }
@@ -159,5 +160,135 @@ export async function get_system_stats(): Promise<SystemStats> {
         ...storage,
         uptime_seconds: read_uptime(),
     };
+}
+
+// --- System Alerts (M-10.2) ---
+
+export interface SystemAlert {
+    type: "disk_space" | "memory" | "temperature";
+    message: string;
+    severity: "warning" | "critical";
+    value: number;
+    threshold: number;
+}
+
+export function check_system_alerts(stats: SystemStats): SystemAlert[] {
+    const alerts: SystemAlert[] = [];
+
+    if (stats.storage_percent > 90) {
+        alerts.push({
+            type: "disk_space",
+            message: `Disk usage at ${stats.storage_percent}%`,
+            severity: "critical",
+            value: stats.storage_percent,
+            threshold: 90,
+        });
+    } else if (stats.storage_percent > 80) {
+        alerts.push({
+            type: "disk_space",
+            message: `Disk usage at ${stats.storage_percent}%`,
+            severity: "warning",
+            value: stats.storage_percent,
+            threshold: 80,
+        });
+    }
+
+    if (stats.memory_percent > 95) {
+        alerts.push({
+            type: "memory",
+            message: `Memory usage at ${stats.memory_percent}%`,
+            severity: "critical",
+            value: stats.memory_percent,
+            threshold: 95,
+        });
+    } else if (stats.memory_percent > 85) {
+        alerts.push({
+            type: "memory",
+            message: `Memory usage at ${stats.memory_percent}%`,
+            severity: "warning",
+            value: stats.memory_percent,
+            threshold: 85,
+        });
+    }
+
+    if (stats.cpu_temp_celsius !== null) {
+        if (stats.cpu_temp_celsius > 80) {
+            alerts.push({
+                type: "temperature",
+                message: `CPU temperature at ${stats.cpu_temp_celsius}°C`,
+                severity: "critical",
+                value: stats.cpu_temp_celsius,
+                threshold: 80,
+            });
+        } else if (stats.cpu_temp_celsius > 70) {
+            alerts.push({
+                type: "temperature",
+                message: `CPU temperature at ${stats.cpu_temp_celsius}°C`,
+                severity: "warning",
+                value: stats.cpu_temp_celsius,
+                threshold: 70,
+            });
+        }
+    }
+
+    return alerts;
+}
+
+// --- Model listing ---
+
+import { COPILOT_BIN, build_agent_env } from "../env";
+
+interface ModelOption {
+    value: string;
+    label: string;
+}
+
+let cached_copilot_models: ModelOption[] | null = null;
+const cached_gemini_models: ModelOption[] = [
+    { value: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro Preview" },
+    { value: "gemini-3-flash-preview", label: "Gemini 3 Flash Preview" },
+    { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+    { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+    { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite" },
+];
+
+function format_model_label(id: string): string {
+    return id
+        .split("-")
+        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+}
+
+export async function get_models(cli: string): Promise<ModelOption[]> {
+    if (cli === "gemini") {
+        return cached_gemini_models;
+    }
+
+    if (cached_copilot_models) return cached_copilot_models;
+
+    try {
+        const proc = Bun.spawn([COPILOT_BIN, "--help"], {
+            stdout: "pipe",
+            stderr: "pipe",
+            env: build_agent_env(),
+        });
+        const output = await new Response(proc.stdout).text();
+        await proc.exited;
+
+        const match = output.match(/--model\s+<model>\s+.*?\(choices:\s*([\s\S]*?)\)/);
+        if (match) {
+            const choices_str = match[1];
+            const model_ids = [...choices_str.matchAll(/"([^"]+)"/g)].map(m => m[1]);
+            cached_copilot_models = model_ids.map(id => ({ value: id, label: format_model_label(id) }));
+        }
+    } catch (err) {
+        logger.error("Failed to parse models from Copilot CLI", { service: "system", error: String(err) });
+    }
+
+    if (!cached_copilot_models) {
+        cached_copilot_models = [];
+    }
+
+    return cached_copilot_models;
 }
 

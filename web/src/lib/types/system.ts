@@ -1,3 +1,5 @@
+import type { MessageRole } from "@shared/types";
+
 export interface SystemStats {
     cpu_percent: number;
     cpu_temp_celsius: number | null;
@@ -8,6 +10,14 @@ export interface SystemStats {
     storage_used_gb: number;
     storage_percent: number;
     uptime_seconds: number;
+}
+
+export interface SystemAlert {
+    type: "disk_space" | "memory" | "temperature";
+    message: string;
+    severity: "warning" | "critical";
+    value: number;
+    threshold: number;
 }
 
 export interface UsageSummary {
@@ -39,7 +49,7 @@ export interface ChatSession {
 export interface ChatMessage {
     id: string;
     session_id: string;
-    role: "user" | "assistant" | "system";
+    role: MessageRole;
     content: string;
     created_at: string;
 }

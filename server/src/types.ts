@@ -1,19 +1,36 @@
-/** Shared domain types for the backend */
+/** Backend domain types — status types imported from shared */
 
-export type FeatureStatus = "Draft" | "Submitted" | "In_Progress" | "Done";
-export type TaskStatus = "Pending_Approval" | "Approved" | "In_Progress" | "Complete";
-export type AgentRunStatus = "running" | "completed" | "failed" | "stopped";
-export type AgentRunType = "manager" | "ralph" | "chat";
-export type UserRole = "admin" | "user";
-export type TraitTarget = "manager" | "ralph";
-export type TraitScope = "project" | "feature" | "task";
-export type FailureBehavior = "stop" | "retry" | "skip";
+export type {
+    FeatureStatus,
+    TaskStatus,
+    AgentRunStatus,
+    AgentRunType,
+    ProjectStatus,
+    UserRole,
+    TraitTarget,
+    TraitScope,
+    FailureBehavior,
+    ResourceStatus,
+} from "@shared/types";
+
+import type {
+    FeatureStatus,
+    TaskStatus,
+    AgentRunStatus,
+    AgentRunType,
+    ProjectStatus,
+    UserRole,
+    TraitTarget,
+    TraitScope,
+    FailureBehavior,
+    ResourceStatus,
+} from "@shared/types";
 
 export interface ProjectRow {
     id: string;
     name: string;
     description: string | null;
-    status: string;
+    status: ProjectStatus;
     created_at: string;
     updated_at: string;
 }
@@ -24,9 +41,13 @@ export interface FeatureRow {
     title: string;
     description: string | null;
     status: FeatureStatus;
+    cli: string | null;
     model: string | null;
     on_task_failure: FailureBehavior;
     auto_approve: boolean;
+    last_error: string | null;
+    manager_retry_count: number;
+    task_timeout_minutes: number;
     created_at: string;
     updated_at: string;
     resources?: ResourceRow[];
@@ -53,7 +74,9 @@ export interface ResourceRow {
     feature_id: string;
     url: string;
     title: string | null;
+    status: ResourceStatus;
     created_at: string;
+    updated_at: string;
 }
 
 export interface AgentRunRow {
@@ -63,6 +86,7 @@ export interface AgentRunRow {
     feature_id: string | null;
     session_id: string | null;
     status: AgentRunStatus;
+    cli: string | null;
     model: string | null;
     started_at: string;
     finished_at: string | null;
@@ -71,6 +95,8 @@ export interface AgentRunRow {
     completion_tokens: number | null;
     log: string | null;
     error: string | null;
+    summary: string | null;
+    files_changed: string[] | null;
     created_at: string;
 }
 

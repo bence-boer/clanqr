@@ -101,8 +101,27 @@ class MockQueryBuilder {
         return this;
     }
 
-    order(_column: string, _opts?: { ascending?: boolean }) {
+    not(column: string, op: string, value: any) {
+        if (op === "in") {
+            const values = String(value)
+                .replace(/^\(|\)$/g, "")
+                .split(",")
+                .map(v => v.replace(/^"|"$/g, "").trim());
+            this.filters.push((row) => !values.includes(row[column]));
+        } else if (op === "eq") {
+            this.filters.push((row) => row[column] !== value);
+        }
+        return this;
+    }
+
+    order(_column: string, _opts?: { ascending?: boolean; referencedTable?: string }) {
         // Simplified: no-op for mock
+        return this;
+    }
+
+    range(from: number, to: number) {
+        // Approximation: set limit based on range
+        this.limit_val = to - from + 1;
         return this;
     }
 
