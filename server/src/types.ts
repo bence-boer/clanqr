@@ -1,15 +1,28 @@
-/** Shared domain types for the backend */
+/** Backend domain types — status types imported from shared */
 
-export type FeatureStatus = "Draft" | "Submitted" | "In_Progress" | "Done";
-export type TaskStatus = "Pending_Approval" | "Approved" | "In_Progress" | "Complete" | "Failed" | "Skipped";
-export type AgentRunStatus = "queued" | "running" | "completed" | "failed" | "stopped";
-export type AgentRunType = "manager" | "ralph" | "chat";
-export type UserRole = "admin" | "user";
-export type TraitTarget = "manager" | "ralph";
-export type TraitScope = "project" | "feature" | "task";
-export type FailureBehavior = "stop" | "retry" | "skip";
+export type {
+    FeatureStatus,
+    TaskStatus,
+    AgentRunStatus,
+    AgentRunType,
+    ProjectStatus,
+    UserRole,
+    TraitTarget,
+    TraitScope,
+    FailureBehavior,
+} from "@shared/types";
 
-export type ProjectStatus = "Active" | "Archived" | "Planning";
+import type {
+    FeatureStatus,
+    TaskStatus,
+    AgentRunStatus,
+    AgentRunType,
+    ProjectStatus,
+    UserRole,
+    TraitTarget,
+    TraitScope,
+    FailureBehavior,
+} from "@shared/types";
 
 export interface ProjectRow {
     id: string;

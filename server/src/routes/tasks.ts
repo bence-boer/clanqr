@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppBindings } from "../middleware/supabase";
+import { validate_uuid_params } from "../middleware/validate_params";
 import { pipeline_service } from "../services/pipeline_service";
 
 const update_task_schema = z.object({
@@ -47,7 +48,7 @@ tasks_routes.get("/", async (context) => {
 });
 
 // Get single task
-tasks_routes.get("/:id", async (context) => {
+tasks_routes.get("/:id", validate_uuid_params("id"), async (context) => {
     const supabase = context.get("supabase");
     const id = context.req.param("id");
 
@@ -65,7 +66,7 @@ tasks_routes.get("/:id", async (context) => {
 });
 
 // Update task
-tasks_routes.patch("/:id", async (context) => {
+tasks_routes.patch("/:id", validate_uuid_params("id"), async (context) => {
     const id = context.req.param("id");
     const body = await context.req.json();
     const parsed = update_task_schema.safeParse(body);
@@ -90,7 +91,7 @@ tasks_routes.patch("/:id", async (context) => {
 });
 
 // Approve task
-tasks_routes.post("/:id/approve", async (context) => {
+tasks_routes.post("/:id/approve", validate_uuid_params("id"), async (context) => {
     const id = context.req.param("id");
     const supabase = context.get("supabase");
 
@@ -111,13 +112,13 @@ tasks_routes.post("/:id/approve", async (context) => {
 });
 
 // Manually trigger pipeline to run a specific approved task
-tasks_routes.post("/:id/run", (context) => {
+tasks_routes.post("/:id/run", validate_uuid_params("id"), (context) => {
     pipeline_service.process_next().catch(console.error);
     return context.json({ success: true });
 });
 
 // Bulk approve all tasks for a feature
-tasks_routes.post("/approve-all/:feature_id", async (context) => {
+tasks_routes.post("/approve-all/:feature_id", validate_uuid_params("feature_id"), async (context) => {
     const feature_id = context.req.param("feature_id");
     const supabase = context.get("supabase");
 
@@ -148,6 +149,18 @@ tasks_routes.post("/", async (context) => {
     }
 
     const supabase = context.get("supabase");
+
+    // Verify feature exists before inserting
+    const { data: feature } = await supabase
+        .from("features")
+        .select("id")
+        .eq("id", parsed.data.feature_id)
+        .single();
+
+    if (!feature) {
+        return context.json({ error: "Feature not found" }, 404);
+    }
+
     const { data, error } = await supabase
         .from("tasks")
         .insert({ ...parsed.data, status: "Pending_Approval" })
@@ -162,7 +175,7 @@ tasks_routes.post("/", async (context) => {
 });
 
 // Delete a task (only if not in-progress or complete)
-tasks_routes.delete("/:id", async (context) => {
+tasks_routes.delete("/:id", validate_uuid_params("id"), async (context) => {
     const id = context.req.param("id");
     const supabase = context.get("supabase");
 

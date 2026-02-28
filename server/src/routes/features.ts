@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppBindings } from "../middleware/supabase";
+import { validate_uuid_params } from "../middleware/validate_params";
 
 /** Validate that a resource URL is safe (no SSRF) */
 function validate_resource_url(url_string: string): boolean {
@@ -76,7 +77,7 @@ features_routes.get("/", async (context) => {
 });
 
 // Get single feature with resources and tasks
-features_routes.get("/:id", async (context) => {
+features_routes.get("/:id", validate_uuid_params("id"), async (context) => {
     const supabase = context.get("supabase");
     const id = context.req.param("id");
 
@@ -139,7 +140,7 @@ features_routes.post("/", async (context) => {
 });
 
 // Update feature
-features_routes.patch("/:id", async (context) => {
+features_routes.patch("/:id", validate_uuid_params("id"), async (context) => {
     const id = context.req.param("id");
     const body = await context.req.json();
     const parsed = update_feature_schema.safeParse(body);
@@ -164,7 +165,7 @@ features_routes.patch("/:id", async (context) => {
 });
 
 // Submit feature for implementation
-features_routes.post("/:id/submit", async (context) => {
+features_routes.post("/:id/submit", validate_uuid_params("id"), async (context) => {
     const id = context.req.param("id");
     const supabase = context.get("supabase");
 
@@ -183,7 +184,7 @@ features_routes.post("/:id/submit", async (context) => {
 });
 
 // Delete feature
-features_routes.delete("/:id", async (context) => {
+features_routes.delete("/:id", validate_uuid_params("id"), async (context) => {
     const id = context.req.param("id");
     const supabase = context.get("supabase");
 
@@ -197,7 +198,7 @@ features_routes.delete("/:id", async (context) => {
 });
 
 // Add resource to feature
-features_routes.post("/:id/resources", async (context) => {
+features_routes.post("/:id/resources", validate_uuid_params("id"), async (context) => {
     const feature_id = context.req.param("id");
     const body = await context.req.json();
     const parsed = z
@@ -227,7 +228,7 @@ features_routes.post("/:id/resources", async (context) => {
 });
 
 // Delete resource
-features_routes.delete("/:feature_id/resources/:id", async (context) => {
+features_routes.delete("/:feature_id/resources/:id", validate_uuid_params("feature_id", "id"), async (context) => {
     const id = context.req.param("id");
     const supabase = context.get("supabase");
 

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppBindings } from "../middleware/supabase";
+import { validate_uuid_params } from "../middleware/validate_params";
 import { chat_service } from "../services/chat_service";
 
 const create_session_schema = z.object({
@@ -51,7 +52,7 @@ chat_routes.post("/sessions", async (context) => {
 });
 
 // Get session with messages
-chat_routes.get("/sessions/:id", async (context) => {
+chat_routes.get("/sessions/:id", validate_uuid_params("id"), async (context) => {
     const id = context.req.param("id");
     const supabase = context.get("supabase");
 
@@ -67,7 +68,7 @@ chat_routes.get("/sessions/:id", async (context) => {
 });
 
 // Delete session
-chat_routes.delete("/sessions/:id", async (context) => {
+chat_routes.delete("/sessions/:id", validate_uuid_params("id"), async (context) => {
     const id = context.req.param("id");
     const supabase = context.get("supabase");
 
@@ -80,7 +81,7 @@ chat_routes.delete("/sessions/:id", async (context) => {
 });
 
 // Send message (SSE streaming response)
-chat_routes.post("/sessions/:id/send", async (context) => {
+chat_routes.post("/sessions/:id/send", validate_uuid_params("id"), async (context) => {
     const session_id = context.req.param("id");
     const supabase = context.get("supabase");
 
@@ -141,7 +142,7 @@ chat_routes.post("/sessions/:id/send", async (context) => {
 });
 
 // Cancel active chat in a session
-chat_routes.post("/sessions/:id/cancel", async (context) => {
+chat_routes.post("/sessions/:id/cancel", validate_uuid_params("id"), async (context) => {
     const session_id = context.req.param("id");
     const cancelled = chat_service.cancel(session_id);
     return context.json({ success: cancelled });

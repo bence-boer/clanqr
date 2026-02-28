@@ -5,3 +5,17 @@ export type { AgentProcess, AgentRun, PipelineStatus } from "./pipeline";
 export type { Trait, TraitAssignment, ResolvedTrait, PromptRecord, SkillInfo, SkillLink } from "./prompts";
 export type { SystemStats, UsageSummary, UsageBreakdown, ChatSession, ChatMessage } from "./system";
 
+// Re-export shared status types for convenience
+export type {
+    FeatureStatus,
+    TaskStatus,
+    AgentRunStatus,
+    AgentRunType,
+    ProjectStatus,
+    UserRole,
+    TraitTarget,
+    TraitScope,
+    FailureBehavior,
+    PipelineState,
+    MessageRole,
+} from "@shared/types";

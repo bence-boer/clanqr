@@ -1,3 +1,5 @@
+import type { MessageRole } from "@shared/types";
+
 export interface SystemStats {
     cpu_percent: number;
     cpu_temp_celsius: number | null;
@@ -39,7 +41,7 @@ export interface ChatSession {
 export interface ChatMessage {
     id: string;
     session_id: string;
-    role: "user" | "assistant" | "system";
+    role: MessageRole;
     content: string;
     created_at: string;
 }

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppBindings } from "../middleware/supabase";
+import { validate_uuid_params } from "../middleware/validate_params";
 import { skill_service } from "../services/skill_service";
 
 const link_schema = z.object({
@@ -30,7 +31,7 @@ skills_routes.post("/refresh", async (_context) => {
 });
 
 // Get skills linked to a specific task — must come before /:name to avoid conflict
-skills_routes.get("/task/:task_id", async (context) => {
+skills_routes.get("/task/:task_id", validate_uuid_params("task_id"), async (context) => {
     const task_id = context.req.param("task_id");
     const supabase = context.get("supabase");
 
@@ -58,7 +59,11 @@ skills_routes.post("/link", async (context) => {
     const skill = await skill_service.get_skill(skill_name);
     if (!skill) return context.json({ error: `Skill '${skill_name}' not found` }, 404);
 
+    // Verify the task exists
     const supabase = context.get("supabase");
+    const { data: task } = await supabase.from("tasks").select("id").eq("id", task_id).single();
+    if (!task) return context.json({ error: "Task not found" }, 404);
+
     const { data, error } = await supabase
         .from("skill_links")
         .insert({ task_id, skill_name })
@@ -73,7 +78,7 @@ skills_routes.post("/link", async (context) => {
 });
 
 // Unlink a skill from a task
-skills_routes.delete("/link/:id", async (context) => {
+skills_routes.delete("/link/:id", validate_uuid_params("id"), async (context) => {
     const id = context.req.param("id");
     const supabase = context.get("supabase");
 

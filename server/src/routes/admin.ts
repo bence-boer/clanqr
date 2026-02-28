@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { admin_middleware } from "../middleware/auth";
 import type { AppBindings } from "../middleware/supabase";
+import { validate_uuid_params } from "../middleware/validate_params";
 import { get_users, check_last_admin, get_invites, generate_invite } from "../services/admin_service";
 import { agent_service } from "../services/agent_service";
 
@@ -32,7 +33,7 @@ admin_routes.get("/", async (context) => {
 });
 
 // Update a user's role
-admin_routes.patch("/:id", async (context) => {
+admin_routes.patch("/:id", validate_uuid_params("id"), async (context) => {
     const id = context.req.param("id");
     const current_passkey_id = context.get("passkey_id");
 
@@ -70,7 +71,7 @@ admin_routes.patch("/:id", async (context) => {
 });
 
 // Revoke all sessions for a user
-admin_routes.delete("/:id/sessions", async (context) => {
+admin_routes.delete("/:id/sessions", validate_uuid_params("id"), async (context) => {
     const id = context.req.param("id");
     const current_passkey_id = context.get("passkey_id");
 
@@ -88,7 +89,7 @@ admin_routes.delete("/:id/sessions", async (context) => {
 });
 
 // Delete a passkey
-admin_routes.delete("/:id", async (context) => {
+admin_routes.delete("/:id", validate_uuid_params("id"), async (context) => {
     const id = context.req.param("id");
     const current_passkey_id = context.get("passkey_id");
 
@@ -179,7 +180,7 @@ admin_routes.post("/invites", async (context) => {
 });
 
 // Delete invite token
-admin_routes.delete("/invites/:id", async (context) => {
+admin_routes.delete("/invites/:id", validate_uuid_params("id"), async (context) => {
     const id = context.req.param("id");
     const db = context.get("supabase");
 
