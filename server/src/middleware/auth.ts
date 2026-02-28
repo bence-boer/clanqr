@@ -2,6 +2,13 @@ import { createMiddleware } from "hono/factory";
 import { getCookie } from "hono/cookie";
 import type { AppBindings } from "./supabase";
 
+interface SessionWithPasskey {
+    id: string;
+    passkey_id: string;
+    expires_at: string;
+    passkeys: { role: "admin" | "user" }[] | null;
+}
+
 export function auth_middleware() {
     return createMiddleware<AppBindings>(async (context, next) => {
         const token = getCookie(context, "session");
@@ -23,8 +30,9 @@ export function auth_middleware() {
             return context.json({ error: "Session expired" }, 401);
         }
 
-        const role = (session as unknown as { passkeys?: { role: string }[] }).passkeys?.[0]?.role ?? "user";
-        context.set("passkey_id", session.passkey_id);
+        const typed_session = session as unknown as SessionWithPasskey;
+        const role = typed_session.passkeys?.[0]?.role ?? "user";
+        context.set("passkey_id", typed_session.passkey_id);
         context.set("role", role);
 
         await next();

@@ -4,9 +4,7 @@ import { existsSync, mkdirSync, writeFileSync, readFileSync } from "fs";
 import { join } from "path";
 import type { SupabaseClient } from "../db";
 import type { AgentRunType } from "../types";
-import { COPILOT_BIN, GEMINI_BIN, ENRICHED_PATH, WORKSPACE_DIR } from "../env";
-
-const HOME = process.env.HOME ?? "/home/scoy";
+import { COPILOT_BIN, GEMINI_BIN, ENRICHED_PATH, WORKSPACE_DIR, build_agent_env } from "../env";
 
 export const progress_schema = z.object({
     status: z.enum(["completed", "failed", "partial"]),
@@ -85,7 +83,7 @@ export async function spawn_agent(
         cwd: work_dir,
         stdout: "pipe",
         stderr: "pipe",
-        env: { ...process.env, HOME, PATH: ENRICHED_PATH },
+        env: build_agent_env(),
     });
 
     // 5. Collect output

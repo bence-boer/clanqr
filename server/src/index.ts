@@ -6,6 +6,7 @@ import { logger } from "hono/logger";
 import { env } from "./env";
 import { supabase_middleware, type AppBindings } from "./middleware/supabase";
 import { auth_middleware, admin_middleware } from "./middleware/auth";
+import { rate_limit } from "./middleware/rate_limit";
 import { auth_routes } from "./routes/auth";
 import { projects_routes } from "./routes/projects";
 import { features_routes } from "./routes/features";
@@ -53,6 +54,18 @@ app.use(
         credentials: true,
     })
 );
+// ── Request size limit (M-4.3) ──────────────────────────────────────────
+app.use("*", async (c, next) => {
+    const content_length = parseInt(c.req.header("content-length") ?? "0");
+    if (content_length > 1_000_000) {
+        return c.json({ error: "Request body too large (max 1MB)" }, 413);
+    }
+    await next();
+});
+
+// ── Global rate limit (M-4.2): 100 requests/minute per IP ──────────────
+app.use("*", rate_limit(100, 60_000));
+
 app.use("*", supabase_middleware());
 
 // Health check (no auth)
@@ -60,17 +73,22 @@ app.get("/health", (context) => {
     return context.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// Auth routes (no auth required)
+// Auth routes (no auth required, rate-limited: 10 req/min)
+app.use("/api/auth/*", rate_limit(10, 60_000));
 app.route("/api/auth", auth_routes);
 
 // Protected API routes
 app.use("/api/*", auth_middleware());
+// Agent spawning rate limit (M-4.2): 5 req/min
+app.use("/api/agents/spawn/*", rate_limit(5, 60_000));
 app.route("/api/projects", projects_routes);
 app.route("/api/features", features_routes);
 app.route("/api/tasks", tasks_routes);
 app.route("/api/agents", agents_routes);
 app.route("/api/prompts", prompts_routes);
 app.route("/api/system", system_routes);
+// Chat routes (rate-limited: 20 req/min)
+app.use("/api/chat/*", rate_limit(20, 60_000));
 app.route("/api/chat", chat_routes);
 app.route("/api/traits", traits_routes);
 app.route("/api/skills", skills_routes);
