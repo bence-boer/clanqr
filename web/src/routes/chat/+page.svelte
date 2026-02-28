@@ -65,6 +65,7 @@
     } catch (err) {
       console.error('Failed to load messages:', err);
       error_msg = 'Failed to load messages';
+      toast_store.error('Failed to load messages');
     } finally {
       loading_messages = false;
     }
@@ -78,6 +79,7 @@
     } catch (err) {
       console.error('Failed to create session:', err);
       error_msg = 'Failed to create session';
+      toast_store.error('Failed to create session');
     }
   }
 
@@ -95,6 +97,7 @@
     } catch (err) {
       console.error('Failed to delete session:', err);
       error_msg = 'Failed to delete session';
+      toast_store.error('Failed to delete session');
     }
   }
 

@@ -21,6 +21,7 @@
   let loading_models = $state(false);
 
   import { api } from '$lib/api/client';
+  import { toast_store } from '$lib/stores/toast.svelte';
   import { onMount } from 'svelte';
 
   let last_cli = $state('');
@@ -37,6 +38,7 @@
       }
     } catch (err) {
       console.error('Failed to load models:', err);
+      toast_store.error('Failed to load models');
     } finally {
       loading_models = false;
     }

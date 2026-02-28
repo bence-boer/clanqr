@@ -3,6 +3,7 @@
   import { page } from "$app/state";
   import { api } from "$lib/api/client";
   import { auth_store } from "$lib/stores/auth.svelte";
+  import { toast_store } from "$lib/stores/toast.svelte";
   import { Toast } from "$lib/components";
   import "$lib/styles/global.css";
   import type { SystemStats } from "$lib/types";
@@ -44,6 +45,7 @@
       system_stats = await api.system_stats();
     } catch (err) {
       console.error('Failed to load system stats:', err);
+      toast_store.error('Failed to load system stats');
     }
   }
 

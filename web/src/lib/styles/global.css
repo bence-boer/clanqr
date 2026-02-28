@@ -295,6 +295,35 @@ body {
     font-size: 0.8rem;
 }
 
+/* ── Screen Reader Only ──────────────────────────────────────────────────── */
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ── Stale Data Banner ───────────────────────────────────────────────────── */
+
+.stale-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(212, 175, 55, 0.1);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: var(--radius);
+    color: var(--accent);
+    font-size: 0.8rem;
+    padding: 0.5rem 0.85rem;
+    margin-bottom: 1rem;
+}
+
 .loading {
     display: flex;
     align-items: center;

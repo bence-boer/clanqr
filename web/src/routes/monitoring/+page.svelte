@@ -1,7 +1,7 @@
 <script lang="ts">
   import { api } from '$lib/api/client';
   import { toast_store } from '$lib/stores/toast.svelte';
-  import { use_polling } from '$lib/utils/polling';
+  import { use_polling } from '$lib/utils/polling.svelte';
 
   let agent_status = $state<Record<string, any>>({});
   let selected_log = $state<string | null>(null);
@@ -12,6 +12,7 @@
   async function load_status() {
     try {
       agent_status = await api.agent_status();
+      polling.mark_success();
     } catch (error) {
       console.error('Failed to load agent status:', error);
       toast_store.error('Failed to load agent status');
@@ -20,7 +21,7 @@
     }
   }
 
-  use_polling(load_status, 3000);
+  const polling = use_polling(load_status, 3000);
 
   async function view_log(task_id: string) {
     selected_log = task_id;
@@ -29,6 +30,7 @@
       log_content = result.log || 'No log output yet.';
     } catch (err) {
       console.error('Failed to load log:', err);
+      toast_store.error('Failed to load log');
       log_content = 'Failed to load log.';
     }
   }
@@ -62,7 +64,7 @@
   let failed_count = $derived(entries.filter(([_, a]) => a.status === 'failed').length);
 </script>
 
-<div class="page">
+<div class="page" aria-busy={loading}>
   <div class="page-header">
     <h2>Agent Monitoring</h2>
     {#if running_count > 0}
@@ -72,6 +74,13 @@
       </button>
     {/if}
   </div>
+
+  {#if polling.is_stale}
+    <div class="stale-banner" role="alert">
+      <span class="icon" style="font-size:16px">warning</span>
+      Data may be outdated — unable to reach server
+    </div>
+  {/if}
 
   <div class="stats">
     <div class="stat-card">
