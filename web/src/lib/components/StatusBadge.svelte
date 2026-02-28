@@ -1,55 +1,16 @@
 <script lang="ts">
-  interface Props {
-    status: string;
-  }
+    import { Badge } from '$lib/components/primitives';
+    import { status_class, status_icon } from '$lib/utils/status';
 
-  const { status }: Props = $props();
+    interface Props {
+        status: string;
+    }
 
-  const icon_map: Record<string, string> = {
-    draft: 'edit_note',
-    submitted: 'send',
-    in_progress: 'sync',
-    done: 'check_circle',
-    pending_approval: 'pending',
-    approved: 'thumb_up',
-    complete: 'check_circle',
-    completed: 'check_circle',
-    pending: 'hourglass_empty',
-    queued: 'queue',
-    running: 'sync',
-    failed: 'error',
-    stopped: 'stop_circle',
-    skipped: 'skip_next',
-    fetched: 'check',
-    error: 'error',
-  };
+    const { status }: Props = $props();
 
-  const class_map: Record<string, string> = {
-    draft: 'muted',
-    submitted: 'info',
-    in_progress: 'warn',
-    done: 'success',
-    pending_approval: 'warn',
-    approved: 'info',
-    complete: 'success',
-    completed: 'success',
-    pending: 'muted',
-    queued: 'muted',
-    running: 'warn',
-    failed: 'danger',
-    stopped: 'muted',
-    skipped: 'warn',
-    fetched: 'success',
-    error: 'danger',
-  };
-
-  const key = $derived(status.toLowerCase());
-  const icon = $derived(icon_map[key] ?? 'help');
-  const cls = $derived(class_map[key] ?? 'muted');
-  const label = $derived(status.replace(/_/g, ' '));
+    const icon = $derived(status_icon(status));
+    const badge_variant = $derived(status_class(status));
+    const label = $derived(status.replace(/_/g, ' '));
 </script>
 
-<span class="badge badge-{cls}">
-  <span class="icon" style="font-size:11px">{icon}</span>
-  {label}
-</span>
+<Badge variant={badge_variant} {icon}>{label}</Badge>

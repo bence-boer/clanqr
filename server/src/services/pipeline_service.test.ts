@@ -5,7 +5,7 @@ import { create_mock_supabase } from "../test-utils";
 
 let mock_store: Record<string, any[]> = {};
 
-const mock_stop_process = mock(() => {});
+const mock_stop_process = mock(() => { });
 const mock_get_log = mock(() => "test log output");
 let mock_can_spawn_result = true;
 
@@ -28,15 +28,15 @@ mock.module("../env", () => ({
 
 mock.module("./agent_service", () => ({
     can_spawn_agent: () => mock_can_spawn_result,
-    increment_agent_count: () => {},
-    decrement_agent_count: () => {},
-    set_on_agent_freed: () => {},
+    increment_agent_count: () => { },
+    decrement_agent_count: () => { },
+    set_on_agent_freed: () => { },
     get_agent_concurrency: () => ({ active: 0, max: 3 }),
     agent_service: {
         stop_process: mock_stop_process,
         get_log: mock_get_log,
         get_all_processes: () => ({}),
-        stop_all: () => {},
+        stop_all: () => { },
         spawn_manager: () => Promise.resolve(),
         cleanup_old_workspaces: () => 0,
     },
@@ -58,10 +58,10 @@ mock.module("./feature_utils", () => ({
 
 mock.module("../utils/logger", () => ({
     logger: {
-        info: () => {},
-        warn: () => {},
-        error: () => {},
-        debug: () => {},
+        info: () => { },
+        warn: () => { },
+        error: () => { },
+        debug: () => { },
     },
 }));
 

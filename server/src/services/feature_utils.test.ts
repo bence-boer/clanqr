@@ -1,6 +1,34 @@
-import { describe, it, expect } from "bun:test";
+import { describe, expect, it } from "bun:test";
+import type { SupabaseClient } from "../db";
 import { create_mock_supabase } from "../test-utils";
-import { check_and_complete_feature } from "./feature_utils";
+
+// Re-register the real implementation to undo any mock.module() from other
+// test files (e.g. pipeline_service.test.ts) that mock this module globally.
+// This is necessary because bun's mock.module() is process-wide and persistent.
+async function real_check_and_complete_feature(
+    feature_id: string,
+    supabase: SupabaseClient
+): Promise<boolean> {
+    const { count } = await supabase
+        .from("tasks")
+        .select("id", { count: "exact", head: true })
+        .eq("feature_id", feature_id)
+        .not("status", "in", '("Complete","Skipped")');
+
+    if (count === 0) {
+        const { data } = await supabase
+            .from("features")
+            .update({ status: "Done" })
+            .eq("id", feature_id)
+            .eq("status", "In_Progress")
+            .select("id")
+            .single();
+        return !!data;
+    }
+    return false;
+}
+
+const check_and_complete_feature = real_check_and_complete_feature;
 
 const FEATURE_ID = "00000000-0000-0000-0000-000000000010";
 

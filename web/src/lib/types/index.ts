@@ -4,6 +4,7 @@ export type { User, InviteToken, InviteStatus } from "./auth";
 export type { AgentProcess, AgentRun, PipelineStatus } from "./pipeline";
 export type { Trait, TraitAssignment, ResolvedTrait, PromptRecord, SkillInfo, SkillLink } from "./prompts";
 export type { SystemStats, SystemAlert, UsageSummary, UsageBreakdown, ChatSession, ChatMessage } from "./system";
+export type { MaterialSymbol } from "./material-symbols";
 
 // Re-export shared status types for convenience
 export type {
