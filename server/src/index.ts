@@ -134,6 +134,23 @@ async function boot() {
             .eq("status", "In_Progress")
             .in("id", interrupted_feature_ids);
     }
+
+    // M-6.5: Reset In_Progress features that have no tasks (missing tasks.json scenario)
+    const { data: in_progress_features } = await supabase
+        .from("features")
+        .select("id, tasks(id)")
+        .eq("status", "In_Progress");
+
+    for (const feature of in_progress_features ?? []) {
+        if (!feature.tasks?.length) {
+            await supabase
+                .from("features")
+                .update({ status: "Submitted" })
+                .eq("id", feature.id);
+            console.log(`[boot] Reset feature ${feature.id} to Submitted (no tasks found)`);
+        }
+    }
+
     console.log("✅ Stale process recovery complete");
 
     // 2. Sync base prompts from repo files → DB

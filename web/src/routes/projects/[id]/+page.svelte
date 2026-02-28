@@ -352,6 +352,7 @@
     const map: Record<string, string> = {
       draft: 'edit_note', submitted: 'send', in_progress: 'sync', done: 'check_circle',
       pending_approval: 'pending', approved: 'thumb_up', complete: 'check_circle',
+      failed: 'error', skipped: 'skip_next',
       pending: 'hourglass_empty', fetched: 'check', error: 'error',
     };
     return map[status.toLowerCase()] ?? 'help';
@@ -361,6 +362,7 @@
     const map: Record<string, string> = {
       draft: 'muted', submitted: 'info', in_progress: 'warn', done: 'success',
       pending_approval: 'warn', approved: 'info', complete: 'success',
+      failed: 'danger', skipped: 'warn',
       pending: 'muted', fetched: 'success', error: 'danger',
     };
     return map[status.toLowerCase()] ?? 'muted';

@@ -10,8 +10,6 @@ import { spawn_agent } from "./spawn_agent";
 
 const PIPELINE_WORKSPACE_DIR = WORKSPACE_DIR;
 
-const TASK_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
-
 type PipelineState = "idle" | "running" | "paused";
 
 interface ActiveRun {
@@ -48,17 +46,16 @@ class PipelineService {
 
             if (!task) {
                 this.state = "idle";
-                this.is_processing = false;
                 return;
             }
 
             this.state = "running";
-            this.is_processing = false;
             await this.execute_task(task, supabase);
         } catch (error) {
             console.error("Pipeline process_next error:", error);
-            this.is_processing = false;
             this.state = "idle";
+        } finally {
+            this.is_processing = false;
         }
     }
 
@@ -132,7 +129,7 @@ class PipelineService {
                 prompt,
                 cli,
                 model,
-                timeout_ms: TASK_TIMEOUT_MS,
+                timeout_ms: (task.features?.task_timeout_minutes ?? 10) * 60 * 1000,
                 task_id,
             }, supabase);
 
