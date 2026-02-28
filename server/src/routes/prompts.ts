@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { AppBindings } from "../middleware/supabase";
 import { prompt_service } from "../services/prompt_service";
+import { logger } from "../utils/logger";
 
 const update_schema = z.object({ content: z.string().min(1) });
 const role_schema = z.enum(["manager", "ralph"]);
@@ -17,7 +18,7 @@ prompts_routes.get("/", async (context) => {
         .order("role");
 
     if (error) {
-        console.error(`[GET /api/prompts]`, error);
+        logger.error("Failed to fetch prompts", { route: "GET /api/prompts", error: String(error) });
         return context.json({ error: "Failed to fetch prompts" }, 500);
     }
     return context.json(data);

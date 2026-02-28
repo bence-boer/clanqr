@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { AppBindings } from "../middleware/supabase";
 import { get_usage_summary, get_usage_breakdown } from "../services/usage_service";
+import { logger } from "../utils/logger";
 
 const history_query_schema = z.object({
     page: z.coerce.number().int().min(1).default(1),
@@ -19,7 +20,7 @@ usage_routes.get("/summary", async (context) => {
         const summary = await get_usage_summary(supabase);
         return context.json(summary);
     } catch (error) {
-        console.error(`[GET /api/usage/summary]`, error);
+        logger.error("Failed to fetch usage summary", { route: "GET /api/usage/summary", error: String(error) });
         return context.json({ error: "Failed to fetch usage summary" }, 500);
     }
 });
@@ -52,7 +53,7 @@ usage_routes.get("/history", async (context) => {
 
     const { data, count, error } = await query;
     if (error) {
-        console.error(`[GET /api/usage/history]`, error);
+        logger.error("Failed to fetch history", { route: "GET /api/usage/history", error: String(error) });
         return context.json({ error: "Failed to fetch history" }, 500);
     }
 
@@ -72,7 +73,7 @@ usage_routes.get("/breakdown", async (context) => {
         const breakdown = await get_usage_breakdown(supabase);
         return context.json(breakdown);
     } catch (error) {
-        console.error(`[GET /api/usage/breakdown]`, error);
+        logger.error("Failed to fetch breakdown", { route: "GET /api/usage/breakdown", error: String(error) });
         return context.json({ error: "Failed to fetch breakdown" }, 500);
     }
 });

@@ -1,13 +1,15 @@
 <script lang="ts">
-  import type { SystemStats } from '$lib/types';
+  import type { SystemStats, SystemAlert } from '$lib/types';
 
   let {
     system_stats,
+    system_alerts = [],
     stats_auto_refresh,
     onrefresh,
     ontoggle_auto_refresh,
   }: {
     system_stats: SystemStats | null;
+    system_alerts?: SystemAlert[];
     stats_auto_refresh: boolean;
     onrefresh: () => void;
     ontoggle_auto_refresh: () => void;
@@ -32,6 +34,17 @@
       </button>
     </div>
   </div>
+
+  {#if system_alerts.length > 0}
+    <div class="alerts" role="alert">
+      {#each system_alerts as alert}
+        <div class="alert" class:alert-warning={alert.severity === 'warning'} class:alert-critical={alert.severity === 'critical'}>
+          <span class="icon" style="font-size:14px">{alert.severity === 'critical' ? 'error' : 'warning'}</span>
+          {alert.message}
+        </div>
+      {/each}
+    </div>
+  {/if}
 
   {#if system_stats}
     <div class="system-stats-grid">
@@ -178,6 +191,35 @@
   .muted-text {
     color: var(--fg-muted);
     font-size: 0.875rem;
+  }
+
+  .alerts {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .alert {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0.85rem;
+    border-radius: var(--radius);
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+
+  .alert-warning {
+    background: rgba(244, 162, 97, 0.12);
+    color: #f4a261;
+    border: 1px solid rgba(244, 162, 97, 0.3);
+  }
+
+  .alert-critical {
+    background: rgba(201, 84, 74, 0.12);
+    color: var(--danger);
+    border: 1px solid rgba(201, 84, 74, 0.3);
   }
 
   @media (max-width: 768px) {

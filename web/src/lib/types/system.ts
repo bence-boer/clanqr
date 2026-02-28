@@ -12,6 +12,14 @@ export interface SystemStats {
     uptime_seconds: number;
 }
 
+export interface SystemAlert {
+    type: "disk_space" | "memory" | "temperature";
+    message: string;
+    severity: "warning" | "critical";
+    value: number;
+    threshold: number;
+}
+
 export interface UsageSummary {
     total_runs: number;
     today_runs: number;

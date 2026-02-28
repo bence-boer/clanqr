@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "../db";
 import { COPILOT_BIN, GEMINI_BIN, ENRICHED_PATH, build_agent_env } from "../env";
+import { logger } from "../utils/logger";
+import { can_spawn_agent, increment_agent_count, decrement_agent_count } from "./agent_service";
 
 interface ActiveChat {
     session_id: string;
@@ -16,6 +18,11 @@ class ChatService {
         supabase: SupabaseClient,
         on_token: (chunk: string) => void
     ): Promise<void> {
+        // M-10.4: Check agent concurrency limit
+        if (!can_spawn_agent()) {
+            throw new Error("Agent concurrency limit reached — please try again shortly");
+        }
+
         // Insert user message
         await supabase.from("chat_messages").insert({
             session_id,
@@ -51,6 +58,7 @@ class ChatService {
             }
         );
 
+        increment_agent_count();
         this.active_sessions.set(session_id, { session_id, process: proc });
 
         let full_response = "";
@@ -67,11 +75,12 @@ class ChatService {
                     on_token(chunk);
                 }
             } catch (error) {
-                console.warn("[chat_service] Stream read error:", error);
+                logger.warn("Stream read error", { service: "chat", session_id, error: String(error) });
             }
         }
 
         const exit_code = await proc.exited;
+        decrement_agent_count();
         this.active_sessions.delete(session_id);
 
         const finished_at = new Date().toISOString();

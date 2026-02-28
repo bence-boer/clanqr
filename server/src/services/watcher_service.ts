@@ -3,6 +3,7 @@ import type { SupabaseClient } from "../db";
 import type { FeatureRow } from "../types";
 import { agent_service } from "./agent_service";
 import { pipeline_service } from "./pipeline_service";
+import { logger } from "../utils/logger";
 
 const POLL_INTERVAL_MS = 5000;
 const MAX_MANAGER_RETRIES = 3;
@@ -14,16 +15,16 @@ class WatcherService {
     start() {
         if (this.is_running) return;
         this.is_running = true;
-        console.log("👁️ Watcher service started (polling every 5s for submitted features)");
+        logger.info("Watcher service started", { service: "watcher", poll_interval_ms: POLL_INTERVAL_MS });
 
         this.interval = setInterval(() => {
             this.poll().catch((error) => {
-                console.error("Watcher poll error:", error);
+                logger.error("Watcher poll error", { service: "watcher", error: String(error) });
             });
         }, POLL_INTERVAL_MS);
 
         // Run immediately
-        this.poll().catch(console.error);
+        this.poll().catch((err) => logger.error("Watcher initial poll error", { service: "watcher", error: String(err) }));
     }
 
     stop() {
@@ -32,7 +33,7 @@ class WatcherService {
             this.interval = null;
         }
         this.is_running = false;
-        console.log("👁️ Watcher service stopped");
+        logger.info("Watcher service stopped", { service: "watcher" });
     }
 
     private async poll() {
@@ -82,9 +83,11 @@ class WatcherService {
 
             if (recent_run) continue;
 
-            console.log(`📋 Spawning manager for feature: ${feature.title}`);
+            logger.info("Spawning manager for feature", { service: "watcher", feature_id: feature.id, title: feature.title });
             this.spawned_features.add(feature.id);
-            this.spawn_manager_and_maybe_auto_approve(feature, supabase).catch(console.error);
+            this.spawn_manager_and_maybe_auto_approve(feature, supabase).catch(
+                (err) => logger.error("Manager spawn error", { service: "watcher", feature_id: feature.id, error: String(err) })
+            );
         }
     }
 
@@ -106,8 +109,10 @@ class WatcherService {
                     .eq("feature_id", feature.id)
                     .eq("status", "Pending_Approval");
 
-                console.log(`✅ Auto-approved ${tasks.length} tasks for feature: ${feature.title}`);
-                pipeline_service.process_next().catch(console.error);
+                logger.info("Auto-approved tasks", { service: "watcher", feature_id: feature.id, count: tasks.length, title: feature.title });
+                pipeline_service.process_next().catch(
+                    (err) => logger.error("Pipeline process_next error after auto-approve", { service: "watcher", error: String(err) })
+                );
             }
         }
     }

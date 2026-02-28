@@ -5,6 +5,8 @@ import type { AppBindings } from "../middleware/supabase";
 import { validate_uuid_params } from "../middleware/validate_params";
 import { get_users, check_last_admin, get_invites, generate_invite } from "../services/admin_service";
 import { agent_service } from "../services/agent_service";
+import { get_metrics } from "../middleware/metrics";
+import { logger } from "../utils/logger";
 
 const update_role_schema = z.object({
     role: z.enum(["admin", "user"]),
@@ -27,7 +29,7 @@ admin_routes.get("/", async (context) => {
         const users = await get_users(db);
         return context.json(users);
     } catch (error) {
-        console.error(`[GET /api/admin]`, error);
+        logger.error("Failed to fetch users", { route: "GET /api/admin", error: String(error) });
         return context.json({ error: "Failed to fetch users" }, 500);
     }
 });
@@ -64,7 +66,7 @@ admin_routes.patch("/:id", validate_uuid_params("id"), async (context) => {
         .single();
 
     if (error) {
-        console.error(`[PATCH /api/admin/${id}]`, error);
+        logger.error("Failed to update role", { route: "PATCH /api/admin/:id", id, error: String(error) });
         return context.json({ error: "Failed to update role" }, 500);
     }
     return context.json(data);
@@ -82,7 +84,7 @@ admin_routes.delete("/:id/sessions", validate_uuid_params("id"), async (context)
     const db = context.get("supabase");
     const { error } = await db.from("sessions").delete().eq("passkey_id", id);
     if (error) {
-        console.error(`[DELETE /api/admin/${id}/sessions]`, error);
+        logger.error("Failed to revoke sessions", { route: "DELETE /api/admin/:id/sessions", id, error: String(error) });
         return context.json({ error: "Failed to revoke sessions" }, 500);
     }
     return context.json({ success: true });
@@ -114,7 +116,7 @@ admin_routes.delete("/:id", validate_uuid_params("id"), async (context) => {
 
     const { error } = await db.from("passkeys").delete().eq("id", id);
     if (error) {
-        console.error(`[DELETE /api/admin/${id}]`, error);
+        logger.error("Failed to delete user", { route: "DELETE /api/admin/:id", id, error: String(error) });
         return context.json({ error: "Failed to delete user" }, 500);
     }
     return context.json({ success: true });
@@ -145,7 +147,7 @@ admin_routes.get("/invites", async (context) => {
         const invites = await get_invites(db);
         return context.json(invites);
     } catch (error) {
-        console.error(`[GET /api/admin/invites]`, error);
+        logger.error("Failed to fetch invites", { route: "GET /api/admin/invites", error: String(error) });
         return context.json({ error: "Failed to fetch invites" }, 500);
     }
 });
@@ -174,7 +176,7 @@ admin_routes.post("/invites", async (context) => {
         const invite = await generate_invite(db, { role, expires_at, label, created_by_passkey_id });
         return context.json(invite, 201);
     } catch (error) {
-        console.error(`[POST /api/admin/invites]`, error);
+        logger.error("Failed to create invite", { route: "POST /api/admin/invites", error: String(error) });
         return context.json({ error: "Failed to create invite" }, 500);
     }
 });
@@ -195,7 +197,7 @@ admin_routes.delete("/invites/:id", validate_uuid_params("id"), async (context) 
 
     const { error } = await db.from("invite_tokens").delete().eq("id", id);
     if (error) {
-        console.error(`[DELETE /api/admin/invites/${id}]`, error);
+        logger.error("Failed to delete invite", { route: "DELETE /api/admin/invites/:id", id, error: String(error) });
         return context.json({ error: "Failed to delete invite" }, 500);
     }
     return context.json({ success: true });
@@ -205,4 +207,9 @@ admin_routes.delete("/invites/:id", validate_uuid_params("id"), async (context) 
 admin_routes.post("/cleanup-workspaces", async (context) => {
     const cleaned = agent_service.cleanup_old_workspaces(7);
     return context.json({ cleaned });
+});
+
+// M-10.3: Request metrics endpoint
+admin_routes.get("/metrics", async (context) => {
+    return context.json(get_metrics());
 });
