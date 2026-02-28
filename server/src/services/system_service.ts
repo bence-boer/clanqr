@@ -236,7 +236,7 @@ export function check_system_alerts(stats: SystemStats): SystemAlert[] {
 
 // --- Model listing ---
 
-import { COPILOT_BIN, ENRICHED_PATH } from "../env";
+import { COPILOT_BIN, build_agent_env } from "../env";
 
 interface ModelOption {
     value: string;
@@ -270,7 +270,7 @@ export async function get_models(cli: string): Promise<ModelOption[]> {
         const proc = Bun.spawn([COPILOT_BIN, "--help"], {
             stdout: "pipe",
             stderr: "pipe",
-            env: { ...process.env, PATH: ENRICHED_PATH },
+            env: build_agent_env(),
         });
         const output = await new Response(proc.stdout).text();
         await proc.exited;

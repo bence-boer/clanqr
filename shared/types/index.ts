@@ -11,4 +11,5 @@ export type {
     FailureBehavior,
     PipelineState,
     MessageRole,
+    ResourceStatus,
 } from "./status";

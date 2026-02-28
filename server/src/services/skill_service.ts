@@ -1,9 +1,8 @@
 import { existsSync, readdirSync, readFileSync } from "fs";
 import { join } from "path";
-import { homedir } from "os";
 import { logger } from "../utils/logger";
 
-const SKILLS_DIR = join(homedir(), ".copilot", "skills");
+const SKILLS_DIR = join(process.env.HOME ?? "/tmp", ".copilot", "skills");
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 export interface SkillInfo {

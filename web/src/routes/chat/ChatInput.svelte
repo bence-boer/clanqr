@@ -3,10 +3,12 @@
     input_text = $bindable(''),
     is_streaming,
     onsend,
+    onstop,
   }: {
     input_text: string;
     is_streaming: boolean;
     onsend: () => void;
+    onstop?: () => void;
   } = $props();
 
   function handle_key_down(event: KeyboardEvent) {
@@ -26,17 +28,23 @@
     onkeydown={handle_key_down}
     rows={3}
   ></textarea>
-  <button
-    class="btn-send"
-    onclick={onsend}
-    disabled={!input_text.trim() || is_streaming}
-  >
-    {#if is_streaming}
-      <span class="icon spin">progress_activity</span>
-    {:else}
-      <span class="icon">send</span>
-    {/if}
-  </button>
+  {#if is_streaming && onstop}
+    <button class="btn-stop" onclick={onstop} title="Stop generating">
+      <span class="icon">stop</span>
+    </button>
+  {:else}
+    <button
+      class="btn-send"
+      onclick={onsend}
+      disabled={!input_text.trim() || is_streaming}
+    >
+      {#if is_streaming}
+        <span class="icon spin">progress_activity</span>
+      {:else}
+        <span class="icon">send</span>
+      {/if}
+    </button>
+  {/if}
 </div>
 
 <style>
@@ -82,6 +90,23 @@
 
   .btn-send:disabled { opacity: 0.5; cursor: not-allowed; }
   .btn-send:not(:disabled):hover { opacity: 0.9; }
+
+  .btn-stop {
+    background: var(--danger);
+    border: none;
+    border-radius: var(--radius);
+    color: #fff;
+    width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    align-self: flex-end;
+    height: 44px;
+    flex-shrink: 0;
+  }
+  .btn-stop:hover { opacity: 0.9; }
 
   .spin { animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }

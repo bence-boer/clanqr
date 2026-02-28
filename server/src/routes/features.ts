@@ -2,36 +2,8 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { AppBindings } from "../middleware/supabase";
 import { validate_uuid_params } from "../middleware/validate_params";
+import { validate_resource_url } from "../utils/ssrf";
 import { logger } from "../utils/logger";
-
-/** Validate that a resource URL is safe (no SSRF) */
-function validate_resource_url(url_string: string): boolean {
-    try {
-        const url = new URL(url_string);
-        if (!["http:", "https:"].includes(url.protocol)) return false;
-        const hostname = url.hostname;
-        if (
-            hostname === "localhost" ||
-            hostname === "127.0.0.1" ||
-            hostname === "::1" ||
-            hostname.startsWith("10.") ||
-            hostname.startsWith("192.168.") ||
-            hostname.startsWith("172.16.") ||
-            hostname.startsWith("172.17.") ||
-            hostname.startsWith("172.18.") ||
-            hostname.startsWith("172.19.") ||
-            hostname.startsWith("172.2") ||
-            hostname.startsWith("172.30.") ||
-            hostname.startsWith("172.31.") ||
-            hostname.startsWith("169.254.") ||
-            hostname.endsWith(".internal") ||
-            hostname.endsWith(".local")
-        ) return false;
-        return true;
-    } catch {
-        return false;
-    }
-}
 
 const create_feature_schema = z.object({
     project_id: z.string().uuid(),

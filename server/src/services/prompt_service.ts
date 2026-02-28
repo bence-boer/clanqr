@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
 import { create_supabase_client } from "../db";
+import type { SupabaseClient } from "../db";
 import { env, WORKSPACE_DIR } from "../env";
 import { resolve_task_traits, resolve_feature_traits } from "./trait_service";
 import { skill_service } from "./skill_service";
@@ -38,9 +39,9 @@ class PromptService {
         }
     }
 
-    async get_prompt(role: string): Promise<string | null> {
-        const supabase = create_supabase_client();
-        const { data, error } = await supabase
+    async get_prompt(role: string, supabase?: SupabaseClient): Promise<string | null> {
+        const db = supabase ?? create_supabase_client();
+        const { data, error } = await db
             .from("prompts")
             .select("content")
             .eq("role", role)
@@ -50,8 +51,8 @@ class PromptService {
         return data.content;
     }
 
-    async update_prompt(role: string, content: string): Promise<boolean> {
-        const supabase = create_supabase_client();
+    async update_prompt(role: string, content: string, supabase?: SupabaseClient): Promise<boolean> {
+        const db = supabase ?? create_supabase_client();
 
         // Write back to repo file
         const file_path = PROMPT_FILES[role];
@@ -59,7 +60,7 @@ class PromptService {
             writeFileSync(file_path, content, "utf-8");
         }
 
-        const { error } = await supabase
+        const { error } = await db
             .from("prompts")
             .update({ content, updated_at: new Date().toISOString() })
             .eq("role", role);
@@ -70,21 +71,22 @@ class PromptService {
     // Build the full composed prompt for a Ralph task execution
     async resolve_for_task(
         task_id: string,
-        task_spec: { description: string; feature_title: string; project_name: string }
+        task_spec: { description: string; feature_title: string; project_name: string },
+        supabase?: SupabaseClient
     ): Promise<string> {
-        const supabase = create_supabase_client();
+        const db = supabase ?? create_supabase_client();
 
         // 1. Base prompt from DB
-        const base_prompt = await this.get_prompt("ralph");
+        const base_prompt = await this.get_prompt("ralph", db);
         const base_section = base_prompt
             ? base_prompt
             : "You are Ralph, a coding agent. Execute the assigned task carefully and thoroughly.";
 
         // 2. Resolve traits for this task
-        const traits = await resolve_task_traits(supabase, task_id, "ralph");
+        const traits = await resolve_task_traits(db, task_id, "ralph");
 
         // 3. Get linked skills content
-        const { data: skill_links } = await supabase
+        const { data: skill_links } = await db
             .from("skill_links")
             .select("skill_name")
             .eq("task_id", task_id);
@@ -122,17 +124,18 @@ class PromptService {
     async resolve_for_manager(
         feature_spec: { title: string; description: string | null; project: string; resources: { url: string; title?: string | null }[] },
         feature_id: string,
-        project_id: string
+        project_id: string,
+        supabase?: SupabaseClient
     ): Promise<string> {
-        const supabase = create_supabase_client();
+        const db = supabase ?? create_supabase_client();
 
-        const base_prompt = await this.get_prompt("manager");
+        const base_prompt = await this.get_prompt("manager", db);
         const base_section = base_prompt
             ? base_prompt
             : "You are a Manager Agent. Research and plan — never write implementation code.";
 
         // Resolve traits for this feature (manager target)
-        const traits = await resolve_feature_traits(supabase, feature_id, project_id, "manager");
+        const traits = await resolve_feature_traits(db, feature_id, project_id, "manager");
 
         const parts: string[] = [base_section];
 

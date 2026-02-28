@@ -101,6 +101,19 @@ class MockQueryBuilder {
         return this;
     }
 
+    not(column: string, op: string, value: any) {
+        if (op === "in") {
+            const values = String(value)
+                .replace(/^\(|\)$/g, "")
+                .split(",")
+                .map(v => v.replace(/^"|"$/g, "").trim());
+            this.filters.push((row) => !values.includes(row[column]));
+        } else if (op === "eq") {
+            this.filters.push((row) => row[column] !== value);
+        }
+        return this;
+    }
+
     order(_column: string, _opts?: { ascending?: boolean; referencedTable?: string }) {
         // Simplified: no-op for mock
         return this;

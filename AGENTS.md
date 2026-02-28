@@ -356,3 +356,63 @@ git add -A && git commit --fixup=<sha>
 git rebase -i --autosquash <sha>^
 ```
 
+---
+
+## 19 · Known Architectural Decisions
+
+### Single-Tenant Design
+This system is single-tenant by design. There is one workspace, one set of projects, and one pipeline queue.
+All authenticated users share the same data. **Do not add multi-tenant isolation** — it would require
+restructuring the entire data model, pipeline, and agent spawning system. If multi-tenancy is needed,
+it should be a ground-up redesign, not a bolt-on.
+
+### RLS Policies
+Supabase Row-Level Security (RLS) is **not enabled** on most tables. The server uses the service-role key,
+bypassing RLS. This is acceptable in a single-tenant system where the API layer enforces access control
+via `auth_middleware` and `admin_middleware`. **If RLS is ever needed**, add policies incrementally per table
+and test each one against the API — PostgREST behavior changes silently when RLS is enabled.
+
+### SSR Disabled
+SvelteKit runs in SPA mode (`ssr: false` in `+layout.ts`). All pages load client-side. This means:
+- No server-side rendering, no SEO (acceptable for an internal tool)
+- Auth state is checked client-side via `onMount` — a brief flash is possible on protected pages
+- Data fetching is done via `onMount` + polling, not SvelteKit `load()` functions
+- **Do not enable SSR** without first solving auth token forwarding to the Hono API
+
+---
+
+## 20 · Stabilization Lessons Learned
+
+These rules were extracted from a comprehensive stabilization audit. They encode patterns
+that caused real failures in this codebase.
+
+### Concurrency & Process Management
+- Every `increment_agent_count()` must have a matching `decrement_agent_count()` in a `finally` block. A leaked counter permanently reduces concurrency.
+- `cancel()` functions must decrement counts. The happy path is not the only path — aborts, timeouts, and user cancels must all clean up.
+- Manager agents must respect the same concurrency limits as task agents. A manager that bypasses `can_spawn_agent()` can deadlock the pipeline.
+- Use `setTimeout(0)` for recursive-like loops (e.g., `process_next()`). Actual recursion on a queue risks stack overflow on long runs.
+- When `can_spawn_agent()` returns false, retry with a short delay — don't silently drop the task. Register an `on_agent_freed` callback to wake the pipeline immediately.
+
+### Data Integrity
+- Supabase mutations (`.insert()`, `.update()`, `.delete()`) can fail silently — always check `.error` on the result.
+- Use optimistic locking for state transitions: `.update({status: "Complete"}).eq("status", "In_Progress")` prevents double-completion.
+- Never trust in-memory Sets/Maps as the source of truth after restart. The DB is the only durable state.
+- Wrap polling reconciliation with key-based identity: `Object.assign(existing, incoming)` instead of replacing arrays wholesale, to avoid UI flicker and lost scroll position.
+
+### Environment & Security
+- Never spread `...process.env` into `Bun.spawn`. Build an explicit env allowlist via a `build_agent_env()` function.
+- Validate all env vars via a Zod schema in `env.ts` at startup. If `parseInt()` returns NaN, you won't notice until production.
+- SSRF validation must block: `127.x`, `10.x`, `172.16-31.x`, `192.168.x`, `169.254.x`, `::1`, `fc00::/7`, decimal IPs, `file://` schemes.
+- X-Forwarded-For: use the **rightmost** entry (last trusted proxy), not the leftmost (client-spoofable).
+
+### Frontend Patterns
+- CSS custom properties must match exactly: `--fg-muted` (not `--text-muted`), `--bg-surface` (not `--surface`). A wrong name silently renders nothing.
+- Error toasts should auto-dismiss at 10s (not 5s) — users need time to read error details.
+- Every page over 300 lines must be decomposed into subcomponents. The `projects/[id]/+page.svelte` hit 918 lines before being split into FeatureList, FeatureDetail, TaskList.
+- Polling pages must reconcile by key, not replace arrays. Use `Object.assign(existing_item, new_item)` to preserve object identity.
+- Auth challenge stores must be keyed per-challenge (`auth:${challenge}`), not a single key — concurrent login attempts will clobber each other.
+
+### Prompts
+- Delimit all user-supplied content in agent prompts with `<user_input>` tags to reduce prompt injection surface.
+- Validate agent output with Zod before DB insertion. `JSON.parse()` alone is not enough — structural validation catches malformed but parseable output.
+

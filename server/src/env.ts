@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { join } from "path";
 
-const env_schema = z.object({
+export const env_schema = z.object({
     SUPABASE_URL: z.string().url().default("http://127.0.0.1:54321"),
     SUPABASE_KEY: z.string().min(1, "SUPABASE_KEY environment variable is required"),
     RP_ID: z.string().default("localhost"),
@@ -14,6 +14,8 @@ const env_schema = z.object({
     WORKSPACE_DIR: z.string().optional(),
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
     PATH: z.string().default("/usr/local/bin:/usr/bin:/bin"),
+    LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+    MAX_CONCURRENT_AGENTS: z.coerce.number().int().min(1).default(3),
 });
 
 export type Env = z.infer<typeof env_schema>;

@@ -43,8 +43,9 @@
 
   function get_run_ref_label(run: AgentRun): string {
     const ref_id = run.feature_id ?? run.task_id ?? run.session_id;
-    if (ref_id) return `${run.type === 'manager' ? 'Feature' : run.type === 'ralph' ? 'Task' : 'Chat'} ${ref_id.slice(0, 8)}…`;
-    return run.type;
+    if (!ref_id) return run.type;
+    const kind = run.type === 'manager' ? 'Feature' : run.type === 'ralph' ? 'Task' : 'Chat';
+    return `${kind} · ${ref_id.slice(0, 12)}`;
   }
 
   function format_ms(ms: number | null): string {

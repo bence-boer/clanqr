@@ -47,12 +47,18 @@ export async function spawn_agent(
     const { agent_type, work_dir, spec_file, spec_data, prompt, cli, model, timeout_ms } = options;
 
     // 1. Prepare workspace
-    mkdirSync(work_dir, { recursive: true });
-    writeFileSync(join(work_dir, spec_file), JSON.stringify(spec_data, null, 2));
+    try {
+        mkdirSync(work_dir, { recursive: true });
+        writeFileSync(join(work_dir, spec_file), JSON.stringify(spec_data, null, 2));
+    } catch (error) {
+        const msg = error instanceof Error ? error.message : "Unknown error";
+        logger.error("Failed to prepare agent workspace", { service: "spawn_agent", work_dir, error: msg });
+        throw new Error(`Workspace preparation failed: ${msg}`);
+    }
 
     // 2. Create agent_runs record
     const started_at = new Date().toISOString();
-    const { data: run_record } = await supabase
+    const { data: run_record, error: insert_error } = await supabase
         .from("agent_runs")
         .insert({
             type: agent_type,
@@ -66,6 +72,7 @@ export async function spawn_agent(
         .select("id")
         .single();
 
+    if (insert_error) logger.error("Failed to insert agent_runs record", { service: "spawn_agent", error: insert_error.message });
     const run_id: string = run_record?.id ?? "";
 
     // 3. Build spawn args
@@ -87,8 +94,23 @@ export async function spawn_agent(
         env: build_agent_env(),
     });
 
-    // 5. Collect output
-    const collect_promise = collect_output(proc, (chunk) => { log += chunk; });
+    // 5. Collect output (capped at 1MB)
+    const MAX_LOG_BUFFER = 1024 * 1024;
+    let log_dropped_bytes = 0;
+    const on_chunk = (chunk: string) => {
+        if (log.length + chunk.length > MAX_LOG_BUFFER) {
+            const available = MAX_LOG_BUFFER - log.length;
+            if (available > 0) {
+                log += chunk.slice(0, available);
+                log_dropped_bytes += chunk.length - available;
+            } else {
+                log_dropped_bytes += chunk.length;
+            }
+        } else {
+            log += chunk;
+        }
+    };
+    const collect_promise = collect_output(proc, on_chunk);
 
     // 6. Wait for completion (with optional timeout)
     let exit_code: number;
@@ -123,7 +145,7 @@ export async function spawn_agent(
     const progress_data = read_progress(work_dir);
     const succeeded = exit_code === 0;
 
-    await supabase
+    const { error: update_error } = await supabase
         .from("agent_runs")
         .update({
             status: succeeded ? "completed" : "failed",
@@ -135,6 +157,7 @@ export async function spawn_agent(
             ...(exit_code === -1 ? { error: "Task timed out" } : {}),
         })
         .eq("id", run_id);
+    if (update_error) logger.error("Failed to update agent_runs record", { service: "spawn_agent", run_id, error: update_error.message });
 
     return { exit_code, log, run_id, work_dir };
 }

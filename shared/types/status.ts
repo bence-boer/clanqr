@@ -10,4 +10,5 @@ export type TraitTarget = "manager" | "ralph";
 export type TraitScope = "project" | "feature" | "task";
 export type FailureBehavior = "stop" | "retry" | "skip";
 export type PipelineState = "idle" | "running" | "paused";
+export type ResourceStatus = "Pending" | "Fetched" | "Error";
 export type MessageRole = "user" | "assistant" | "system";

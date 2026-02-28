@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import { api } from '$lib/api/client';
   import { auth_store } from '$lib/stores/auth.svelte';
+  import { toast_store } from '$lib/stores/toast.svelte';
   import type { User, InviteToken } from '$lib/types';
   import UserTable from './UserTable.svelte';
   import InviteForm from './InviteForm.svelte';
@@ -10,11 +11,17 @@
 
   // ── Auth ────────────────────────────────────────────────────────────────────
   let self_id = $derived(auth_store.passkey_id);
+  let role_checked = $state(false);
 
   // Redirect non-admin users
   $effect(() => {
-    if (auth_store.role !== null && auth_store.role !== 'admin') {
-      goto('/');
+    if (auth_store.role !== null) {
+      if (auth_store.role !== 'admin') {
+        toast_store.error('Admin access required');
+        goto('/');
+      } else {
+        role_checked = true;
+      }
     }
   });
 
@@ -90,6 +97,12 @@
 </script>
 
 <div class="page">
+  {#if !role_checked}
+    <div class="loading-state">
+      <span class="icon spin">progress_activity</span>
+      <span>Checking permissions…</span>
+    </div>
+  {:else}
   <div class="page-header">
     <h2>Admin</h2>
   </div>
@@ -123,6 +136,7 @@
       <InviteTable bind:invites {invites_loading} />
     </div>
   {/if}
+  {/if}
 </div>
 
 <style>
@@ -148,6 +162,12 @@
   }
   .tab:hover { color: var(--fg); }
   .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* Loading */
+  .loading-state {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 2rem; color: var(--fg-muted); font-size: 0.9rem;
+  }
 
   /* Mobile */
   @media (max-width: 768px) {

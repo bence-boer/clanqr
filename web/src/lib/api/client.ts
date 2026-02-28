@@ -226,12 +226,21 @@ export const api = {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ content, ...(model ? { model } : {}) }),
         });
+        if (response.status === 401) {
+            auth_store.state = "login";
+            auth_store.role = null;
+            auth_store.passkey_id = null;
+            toast_store.error("Session expired — please sign in again");
+            throw new Error("Session expired");
+        }
         if (!response.ok) {
             const error = await response.json().catch(() => ({ error: response.statusText }));
             throw new Error(error.error ?? `API error: ${response.status}`);
         }
         return response;
     },
+    cancel_chat: (session_id: string) =>
+        api_fetch<{ success: boolean }>(`/api/chat/sessions/${session_id}/cancel`, { method: "POST" }),
     chat_stream_url: (session_id: string) =>
         `${BASE_URL}/api/chat/sessions/${session_id}/stream`,
 
@@ -254,6 +263,9 @@ export const api = {
         const response = await fetch(`${BASE_URL}/api/auth/invite/status?token=${encodeURIComponent(token)}`, {
             credentials: 'include',
         });
+        if (!response.ok) {
+            throw new Error(`Failed to check invite status: ${response.status}`);
+        }
         return response.json() as Promise<InviteStatus>;
     },
 };

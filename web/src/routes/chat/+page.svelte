@@ -154,6 +154,27 @@
   function format_session_title(session: ChatSession) {
     return session.title ?? `Chat ${new Date(session.created_at).toLocaleDateString()}`;
   }
+
+  async function stop_generating() {
+    if (!active_session || !is_streaming) return;
+    try {
+      await api.cancel_chat(active_session.id);
+    } catch {
+      // Best-effort cancel
+    }
+    if (streaming_content) {
+      const partial_message: ChatMessage = {
+        id: crypto.randomUUID(),
+        session_id: active_session!.id,
+        role: 'assistant',
+        content: streaming_content + '\n\n*(generation stopped)*',
+        created_at: new Date().toISOString(),
+      };
+      messages = [...messages, partial_message];
+    }
+    streaming_content = '';
+    is_streaming = false;
+  }
 </script>
 
 <div class="chat-page">
@@ -204,6 +225,7 @@
         bind:input_text
         {is_streaming}
         onsend={send_message}
+        onstop={stop_generating}
       />
     {/if}
   </div>
