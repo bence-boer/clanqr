@@ -3,7 +3,7 @@
   import { onMount } from 'svelte';
   import { api } from '$lib/api/client';
   import { toast_store } from '$lib/stores/toast.svelte';
-  import { use_polling } from '$lib/utils/polling';
+  import { use_polling } from '$lib/utils/polling.svelte';
   import type { Project, Feature, Task } from '$lib/types';
   import FeatureForm from './FeatureForm.svelte';
   import TaskArtifacts from './TaskArtifacts.svelte';

@@ -68,7 +68,7 @@
   });
 </script>
 
-<div class="page">
+<div class="page" aria-busy={loading}>
   <div class="page-header">
     <div class="header-left">
       <h2>Skills</h2>
@@ -105,7 +105,7 @@
       {#each skills as skill (skill.name)}
         {@const is_expanded = expanded_skill === skill.name}
         <div class="skill-card" class:expanded={is_expanded}>
-          <button class="skill-header" onclick={() => toggle_skill(skill.name)}>
+          <button class="skill-header" aria-expanded={is_expanded} onclick={() => toggle_skill(skill.name)}>
             <div class="skill-title-row">
               <span class="icon skill-icon">extension</span>
               <span class="skill-name">{skill.name}</span>
@@ -116,7 +116,7 @@
           </button>
 
           {#if is_expanded}
-            <div class="skill-detail">
+            <div class="skill-detail" id="skill-detail-{skill.name}">
               <div class="detail-divider"></div>
               {#if content_loading}
                 <div class="content-loading">

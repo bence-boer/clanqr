@@ -2,7 +2,7 @@
   import { api } from '$lib/api/client';
   import { toast_store } from '$lib/stores/toast.svelte';
   import { LoadingSpinner } from '$lib/components';
-  import { use_polling } from '$lib/utils/polling';
+  import { use_polling } from '$lib/utils/polling.svelte';
   import type { AgentRun, PipelineStatus, Task } from '$lib/types';
 
   import PipelineStatusBar from './PipelineStatusBar.svelte';
@@ -75,10 +75,11 @@
   }
 
   // Poll every 3s
-  use_polling(async () => {
+  const polling = use_polling(async () => {
     await Promise.all([load_pipeline(), load_queue()]);
     if (log_visible) refresh_log();
     loading = false;
+    polling.mark_success();
   }, 3000);
 
   // Reload history when filter or page changes
@@ -145,13 +146,20 @@
   }
 </script>
 
-<div class="page">
+<div class="page" aria-busy={loading}>
   <div class="page-header">
     <div>
       <h2>Pipeline</h2>
       <p class="subtitle">Execution queue and task history</p>
     </div>
   </div>
+
+  {#if polling.is_stale}
+    <div class="stale-banner" role="alert">
+      <span class="icon" style="font-size:16px">warning</span>
+      Data may be outdated — unable to reach server
+    </div>
+  {/if}
 
   {#if loading}
     <LoadingSpinner label="Loading pipeline..." />

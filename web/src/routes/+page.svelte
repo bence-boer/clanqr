@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { api } from '$lib/api/client';
   import { toast_store } from '$lib/stores/toast.svelte';
-  import { use_polling } from '$lib/utils/polling';
+  import { use_polling } from '$lib/utils/polling.svelte';
   import type { PipelineStatus, Project, SystemStats } from '$lib/types';
   import PipelineCard from './PipelineCard.svelte';
   import SystemStatsCard from './SystemStatsCard.svelte';
@@ -22,6 +22,7 @@
       ]);
       projects = project_list;
       pipeline = pipeline_status;
+      polling.mark_success();
     } catch (error) {
       console.error('Failed to load dashboard:', error);
       toast_store.error('Failed to load dashboard');
@@ -39,7 +40,7 @@
     }
   }
 
-  use_polling(load_data, 5000);
+  const polling = use_polling(load_data, 5000);
 
   onMount(() => {
     load_system_stats();
@@ -78,8 +79,15 @@
   }
 </script>
 
-<div class="dashboard">
+<div class="dashboard" aria-busy={loading}>
   <h2>Dashboard</h2>
+
+  {#if polling.is_stale}
+    <div class="stale-banner" role="alert">
+      <span class="icon" style="font-size:16px">warning</span>
+      Data may be outdated — unable to reach server
+    </div>
+  {/if}
 
   {#if loading}
     <p class="loading"><span class="icon spin">progress_activity</span> Loading...</p>

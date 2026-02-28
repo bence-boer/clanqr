@@ -15,11 +15,13 @@
   let { tabs, active, on_change }: Props = $props();
 </script>
 
-<div class="tabs">
+<div class="tabs" role="tablist">
   {#each tabs as tab (tab.value)}
     <button
       class="tab-btn"
       class:active={active === tab.value}
+      role="tab"
+      aria-selected={active === tab.value}
       onclick={() => on_change(tab.value)}
     >
       {#if tab.icon}

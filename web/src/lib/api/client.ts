@@ -52,6 +52,11 @@ export async function api_fetch<ReturnType>(path: string, options?: RequestInit)
             throw new Error("Session expired");
         }
 
+        if (response.status === 403) {
+            toast_store.error("You don't have permission to perform this action");
+            throw new Error("Forbidden");
+        }
+
         const error = await response.json().catch(() => ({ error: response.statusText }));
         throw new Error(error.error ?? `API error: ${response.status}`);
     }
