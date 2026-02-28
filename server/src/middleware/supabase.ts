@@ -10,8 +10,8 @@ export type AppBindings = {
 };
 
 export const supabase_middleware = (): MiddlewareHandler<AppBindings> => {
+  const supabase = create_supabase_client();
   return async (context, next) => {
-    const supabase = create_supabase_client();
     context.set("supabase", supabase);
     await next();
   };

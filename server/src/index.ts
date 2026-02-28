@@ -95,7 +95,7 @@ async function boot() {
         .eq("type", "manager")
         .eq("status", "running");
     const interrupted_feature_ids = (interrupted_runs ?? [])
-        .map((r: any) => r.feature_id)
+        .map((r: { feature_id: string | null }) => r.feature_id)
         .filter(Boolean);
 
     await supabase

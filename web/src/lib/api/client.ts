@@ -85,7 +85,7 @@ export const api = {
     delete_feature: (id: string) =>
         api_fetch<{ success: boolean }>(`/api/features/${id}`, { method: "DELETE" }),
     add_resource: (feature_id: string, data: { url: string; title?: string }) =>
-        api_fetch<any>(`/api/features/${feature_id}/resources`, {
+        api_fetch<{ id: string; feature_id: string; url: string; title: string | null }>(`/api/features/${feature_id}/resources`, {
             method: "POST",
             body: JSON.stringify(data),
         }),
@@ -115,15 +115,15 @@ export const api = {
         api_fetch<{ success: boolean }>(`/api/tasks/${id}`, { method: "DELETE" }),
 
     // ── Agents / Pipeline ─────────────────────────────────────────────────────
-    agent_status: () => api_fetch<Record<string, any>>("/api/agents/status"),
+    agent_status: () => api_fetch<Record<string, AgentRun>>("/api/agents/status"),
     feature_agent_status: (feature_id: string) => 
-        api_fetch<{ processes: any[]; pipeline: any }> (`/api/agents/feature/${feature_id}`),
+        api_fetch<{ processes: AgentRun[]; pipeline: PipelineStatus }> (`/api/agents/feature/${feature_id}`),
     agent_log: (task_id: string) => api_fetch<{ log: string }>(`/api/agents/log/${task_id}`),
     spawn_manager: (feature_id: string) =>
-        api_fetch<any>(`/api/agents/spawn/manager/${feature_id}`, { method: "POST" }),
-    stop_all_agents: () => api_fetch<any>("/api/agents/stop-all", { method: "POST" }),
+        api_fetch<{ success: boolean }>(`/api/agents/spawn/manager/${feature_id}`, { method: "POST" }),
+    stop_all_agents: () => api_fetch<{ success: boolean }>("/api/agents/stop-all", { method: "POST" }),
     stop_agent: (task_id: string) =>
-        api_fetch<any>(`/api/agents/stop/${task_id}`, { method: "POST" }),
+        api_fetch<{ success: boolean }>(`/api/agents/stop/${task_id}`, { method: "POST" }),
     pipeline_status: () => api_fetch<PipelineStatus>("/api/agents/queue"),
     pipeline_log: () => api_fetch<{ log: string }>("/api/agents/queue/log"),
     pipeline_pause: () => api_fetch<{ success: boolean }>("/api/agents/pause", { method: "POST" }),
