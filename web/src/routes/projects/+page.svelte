@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from '$lib/api/client';
+  import { toast_store } from '$lib/stores/toast.svelte';
   import type { Project } from '$lib/types';
 
   let projects = $state<Project[]>([]);
@@ -42,6 +43,7 @@
       await load_projects();
     } catch (error) {
       console.error('Failed to delete projects:', error);
+      toast_store.error('Failed to delete projects');
     } finally {
       deleting_selected = false;
     }
@@ -52,6 +54,7 @@
       projects = await api.list_projects();
     } catch (error) {
       console.error('Failed to load projects:', error);
+      toast_store.error('Failed to load projects');
     } finally {
       loading = false;
     }
@@ -71,6 +74,7 @@
       await load_projects();
     } catch (error) {
       console.error('Failed to create project:', error);
+      toast_store.error('Failed to create project');
     } finally {
       creating = false;
     }
@@ -83,6 +87,7 @@
       await load_projects();
     } catch (error) {
       console.error('Failed to delete project:', error);
+      toast_store.error('Failed to delete project');
     }
   }
 
@@ -111,6 +116,7 @@
       await load_projects();
     } catch (error) {
       console.error('Failed to update project:', error);
+      toast_store.error('Failed to update project');
     } finally {
       saving_edit = false;
     }

@@ -18,6 +18,8 @@ export interface Feature {
     model: string | null;
     on_task_failure: "stop" | "skip" | "retry";
     auto_approve: boolean;
+    last_error: string | null;
+    manager_retry_count: number;
     created_at: string;
     updated_at: string;
     resources?: Resource[];
@@ -38,7 +40,7 @@ export interface Task {
     id: string;
     feature_id: string;
     description: string;
-    status: "Pending_Approval" | "Approved" | "In_Progress" | "Complete";
+    status: "Pending_Approval" | "Approved" | "In_Progress" | "Complete" | "Skipped";
     agent_log: string | null;
     sort_order: number;
     retry_count: number;

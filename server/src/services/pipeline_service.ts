@@ -233,12 +233,12 @@ class PipelineService {
     private async mark_task_complete(task: any, supabase: any): Promise<void> {
         await supabase.from("tasks").update({ status: "Complete" }).eq("id", task.id);
 
-        // Check if all tasks for this feature are complete
+        // M-2.3: Check if all tasks for this feature are complete (Complete or Skipped)
         const { data: remaining } = await supabase
             .from("tasks")
             .select("id")
             .eq("feature_id", task.feature_id)
-            .neq("status", "Complete");
+            .not("status", "in", '("Complete","Skipped")');
 
         if (!remaining || remaining.length === 0) {
             await supabase.from("features").update({ status: "Done" }).eq("id", task.feature_id);
@@ -269,12 +269,24 @@ class PipelineService {
             console.log(`🔄 Retrying task (attempt ${retry_count + 1}/${max_retries})`);
             // process_next() at the end of execute_task will pick it up
         } else if (behavior === "skip") {
-            // Mark as skipped (treated as complete for pipeline progression) (BE-018)
+            // M-2.3: Mark as Skipped (distinct from Complete) for pipeline progression
             await supabase
                 .from("tasks")
-                .update({ status: "Complete" })
+                .update({ status: "Skipped", agent_log: `Skipped after failure: ${reason ?? "non-zero exit"}` })
                 .eq("id", task.id);
             console.log(`⏭ Skipping failed task, continuing pipeline`);
+
+            // Check if all tasks for this feature are now done (Complete or Skipped)
+            const { data: remaining } = await supabase
+                .from("tasks")
+                .select("id")
+                .eq("feature_id", task.feature_id)
+                .not("status", "in", '("Complete","Skipped")');
+
+            if (!remaining || remaining.length === 0) {
+                await supabase.from("features").update({ status: "Done" }).eq("id", task.feature_id);
+                console.log(`✅ Feature complete (some tasks skipped): ${task.features?.title}`);
+            }
         } else {
             // stop: pipeline pauses, task stays as Approved (so it can be retried manually)
             await supabase.from("tasks").update({ status: "Approved" }).eq("id", task.id);

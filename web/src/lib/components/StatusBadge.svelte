@@ -19,6 +19,7 @@
     running: 'sync',
     failed: 'error',
     stopped: 'stop_circle',
+    skipped: 'skip_next',
     fetched: 'check',
     error: 'error',
   };
@@ -37,6 +38,7 @@
     running: 'warn',
     failed: 'danger',
     stopped: 'muted',
+    skipped: 'warn',
     fetched: 'success',
     error: 'danger',
   };

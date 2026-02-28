@@ -2,6 +2,7 @@
   import { page } from '$app/state';
   import { onMount } from 'svelte';
   import { api } from '$lib/api/client';
+  import { toast_store } from '$lib/stores/toast.svelte';
   import { use_polling } from '$lib/utils/polling';
   import type { Project, Feature, Task } from '$lib/types';
   import FeatureForm from './FeatureForm.svelte';
@@ -39,6 +40,7 @@
       last_edit_feature_id = selected_feature?.id ?? '';
     } catch (err) {
       console.error('Failed to load edit models:', err);
+      toast_store.error('Failed to load models');
     } finally {
       loading_edit_models = false;
     }
@@ -95,6 +97,7 @@
       await load_data();
     } catch (error) {
       console.error('Failed to delete features:', error);
+      toast_store.error('Failed to delete features');
     } finally {
       deleting_features = false;
     }
@@ -116,6 +119,7 @@
       }
     } catch (error) {
       console.error('Failed to load project:', error);
+      toast_store.error('Failed to load project');
     } finally {
       loading = false;
     }
@@ -145,6 +149,7 @@
       }
     } catch (err) {
       console.error('Failed to load feature agent status:', err);
+      toast_store.error('Failed to load feature agent status');
     }
   }
 
@@ -167,15 +172,18 @@
       await load_data();
     } catch (error) {
       console.error('Failed to create feature:', error);
+      toast_store.error('Failed to create feature');
     }
   }
 
   async function submit_feature(feature_id: string) {
     try {
       await api.submit_feature(feature_id);
+      toast_store.success('Feature submitted! AI is analyzing your request…');
       await load_data();
     } catch (error) {
       console.error('Failed to submit feature:', error);
+      toast_store.error('Failed to submit feature');
     }
   }
 
@@ -190,6 +198,7 @@
       await load_data();
     } catch (error) {
       console.error('Failed to delete feature:', error);
+      toast_store.error('Failed to delete feature');
     }
   }
 
@@ -199,6 +208,7 @@
       await load_data();
     } catch (error) {
       console.error('Failed to approve task:', error);
+      toast_store.error('Failed to approve task');
     }
   }
 
@@ -208,6 +218,7 @@
       await load_data();
     } catch (error) {
       console.error('Failed to approve tasks:', error);
+      toast_store.error('Failed to approve tasks');
     }
   }
 
@@ -217,6 +228,7 @@
       await load_data();
     } catch (error) {
       console.error('Failed to spawn ralph:', error);
+      toast_store.error('Failed to spawn ralph');
     }
   }
 
@@ -230,6 +242,7 @@
       await load_data();
     } catch (error) {
       console.error('Failed to add task:', error);
+      toast_store.error('Failed to add task');
     } finally {
       saving_task = false;
     }
@@ -249,6 +262,7 @@
       await load_data();
     } catch (error) {
       console.error('Failed to update task:', error);
+      toast_store.error('Failed to update task');
     } finally {
       saving_task = false;
     }
@@ -261,6 +275,7 @@
       await load_data();
     } catch (error) {
       console.error('Failed to delete task:', error);
+      toast_store.error('Failed to delete task');
     }
   }
   function select_feature(feature: Feature) {
@@ -296,6 +311,7 @@
       await load_data();
     } catch (error) {
       console.error('Failed to update feature:', error);
+      toast_store.error('Failed to update feature');
     } finally {
       saving_edit = false;
     }
@@ -313,6 +329,7 @@
       await load_data();
     } catch (error) {
       console.error('Failed to add resource:', error);
+      toast_store.error('Failed to add resource');
     }
   }
 
@@ -323,6 +340,7 @@
       await load_data();
     } catch (error) {
       console.error('Failed to delete resource:', error);
+      toast_store.error('Failed to delete resource');
     }
   }
 
