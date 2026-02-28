@@ -1,5 +1,6 @@
 <script lang="ts">
   import { api } from '$lib/api/client';
+  import { toast_store } from '$lib/stores/toast.svelte';
   import { use_polling } from '$lib/utils/polling';
 
   let agent_status = $state<Record<string, any>>({});
@@ -13,6 +14,7 @@
       agent_status = await api.agent_status();
     } catch (error) {
       console.error('Failed to load agent status:', error);
+      toast_store.error('Failed to load agent status');
     } finally {
       loading = false;
     }
@@ -38,6 +40,7 @@
       await load_status();
     } catch (error) {
       console.error('Failed to stop agents:', error);
+      toast_store.error('Failed to stop agents');
     } finally {
       stopping = false;
     }
@@ -49,6 +52,7 @@
       await load_status();
     } catch (error) {
       console.error('Failed to stop agent:', error);
+      toast_store.error('Failed to stop agent');
     }
   }
 

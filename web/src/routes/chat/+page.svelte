@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from '$lib/api/client';
+  import { toast_store } from '$lib/stores/toast.svelte';
   import { read_sse_stream } from '$lib/utils/sse';
   import type { ChatMessage, ChatSession } from '$lib/types';
 
@@ -45,6 +46,7 @@
       sessions = await api.list_chat_sessions();
     } catch (err) {
       console.error('Failed to load chat sessions:', err);
+      toast_store.error('Failed to load chat sessions');
     } finally {
       loading_sessions = false;
     }

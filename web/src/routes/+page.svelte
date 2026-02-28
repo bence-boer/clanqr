@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { api } from '$lib/api/client';
+  import { toast_store } from '$lib/stores/toast.svelte';
   import { use_polling } from '$lib/utils/polling';
   import type { PipelineStatus, Project, SystemStats } from '$lib/types';
 
@@ -21,6 +22,7 @@
       pipeline = pipeline_status;
     } catch (error) {
       console.error('Failed to load dashboard:', error);
+      toast_store.error('Failed to load dashboard');
     } finally {
       loading = false;
     }
@@ -31,6 +33,7 @@
       system_stats = await api.system_stats();
     } catch (err) {
       console.error('Failed to load system stats:', err);
+      toast_store.error('Failed to load system stats');
     }
   }
 

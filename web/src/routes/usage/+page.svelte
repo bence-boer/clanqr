@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from '$lib/api/client';
+  import { toast_store } from '$lib/stores/toast.svelte';
   import { EmptyState, LoadingSpinner, StatCard, StatusBadge } from '$lib/components';
   import type { AgentRun, UsageBreakdown, UsageSummary } from '$lib/types';
 
@@ -49,12 +50,12 @@
   onMount(() => {
     api.usage_summary()
       .then(data => { summary = data; })
-      .catch(err => console.error('usage summary error:', err))
+      .catch(err => { console.error('usage summary error:', err); toast_store.error('Failed to load usage summary'); })
       .finally(() => { loading_summary = false; });
 
     api.usage_breakdown()
       .then(data => { breakdown = data; })
-      .catch(err => console.error('usage breakdown error:', err))
+      .catch(err => { console.error('usage breakdown error:', err); toast_store.error('Failed to load usage breakdown'); })
       .finally(() => { loading_breakdown = false; });
   });
 
@@ -70,7 +71,7 @@
         total_pages = result.total_pages;
         total_count = result.total;
       })
-      .catch(err => console.error('usage history error:', err))
+      .catch(err => { console.error('usage history error:', err); toast_store.error('Failed to load usage history'); })
       .finally(() => { loading_history = false; });
   });
 

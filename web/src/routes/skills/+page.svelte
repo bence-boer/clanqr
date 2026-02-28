@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from '$lib/api/client';
+  import { toast_store } from '$lib/stores/toast.svelte';
   import { EmptyState, LoadingSpinner } from '$lib/components';
   import type { SkillInfo } from '$lib/types';
 
@@ -55,6 +56,7 @@
       skill_files = full.files ?? [];
     } catch (err) {
       console.error('Failed to load skill content:', err);
+      toast_store.error('Failed to load skill content');
       skill_content = 'Failed to load skill content.';
     } finally {
       content_loading = false;

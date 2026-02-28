@@ -1,4 +1,6 @@
 import { PUBLIC_API_URL } from "$env/static/public";
+import { auth_store } from "$lib/stores/auth.svelte";
+import { toast_store } from "$lib/stores/toast.svelte";
 import type {
     User,
     InviteToken,
@@ -41,6 +43,15 @@ export async function api_fetch<ReturnType>(path: string, options?: RequestInit)
     });
 
     if (!response.ok) {
+        // M-2.5: Handle 401 — clear auth state and redirect to login
+        if (response.status === 401) {
+            auth_store.state = "login";
+            auth_store.role = null;
+            auth_store.passkey_id = null;
+            toast_store.error("Session expired — please sign in again");
+            throw new Error("Session expired");
+        }
+
         const error = await response.json().catch(() => ({ error: response.statusText }));
         throw new Error(error.error ?? `API error: ${response.status}`);
     }

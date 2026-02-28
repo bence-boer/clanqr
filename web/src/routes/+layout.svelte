@@ -3,6 +3,7 @@
   import { page } from "$app/state";
   import { api } from "$lib/api/client";
   import { auth_store } from "$lib/stores/auth.svelte";
+  import { Toast } from "$lib/components";
   import "$lib/styles/global.css";
   import type { SystemStats } from "$lib/types";
 
@@ -240,6 +241,7 @@
       {@render children()}
     </main>
   </div>
+  <Toast />
 {/if}
 
 <style>

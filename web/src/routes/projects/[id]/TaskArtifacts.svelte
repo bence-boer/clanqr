@@ -1,5 +1,6 @@
 <script lang="ts">
   import { api } from '$lib/api/client';
+  import { toast_store } from '$lib/stores/toast.svelte';
   import type { Trait, SkillLink } from '$lib/types';
 
   interface Props {
@@ -29,6 +30,7 @@
       skill_links = links;
     } catch (error) {
       console.error('Failed to load artifacts:', error);
+      toast_store.error('Failed to load artifacts');
     } finally {
       loading = false;
     }
@@ -45,6 +47,7 @@
       trait_assignments = await api.list_trait_assignments({ scope: 'task', task_id });
     } catch (error) {
       console.error('Failed to toggle trait:', error);
+      toast_store.error('Failed to toggle trait');
     }
   }
 
@@ -59,6 +62,7 @@
       skill_links = await api.get_task_skills(task_id);
     } catch (error) {
       console.error('Failed to toggle skill:', error);
+      toast_store.error('Failed to toggle skill');
     }
   }
 

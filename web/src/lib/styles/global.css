@@ -273,6 +273,11 @@ body {
     color: var(--accent);
 }
 
+.badge-skipped {
+    background: rgba(212, 175, 55, 0.15);
+    color: #c9a036;
+}
+
 .badge-paused {
     background: var(--accent-dim);
     color: var(--accent);

@@ -185,10 +185,15 @@ class AgentService {
             if (exit_code === 0) {
                 await this.parse_manager_output(feature_id, work_dir, supabase, run_record?.id);
             } else {
-                // Reset feature to Submitted so watcher can retry
+                // M-2.2: Record error and increment retry count on feature
+                const error_msg = `Manager failed with exit code ${exit_code}`;
                 await supabase
                     .from("features")
-                    .update({ status: "Submitted" })
+                    .update({
+                        status: "Submitted",
+                        last_error: error_msg,
+                        manager_retry_count: (feature.manager_retry_count ?? 0) + 1,
+                    })
                     .eq("id", feature_id);
             }
         } catch (error) {
@@ -196,10 +201,15 @@ class AgentService {
             agent_proc.finished_at = new Date().toISOString();
             agent_proc.log +=
                 `\nERROR: ${error instanceof Error ? error.message : "Unknown error"}`;
-            // Reset feature to Submitted so watcher can retry
+            // M-2.2: Record error and increment retry count on feature
+            const error_msg = error instanceof Error ? error.message : "Unknown error";
             await supabase
                 .from("features")
-                .update({ status: "Submitted" })
+                .update({
+                    status: "Submitted",
+                    last_error: error_msg,
+                    manager_retry_count: (feature.manager_retry_count ?? 0) + 1,
+                })
                 .eq("id", feature_id);
             if (run_record?.id) {
                 await supabase
@@ -326,13 +336,13 @@ class AgentService {
                 })
                 .eq("id", task_id);
 
-            // Check if all tasks for the feature are complete
+            // Check if all tasks for the feature are complete (Complete or Skipped)
             if (exit_code === 0 && task.features) {
                 const { data: remaining } = await supabase
                     .from("tasks")
                     .select("id")
                     .eq("feature_id", task.features.id)
-                    .neq("status", "Complete");
+                    .not("status", "in", '("Complete","Skipped")');
 
                 if (!remaining || remaining.length === 0) {
                     await supabase

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { api } from '$lib/api/client';
+  import { toast_store } from '$lib/stores/toast.svelte';
   import { StatusBadge, LoadingSpinner, EmptyState } from '$lib/components';
   import { use_polling } from '$lib/utils/polling';
   import type { AgentRun, PipelineStatus, Task } from '$lib/types';
@@ -27,6 +28,7 @@
       pipeline = await api.pipeline_status();
     } catch (err) {
       console.error('Failed to load pipeline status:', err);
+      toast_store.error('Failed to load pipeline status');
     }
   }
 
@@ -35,6 +37,7 @@
       queue = await api.list_tasks(undefined, 'Approved');
     } catch (err) {
       console.error('Failed to load queue:', err);
+      toast_store.error('Failed to load queue');
       queue = [];
     }
   }
@@ -47,6 +50,7 @@
       history_total_pages = result.total_pages;
     } catch (err) {
       console.error('Failed to load history:', err);
+      toast_store.error('Failed to load history');
       history = [];
     }
   }
@@ -63,6 +67,7 @@
       log_text = result.log;
     } catch (err) {
       console.error('Failed to load log:', err);
+      toast_store.error('Failed to load log');
       log_text = 'Failed to load log.';
     } finally {
       log_loading = false;
