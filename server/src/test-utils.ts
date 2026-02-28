@@ -101,8 +101,14 @@ class MockQueryBuilder {
         return this;
     }
 
-    order(_column: string, _opts?: { ascending?: boolean }) {
+    order(_column: string, _opts?: { ascending?: boolean; referencedTable?: string }) {
         // Simplified: no-op for mock
+        return this;
+    }
+
+    range(from: number, to: number) {
+        // Approximation: set limit based on range
+        this.limit_val = to - from + 1;
         return this;
     }
 
