@@ -1,4 +1,6 @@
 import { create_supabase_client } from "../db";
+import type { SupabaseClient } from "../db";
+import type { FeatureRow } from "../types";
 import { agent_service } from "./agent_service";
 import { pipeline_service } from "./pipeline_service";
 
@@ -39,7 +41,7 @@ class WatcherService {
 
     private spawned_features = new Set<string>();
 
-    private async check_submitted_features(supabase: any) {
+    private async check_submitted_features(supabase: SupabaseClient) {
         const { data: features, error } = await supabase
             .from("features")
             .select("*, resources(*), projects(*)")
@@ -76,7 +78,7 @@ class WatcherService {
         }
     }
 
-    private async spawn_manager_and_maybe_auto_approve(feature: any, supabase: any) {
+    private async spawn_manager_and_maybe_auto_approve(feature: FeatureRow & { resources?: { url: string; title: string | null }[]; projects?: { name: string } }, supabase: SupabaseClient) {
         await agent_service.spawn_manager(feature, supabase);
 
         // If auto_approve is enabled, approve all created tasks and kick the pipeline

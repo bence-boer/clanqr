@@ -119,7 +119,7 @@ class PromptService {
 
     // Build the composed prompt for a manager agent
     async resolve_for_manager(
-        feature_spec: { title: string; description: string; project: string; resources: any[] },
+        feature_spec: { title: string; description: string | null; project: string; resources: { url: string; title?: string | null }[] },
         feature_id: string,
         project_id: string
     ): Promise<string> {
@@ -144,7 +144,7 @@ class PromptService {
 
         const resources_text =
             feature_spec.resources.length > 0
-                ? `\nResearch these resources:\n${feature_spec.resources.map((resource: any) => `- ${resource.url}${resource.title ? ` (${resource.title})` : ""}`).join("\n")}`
+                ? `\nResearch these resources:\n${feature_spec.resources.map((resource) => `- ${resource.url}${resource.title ? ` (${resource.title})` : ""}`).join("\n")}`
                 : "";
 
         const task_instructions = `---\nPROJECT: ${feature_spec.project}\nFEATURE: ${feature_spec.title}\nDESCRIPTION: ${feature_spec.description ?? "No description provided"}${resources_text}\n\nYOUR TASK:\n1. Read and understand the feature specification\n2. If resources are provided, fetch and read each URL\n3. Break down this feature into concrete, actionable implementation tasks\n\nOUTPUT:\nWrite a JSON file called "tasks.json" in the current working directory.\nFormat: [{"description": "task description"}, ...]\n\nRULES:\n- Do NOT write any implementation code\n- Do NOT create any source files\n- ONLY output the tasks.json file\n- Keep tasks focused and actionable\n- Order tasks logically (dependencies first)`;

@@ -9,11 +9,13 @@ export type TraitTarget = "manager" | "ralph";
 export type TraitScope = "project" | "feature" | "task";
 export type FailureBehavior = "stop" | "retry" | "skip";
 
+export type ProjectStatus = "Active" | "Archived" | "Planning";
+
 export interface ProjectRow {
     id: string;
     name: string;
     description: string | null;
-    status: string;
+    status: ProjectStatus;
     created_at: string;
     updated_at: string;
 }
@@ -24,6 +26,7 @@ export interface FeatureRow {
     title: string;
     description: string | null;
     status: FeatureStatus;
+    cli: string | null;
     model: string | null;
     on_task_failure: FailureBehavior;
     auto_approve: boolean;
@@ -65,6 +68,7 @@ export interface AgentRunRow {
     feature_id: string | null;
     session_id: string | null;
     status: AgentRunStatus;
+    cli: string | null;
     model: string | null;
     started_at: string;
     finished_at: string | null;

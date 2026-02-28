@@ -23,7 +23,7 @@ export function auth_middleware() {
             return context.json({ error: "Session expired" }, 401);
         }
 
-        const role = (session as Record<string, any>).passkeys?.role ?? "user";
+        const role = (session as unknown as { passkeys?: { role: string }[] }).passkeys?.[0]?.role ?? "user";
         context.set("passkey_id", session.passkey_id);
         context.set("role", role);
 
