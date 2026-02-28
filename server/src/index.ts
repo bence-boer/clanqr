@@ -22,6 +22,7 @@ import { admin_routes } from "./routes/admin";
 import { watcher_service } from "./services/watcher_service";
 import { prompt_service } from "./services/prompt_service";
 import { pipeline_service } from "./services/pipeline_service";
+import { agent_service } from "./services/agent_service";
 import { create_supabase_client } from "./db";
 
 const app = new Hono<AppBindings>();
@@ -138,12 +139,53 @@ async function boot() {
     // 2. Sync base prompts from repo files → DB
     await prompt_service.sync_from_repo();
 
-    // 3. Start watcher service (manager-only — pipeline handles task execution)
+    // 3. Cleanup old workspaces (M-5.4) and expired data (M-5.5)
+    agent_service.cleanup_old_workspaces(7);
+    await cleanup_expired_data(supabase);
+
+    // Schedule daily cleanup
+    setInterval(() => {
+        agent_service.cleanup_old_workspaces(7);
+        cleanup_expired_data(supabase).catch(console.error);
+    }, 24 * 60 * 60 * 1000);
+
+    // 4. Start watcher service (manager-only — pipeline handles task execution)
     watcher_service.start();
 
-    // 4. Start pipeline service — trigger on any already-approved tasks
+    // 5. Start pipeline service — trigger on any already-approved tasks
     pipeline_service.process_next().catch(console.error);
     console.log("✅ Pipeline service started");
+}
+
+/** M-5.5: Clean expired sessions and used/expired invite tokens */
+async function cleanup_expired_data(supabase: ReturnType<typeof create_supabase_client>) {
+    const now = new Date().toISOString();
+    const thirty_days_ago = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    // Delete expired sessions
+    const { count: sessions_deleted } = await supabase
+        .from("sessions")
+        .delete({ count: "exact" })
+        .lt("expires_at", now);
+
+    // Delete used invites older than 30 days
+    const { count: used_invites_deleted } = await supabase
+        .from("invite_tokens")
+        .delete({ count: "exact" })
+        .not("used_at", "is", null)
+        .lt("used_at", thirty_days_ago);
+
+    // Delete expired unused invites
+    const { count: expired_invites_deleted } = await supabase
+        .from("invite_tokens")
+        .delete({ count: "exact" })
+        .is("used_at", null)
+        .lt("expires_at", now);
+
+    const total = (sessions_deleted ?? 0) + (used_invites_deleted ?? 0) + (expired_invites_deleted ?? 0);
+    if (total > 0) {
+        console.log(`🧹 Cleaned ${sessions_deleted ?? 0} expired session(s), ${(used_invites_deleted ?? 0) + (expired_invites_deleted ?? 0)} stale invite(s)`);
+    }
 }
 
 boot().catch(console.error);
