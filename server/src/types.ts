@@ -10,6 +10,7 @@ export type {
     TraitTarget,
     TraitScope,
     FailureBehavior,
+    ResourceStatus,
 } from "@shared/types";
 
 import type {
@@ -22,6 +23,7 @@ import type {
     TraitTarget,
     TraitScope,
     FailureBehavior,
+    ResourceStatus,
 } from "@shared/types";
 
 export interface ProjectRow {
@@ -72,7 +74,9 @@ export interface ResourceRow {
     feature_id: string;
     url: string;
     title: string | null;
+    status: ResourceStatus;
     created_at: string;
+    updated_at: string;
 }
 
 export interface AgentRunRow {

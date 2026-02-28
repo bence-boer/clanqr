@@ -35,8 +35,9 @@ export async function resolve_task_traits(
 
     if (task_error || !task) return [];
 
-    const feature_id: string = task.feature_id;
-    const project_id: string = (task as Record<string, any>).features?.project_id;
+    const task_with_features = task as unknown as { feature_id: string; features?: { id: string; project_id: string } | null };
+    const feature_id: string = task_with_features.feature_id;
+    const project_id: string = task_with_features.features?.project_id ?? "";
 
     return resolve_scope_traits(supabase, {
         scope: "task",

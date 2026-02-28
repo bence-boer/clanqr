@@ -12,7 +12,8 @@ class ToastStore {
     show(message: string, type: ToastType = "info") {
         const id = crypto.randomUUID();
         this.items.push({ id, message, type });
-        setTimeout(() => this.dismiss(id), 5000);
+        const dismiss_ms = type === "error" ? 10000 : 5000;
+        setTimeout(() => this.dismiss(id), dismiss_ms);
     }
 
     dismiss(id: string) {

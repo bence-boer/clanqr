@@ -5,6 +5,7 @@ import type { FeatureRow, TaskRow } from "../types";
 import { readFileSync, existsSync, mkdirSync, readdirSync, statSync, rmSync } from "fs";
 import { join } from "path";
 import { WORKSPACE_DIR } from "../env";
+import { env } from "../env";
 import { prompt_service } from "./prompt_service";
 import { check_and_complete_feature } from "./feature_utils";
 import { spawn_agent } from "./spawn_agent";
@@ -36,7 +37,7 @@ interface AgentProcess {
 }
 
 const AGENT_WORKSPACE_DIR = WORKSPACE_DIR;
-const MAX_CONCURRENT_AGENTS = parseInt(process.env.MAX_CONCURRENT_AGENTS ?? "3", 10);
+const MAX_CONCURRENT_AGENTS = env.MAX_CONCURRENT_AGENTS;
 let active_agent_count = 0;
 
 /** Check if another agent process can be spawned */
@@ -48,7 +49,14 @@ export function can_spawn_agent(): boolean {
 export function increment_agent_count() { active_agent_count++; }
 
 /** Decrement the active agent counter (call in finally block after spawn) */
-export function decrement_agent_count() { active_agent_count = Math.max(0, active_agent_count - 1); }
+export function decrement_agent_count() {
+    active_agent_count = Math.max(0, active_agent_count - 1);
+    on_agent_freed?.();
+}
+
+let on_agent_freed: (() => void) | null = null;
+/** Register a callback invoked whenever an agent slot is freed */
+export function set_on_agent_freed(callback: () => void) { on_agent_freed = callback; }
 
 /** Current concurrency info for diagnostics */
 export function get_agent_concurrency() {
@@ -103,14 +111,22 @@ class AgentService {
         };
 
         // Update feature status
-        await supabase
+        const { error: status_error } = await supabase
             .from("features")
             .update({ status: "In_Progress" })
             .eq("id", feature_id);
+        if (status_error) logger.error("Failed to update feature status", { service: "agent", feature_id, error: status_error.message });
 
         const prompt = await prompt_service.resolve_for_manager(spec, feature_id, feature.project_id);
         const cli = feature.cli || "copilot";
         const model = feature.model || (cli === "gemini" ? "gemini-3-flash-preview" : "gpt-4o");
+
+        // Check agent concurrency before spawning manager
+        if (!can_spawn_agent()) {
+            logger.warn("Agent concurrency limit reached, deferring manager spawn", { service: "agent", feature_id });
+            await supabase.from("features").update({ status: "Submitted" }).eq("id", feature_id);
+            return;
+        }
 
         // Track in process map
         const agent_proc: AgentProcess = {
@@ -124,6 +140,7 @@ class AgentService {
         };
         this.processes.set(process_id, agent_proc);
 
+        increment_agent_count();
         try {
             const result = await spawn_agent({
                 agent_type: "manager",
@@ -145,15 +162,16 @@ class AgentService {
             if (result.exit_code === 0) {
                 await this.parse_manager_output(feature_id, work_dir, supabase, result.run_id);
                 // M-6.1: Reset retry count on successful completion
-                await supabase
+                const { error: reset_error } = await supabase
                     .from("features")
                     .update({ manager_retry_count: 0 })
                     .eq("id", feature_id);
+                if (reset_error) logger.error("Failed to reset manager retry count", { service: "agent", feature_id, error: reset_error.message });
             } else {
                 const error_msg = result.exit_code === -1
                     ? "Manager timed out after 15 minutes"
                     : `Manager failed with exit code ${result.exit_code}`;
-                await supabase
+                const { error: fail_error } = await supabase
                     .from("features")
                     .update({
                         status: "Submitted",
@@ -161,13 +179,14 @@ class AgentService {
                         manager_retry_count: (feature.manager_retry_count ?? 0) + 1,
                     })
                     .eq("id", feature_id);
+                if (fail_error) logger.error("Failed to update feature after manager failure", { service: "agent", feature_id, error: fail_error.message });
             }
         } catch (error) {
             agent_proc.status = "failed";
             agent_proc.finished_at = new Date().toISOString();
             const error_msg = error instanceof Error ? error.message : "Unknown error";
             agent_proc.log += `\nERROR: ${error_msg}`;
-            await supabase
+            const { error: catch_error } = await supabase
                 .from("features")
                 .update({
                     status: "Submitted",
@@ -175,6 +194,9 @@ class AgentService {
                     manager_retry_count: (feature.manager_retry_count ?? 0) + 1,
                 })
                 .eq("id", feature_id);
+            if (catch_error) logger.error("Failed to update feature after manager exception", { service: "agent", feature_id, error: catch_error.message });
+        } finally {
+            decrement_agent_count();
         }
     }
 
@@ -266,13 +288,19 @@ class AgentService {
                 return;
             }
 
-            const task_rows = result.data.map(t => ({
+            const task_rows = result.data.map((t, index) => ({
                 feature_id,
                 description: t.description,
                 status: "Pending_Approval" as const,
+                sort_order: index,
             }));
 
-            await supabase.from("tasks").insert(task_rows);
+            const { error: insert_error } = await supabase.from("tasks").insert(task_rows);
+            if (insert_error) {
+                logger.error("Failed to insert tasks", { service: "agent", feature_id, error: insert_error.message });
+                await supabase.from("features").update({ status: "Draft" }).eq("id", feature_id);
+                return;
+            }
         } catch (error) {
             const error_msg = error instanceof Error ? error.message : "Unknown parse error";
             logger.error("Failed to parse manager tasks output", { service: "agent", feature_id, error: error_msg });

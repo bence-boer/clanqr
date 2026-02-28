@@ -41,8 +41,6 @@ class WatcherService {
         await this.check_submitted_features(supabase);
     }
 
-    private spawned_features = new Set<string>();
-
     private async check_submitted_features(supabase: SupabaseClient) {
         const { data: features, error } = await supabase
             .from("features")
@@ -60,9 +58,6 @@ class WatcherService {
                 }).eq("id", feature.id);
                 continue;
             }
-
-            // Skip if we already spawned a manager for this feature in this server lifetime
-            if (this.spawned_features.has(feature.id)) continue;
 
             const process_id = `manager-${feature.id}`;
             const existing = agent_service.get_all_processes()[process_id];
@@ -84,7 +79,6 @@ class WatcherService {
             if (recent_run) continue;
 
             logger.info("Spawning manager for feature", { service: "watcher", feature_id: feature.id, title: feature.title });
-            this.spawned_features.add(feature.id);
             this.spawn_manager_and_maybe_auto_approve(feature, supabase).catch(
                 (err) => logger.error("Manager spawn error", { service: "watcher", feature_id: feature.id, error: String(err) })
             );

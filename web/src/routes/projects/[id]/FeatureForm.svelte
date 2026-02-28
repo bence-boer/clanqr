@@ -4,8 +4,10 @@
     label: string;
   }
 
+  import type { FailureBehavior } from '$lib/types';
+
   interface Props {
-    on_create: (data: { title: string; description?: string; cli: string; model: string | null; resources: { url: string; title?: string }[] }) => Promise<void>;
+    on_create: (data: { title: string; description?: string; cli: string; model: string | null; on_task_failure: FailureBehavior; task_timeout_minutes: number; resources: { url: string; title?: string }[] }) => Promise<void>;
     on_cancel: () => void;
   }
 
@@ -15,6 +17,8 @@
   let description = $state('');
   let cli = $state('copilot');
   let model = $state('');
+  let on_task_failure = $state<FailureBehavior>('stop');
+  let task_timeout_minutes = $state(10);
   let models = $state<ModelOption[]>([]);
   let resources = $state<{ url: string; title: string }[]>([]);
   let creating = $state(false);
@@ -69,12 +73,16 @@
         description: description.trim() || undefined,
         cli,
         model: model || null,
+        on_task_failure,
+        task_timeout_minutes,
         resources: clean_resources,
       });
       title = '';
       description = '';
       cli = 'copilot';
       model = '';
+      on_task_failure = 'stop';
+      task_timeout_minutes = 10;
       resources = [];
     } finally {
       creating = false;
@@ -101,6 +109,18 @@
           <option value={m.value}>{m.label}</option>
         {/each}
       </select>
+    </div>
+    <div class="field">
+      <label class="field-label" for="failure-select">On Task Failure</label>
+      <select id="failure-select" bind:value={on_task_failure} class="input select">
+        <option value="stop">Stop</option>
+        <option value="retry">Retry</option>
+        <option value="skip">Skip</option>
+      </select>
+    </div>
+    <div class="field">
+      <label class="field-label" for="timeout-input">Task Timeout (min)</label>
+      <input id="timeout-input" type="number" bind:value={task_timeout_minutes} class="input" min="1" max="60" />
     </div>
   </div>
 

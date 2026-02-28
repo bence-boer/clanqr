@@ -1,3 +1,5 @@
+import { env } from "../env";
+
 type LogLevel = "debug" | "info" | "warn" | "error";
 
 interface LogEntry {
@@ -14,7 +16,7 @@ const LOG_LEVEL_PRIORITY: Record<LogLevel, number> = {
     error: 3,
 };
 
-const MIN_LEVEL: LogLevel = (process.env.LOG_LEVEL as LogLevel) ?? "info";
+const MIN_LEVEL: LogLevel = env.LOG_LEVEL;
 
 function log(level: LogLevel, message: string, context?: Record<string, unknown>) {
     if (LOG_LEVEL_PRIORITY[level] < LOG_LEVEL_PRIORITY[MIN_LEVEL]) return;

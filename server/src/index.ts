@@ -109,8 +109,7 @@ app.route("/api/traits", traits_routes);
 app.route("/api/skills", skills_routes);
 app.route("/api/usage", usage_routes);
 
-// Admin routes (auth + role check)
-app.use("/api/admin/*", auth_middleware());
+// Admin routes (role check — auth already applied by /api/* above)
 app.use("/api/admin/*", admin_middleware());
 app.route("/api/admin", admin_routes);
 

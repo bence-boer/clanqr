@@ -53,6 +53,12 @@
           Pipeline
         </a>
       </li>
+      <li>
+        <a href="/monitoring" onclick={onclose} class:active={is_active("/monitoring")}>
+          <span class="icon">monitoring</span>
+          Monitoring
+        </a>
+      </li>
     </ul>
   </div>
 

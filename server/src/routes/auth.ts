@@ -257,8 +257,9 @@ auth_routes.post("/login/options", async (context) => {
         userVerification: "preferred",
     });
 
-    challenge_store.set("authentication", options.challenge);
-    setTimeout(() => challenge_store.delete("authentication"), 120000);
+    // Store challenge keyed by itself — each challenge is unique, enabling concurrent logins
+    challenge_store.set(`auth:${options.challenge}`, options.challenge);
+    setTimeout(() => challenge_store.delete(`auth:${options.challenge}`), 120000);
 
     return context.json(options);
 });
@@ -267,7 +268,17 @@ auth_routes.post("/login/options", async (context) => {
 auth_routes.post("/login/verify", async (context) => {
     const db = context.get("supabase");
     const body = await context.req.json();
-    const expected_challenge = challenge_store.get("authentication");
+
+    // Extract challenge from the credential's clientDataJSON to support concurrent logins
+    let expected_challenge: string | undefined;
+    try {
+        const client_data_raw = Buffer.from(body.credential?.response?.clientDataJSON ?? "", "base64url").toString();
+        const client_data = JSON.parse(client_data_raw);
+        const sent_challenge = client_data.challenge as string;
+        expected_challenge = challenge_store.get(`auth:${sent_challenge}`);
+    } catch {
+        // Fall through to challenge expired error
+    }
 
     if (!expected_challenge) {
         return context.json({ error: "Authentication challenge expired" }, 400);
@@ -309,7 +320,7 @@ auth_routes.post("/login/verify", async (context) => {
             .update({ counter: verification.authenticationInfo.newCounter })
             .eq("id", passkey.id);
 
-        challenge_store.delete("authentication");
+        challenge_store.delete(`auth:${expected_challenge}`);
 
         // Create session
         const session_token = generate_session_token();

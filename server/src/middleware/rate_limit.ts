@@ -14,7 +14,8 @@ setInterval(() => {
 
 export function rate_limit(max_requests: number, window_ms: number) {
     return async (c: Context, next: Next) => {
-        const ip = c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+        const forwarded = c.req.header("x-forwarded-for");
+        const ip = forwarded ? forwarded.split(",").pop()?.trim() ?? "unknown" : c.req.header("x-real-ip") ?? "unknown";
         const now = Date.now();
         const entry = request_counts.get(ip);
 

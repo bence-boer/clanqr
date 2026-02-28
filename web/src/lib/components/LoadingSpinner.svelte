@@ -19,7 +19,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    color: var(--text-muted);
+    color: var(--fg-muted);
   }
 
   .spinner-sm .icon { font-size: 16px; }
