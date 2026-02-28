@@ -1,6 +1,14 @@
 import { Hono } from "hono";
+import { z } from "zod";
 import type { AppBindings } from "../middleware/supabase";
 import { get_usage_summary, get_usage_breakdown } from "../services/usage_service";
+
+const history_query_schema = z.object({
+    page: z.coerce.number().int().min(1).default(1),
+    per_page: z.coerce.number().int().min(1).max(100).default(20),
+    type: z.enum(["manager", "ralph", "chat"]).optional(),
+    status: z.enum(["completed", "failed", "running"]).optional(),
+});
 
 export const usage_routes = new Hono<AppBindings>();
 
@@ -19,11 +27,18 @@ usage_routes.get("/summary", async (context) => {
 // Paginated run history
 usage_routes.get("/history", async (context) => {
     const supabase = context.get("supabase");
-    const page = Math.max(1, parseInt(context.req.query("page") ?? "1", 10) || 1);
-    const per_page = Math.min(Math.max(1, parseInt(context.req.query("per_page") ?? "20", 10) || 20), 100);
-    const type_filter = context.req.query("type");
-    const status_filter = context.req.query("status");
+    const parsed = history_query_schema.safeParse({
+        page: context.req.query("page") ?? "1",
+        per_page: context.req.query("per_page") ?? "20",
+        type: context.req.query("type") || undefined,
+        status: context.req.query("status") || undefined,
+    });
 
+    if (!parsed.success) {
+        return context.json({ error: "Invalid query parameters", details: parsed.error.flatten() }, 400);
+    }
+
+    const { page, per_page, type: type_filter, status: status_filter } = parsed.data;
     const offset = (page - 1) * per_page;
 
     let query = supabase

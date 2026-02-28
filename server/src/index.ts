@@ -30,14 +30,23 @@ const app = new Hono<AppBindings>();
 // ── Error boundary (BE-001) ─────────────────────────────────────────────
 app.onError((error, context) => {
     if (error instanceof HTTPException) {
-        return context.json({ error: error.message }, error.status);
+        return context.json(
+            { error: { code: error.status, message: error.message } },
+            error.status,
+        );
     }
     console.error(`[Unhandled Error] ${context.req.method} ${context.req.path}`, error);
-    return context.json({ error: "Internal server error" }, 500);
+    return context.json(
+        { error: { code: 500, message: "Internal server error" } },
+        500,
+    );
 });
 
 app.notFound((context) => {
-    return context.json({ error: "Not found" }, 404);
+    return context.json(
+        { error: { code: 404, message: "Not found" } },
+        404,
+    );
 });
 
 // Global middleware

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppBindings } from "../middleware/supabase";
+import { validate_uuid_params } from "../middleware/validate_params";
 
 const create_project_schema = z.object({
     name: z.string().min(1).max(255),
@@ -31,7 +32,7 @@ projects_routes.get("/", async (context) => {
 });
 
 // Get single project with features
-projects_routes.get("/:id", async (context) => {
+projects_routes.get("/:id", validate_uuid_params("id"), async (context) => {
     const supabase = context.get("supabase");
     const id = context.req.param("id");
 
@@ -72,7 +73,7 @@ projects_routes.post("/", async (context) => {
 });
 
 // Update project
-projects_routes.patch("/:id", async (context) => {
+projects_routes.patch("/:id", validate_uuid_params("id"), async (context) => {
     const id = context.req.param("id");
     const body = await context.req.json();
     const parsed = update_project_schema.safeParse(body);
@@ -97,7 +98,7 @@ projects_routes.patch("/:id", async (context) => {
 });
 
 // Delete project
-projects_routes.delete("/:id", async (context) => {
+projects_routes.delete("/:id", validate_uuid_params("id"), async (context) => {
     const id = context.req.param("id");
     const supabase = context.get("supabase");
 
