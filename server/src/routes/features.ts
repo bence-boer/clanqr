@@ -2,10 +2,39 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { AppBindings } from "../middleware/supabase";
 
+/** Validate that a resource URL is safe (no SSRF) */
+function validate_resource_url(url_string: string): boolean {
+    try {
+        const url = new URL(url_string);
+        if (!["http:", "https:"].includes(url.protocol)) return false;
+        const hostname = url.hostname;
+        if (
+            hostname === "localhost" ||
+            hostname === "127.0.0.1" ||
+            hostname === "::1" ||
+            hostname.startsWith("10.") ||
+            hostname.startsWith("192.168.") ||
+            hostname.startsWith("172.16.") ||
+            hostname.startsWith("172.17.") ||
+            hostname.startsWith("172.18.") ||
+            hostname.startsWith("172.19.") ||
+            hostname.startsWith("172.2") ||
+            hostname.startsWith("172.30.") ||
+            hostname.startsWith("172.31.") ||
+            hostname.startsWith("169.254.") ||
+            hostname.endsWith(".internal") ||
+            hostname.endsWith(".local")
+        ) return false;
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 const create_feature_schema = z.object({
     project_id: z.string().uuid(),
-    title: z.string().min(1).max(255),
-    description: z.string().optional(),
+    title: z.string().min(1).max(200),
+    description: z.string().max(10_000).optional(),
     cli: z.string().default("copilot"),
     model: z.string().optional(),
     resources: z
@@ -88,6 +117,10 @@ features_routes.post("/", async (context) => {
     }
 
     if (resources && resources.length > 0) {
+        const invalid_url = resources.find((r) => !validate_resource_url(r.url));
+        if (invalid_url) {
+            return context.json({ error: `Invalid resource URL: internal or non-HTTP(S) URLs are not allowed` }, 400);
+        }
         const resource_rows = resources.map((r) => ({
             feature_id: feature.id,
             url: r.url,
@@ -173,6 +206,10 @@ features_routes.post("/:id/resources", async (context) => {
 
     if (!parsed.success) {
         return context.json({ error: parsed.error.flatten() }, 400);
+    }
+
+    if (!validate_resource_url(parsed.data.url)) {
+        return context.json({ error: "Invalid resource URL: internal or non-HTTP(S) URLs are not allowed" }, 400);
     }
 
     const supabase = context.get("supabase");

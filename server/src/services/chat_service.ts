@@ -1,7 +1,5 @@
 import type { SupabaseClient } from "../db";
-import { COPILOT_BIN, GEMINI_BIN, ENRICHED_PATH } from "../env";
-
-const HOME = process.env.HOME ?? "/home/scoy";
+import { COPILOT_BIN, GEMINI_BIN, ENRICHED_PATH, build_agent_env } from "../env";
 
 interface ActiveChat {
     session_id: string;
@@ -46,10 +44,10 @@ class ChatService {
         const proc = Bun.spawn(
             [COPILOT_BIN, "-p", content, "--model", resolved_model, "--allow-all-tools"],
             {
-                cwd: HOME,
+                cwd: process.env.HOME ?? "/tmp",
                 stdout: "pipe",
                 stderr: "pipe",
-                env: { ...process.env, HOME, PATH: ENRICHED_PATH },
+                env: build_agent_env(),
             }
         );
 
