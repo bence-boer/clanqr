@@ -11,6 +11,7 @@
     "@simplewebauthn/server": "^13.2.2",
     "@supabase/supabase-js": "^2",
     "hono": "^4",
+    "shared": "workspace:*",
     "zod": "^3"
   },
   "devDependencies": {

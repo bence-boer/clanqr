@@ -1,38 +1,31 @@
 <script lang="ts">
     import type { HTMLInputAttributes } from 'svelte/elements';
-    import type { Snippet } from 'svelte';
-    import { Label } from '../label';
+    import { Label, type LabelProperties } from '../label';
+
+    export type InputProperties = HTMLInputAttributes & {
+        ref?: HTMLInputElement | null
+        label?: string
+        required?: LabelProperties['required']
+    };
 
     let {
         ref = $bindable(null),
         value = $bindable(),
         class: class_name,
         label,
-        labelSnippet,
         id,
         required,
         type = 'text',
         ...rest_props
-    }: HTMLInputAttributes & {
-        ref?: HTMLInputElement | null;
-        value?: any;
-        label?: string;
-        labelSnippet?: Snippet;
-        id?: string;
-        required?: boolean;
-    } = $props();
+    }: InputProperties = $props();
 
     const input_id = $derived(id || `input-${Math.random().toString(36).slice(2, 9)}`);
 </script>
 
 <div class="input">
-    {#if label || labelSnippet}
+    {#if label}
         <Label for={input_id} required={Boolean(required)}>
-            {#if labelSnippet}
-                {@render labelSnippet()}
-            {:else}
-                {label}
-            {/if}
+            {label}
         </Label>
     {/if}
 

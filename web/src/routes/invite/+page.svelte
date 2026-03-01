@@ -1,5 +1,6 @@
 <script lang="ts">
     import { goto } from '$app/navigation';
+    import { resolve } from '$app/paths';
     import { page } from '$app/state';
     import { api } from '$lib/api/client';
     import { check_auth, register_passkey } from '$lib/auth';
@@ -23,10 +24,11 @@
         try {
             const status = await check_auth();
             if (status.authenticated) {
-                goto('/');
+                await goto(resolve('/'));
                 return;
             }
-        } catch (_) {
+        }
+        catch {
             // not authenticated — proceed
         }
         try {
@@ -40,7 +42,8 @@
                 };
                 error = reasons[info.reason ?? ''] ?? 'This invite link is invalid.';
             }
-        } catch (err) {
+        }
+        catch (err) {
             console.error('Failed to check invite status:', err);
         }
         loading = false;
@@ -54,20 +57,24 @@
         error = '';
         submitting = true;
         try {
-            const ok = await register_passkey(display_name.trim(), token!);
+            const ok = await register_passkey(display_name.trim(), token as string);
             if (ok) {
-                goto('/');
+                await goto(resolve('/'));
             }
-        } catch (error: any) {
-            const message: string = error.message ?? '';
+        }
+        catch (err: unknown) {
+            const message: string = err instanceof Error ? err.message : String(err);
             if (message.includes('409') || message.toLowerCase().includes('already used')) {
                 error = 'This invite link has already been used.';
-            } else if (message.toLowerCase().includes('expired')) {
+            }
+            else if (message.toLowerCase().includes('expired')) {
                 error = 'This invite link has expired.';
-            } else {
+            }
+            else {
                 error = message || 'Registration failed. Please try again.';
             }
-        } finally {
+        }
+        finally {
             submitting = false;
         }
     }
@@ -81,7 +88,7 @@
             <span class="icon large">link_off</span>
             <h1>Ralph Agent Workspace</h1>
             <p class="auth-subtitle">{error}</p>
-            <a href="/" class="auth-link">Go to login</a>
+            <a href={resolve('/')} class="auth-link">Go to login</a>
         {:else}
             <span class="icon large">person_add</span>
             <h1>Ralph Agent Workspace</h1>
@@ -92,14 +99,15 @@
                     {#if invite_info.label}<span class="invite-label">{invite_info.label}</span>{/if}
                 </div>
             {/if}
-            <Input
-                type="text"
-                bind:value={display_name}
-                placeholder="Display name"
-                class="auth-input"
-                disabled={submitting}
-                onkeydown={(event) => event.key === 'Enter' && handle_submit()}
-            />
+            <div class="input-wrap">
+                <Input
+                    type="text"
+                    bind:value={display_name}
+                    placeholder="Display name"
+                    disabled={submitting}
+                    onkeydown={(event) => event.key === 'Enter' && handle_submit()}
+                />
+            </div>
             <Button
                 variant="primary"
                 icon={submitting ? 'progress_activity' : 'fingerprint'}
@@ -118,110 +126,31 @@
 
 <style>
     .auth-screen {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 100vh;
-        padding: 1rem;
-        background: var(--bg);
+        display: flex; align-items: center; justify-content: center;
+        min-height: 100vh; padding: 1rem; background: var(--bg);
     }
-
     .auth-card {
-        background: var(--bg-surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 2.5rem;
-        text-align: center;
-        width: 100%;
-        max-width: 380px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 1rem;
+        background: var(--bg-surface); border: 1px solid var(--border);
+        border-radius: var(--radius); padding: 2.5rem; text-align: center;
+        width: 100%; max-width: 380px;
+        display: flex; flex-direction: column; align-items: center; gap: 1rem;
     }
-
-    .auth-card h1 {
-        font-size: 1.5rem;
-        color: var(--fg);
-        margin-bottom: 0.5rem;
-    }
-
-    .auth-subtitle {
-        color: var(--fg-muted);
-        font-size: 0.9rem;
-        margin-bottom: 0.5rem;
-    }
-
-    :global(.auth-input) {
-        width: 100%;
-        padding: 0.65rem 0.85rem;
-        background: var(--bg);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        color: var(--fg);
-        font-size: 0.9rem;
-        box-sizing: border-box;
-    }
-
-    :global(.auth-input:focus) {
-        outline: none;
-        border-color: var(--accent);
-    }
-
-    .auth-error {
-        color: var(--danger);
-        font-size: 0.8rem;
-        margin-top: 0.5rem;
-    }
-
+    .auth-card h1 { font-size: 1.5rem; color: var(--fg); margin-bottom: 0.5rem; }
+    .auth-subtitle { color: var(--fg-muted); font-size: 0.9rem; margin-bottom: 0.5rem; }
+    .input-wrap { width: 100%; }
+    .auth-error { color: var(--danger); font-size: 0.8rem; margin-top: 0.5rem; }
     .icon {
         font-family: 'Material Symbols Rounded', sans-serif;
-        font-size: 1.2rem;
-        line-height: 1;
+        font-size: 1.2rem; line-height: 1;
     }
-
-    .icon.large {
-        font-size: 2.5rem;
-        color: var(--accent);
-        margin-bottom: 0.5rem;
-    }
-
-    .icon.spin {
-        font-size: 2rem;
-        color: var(--accent);
-        animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-        to {
-            transform: rotate(360deg);
-        }
-    }
-
-    .auth-link {
-        color: var(--accent);
-        text-decoration: none;
-        font-size: 0.85rem;
-    }
-    .auth-link:hover {
-        text-decoration: underline;
-    }
-
-    .invite-meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        justify-content: center;
-    }
-    .invite-label {
-        color: var(--fg-muted);
-        font-size: 0.85rem;
-    }
-
+    .icon.large { font-size: 2.5rem; color: var(--accent); margin-bottom: 0.5rem; }
+    .icon.spin { font-size: 2rem; color: var(--accent); animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .auth-link { color: var(--accent); text-decoration: none; font-size: 0.85rem; }
+    .auth-link:hover { text-decoration: underline; }
+    .invite-meta { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
+    .invite-label { color: var(--fg-muted); font-size: 0.85rem; }
     @media (max-width: 768px) {
-        .auth-card {
-            max-width: 100%;
-            padding: 1.5rem;
-        }
+        .auth-card { max-width: 100%; padding: 1.5rem; }
     }
 </style>

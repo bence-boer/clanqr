@@ -3,12 +3,13 @@
     import { EmptyState } from '$lib/components';
     import type { Feature } from '$lib/types';
     import { status_icon, status_class } from '$lib/utils/status';
+    import { SvelteSet } from 'svelte/reactivity';
 
     interface Props {
-        features: Feature[];
-        selected_feature: Feature | null;
-        on_select: (feature: Feature) => void;
-        on_delete_selected: (ids: Set<string>) => Promise<void>;
+        features: Feature[]
+        selected_feature: Feature | null
+        on_select: (feature: Feature) => void
+        on_delete_selected: (ids: Set<string>) => Promise<void>
     }
 
     let { features, selected_feature, on_select, on_delete_selected }: Props = $props();
@@ -19,7 +20,7 @@
 
     function toggle_select(id: string, event: MouseEvent) {
         event.stopPropagation();
-        const next = new Set(selected_ids);
+        const next = new SvelteSet(selected_ids);
         if (next.has(id)) next.delete(id);
         else next.add(id);
         selected_ids = next;
@@ -28,7 +29,8 @@
     function toggle_all() {
         if (all_selected) {
             selected_ids = new Set();
-        } else {
+        }
+        else {
             selected_ids = new Set(features.map((f) => f.id));
         }
     }
@@ -40,7 +42,8 @@
         try {
             await on_delete_selected(selected_ids);
             selected_ids = new Set();
-        } finally {
+        }
+        finally {
             deleting = false;
         }
     }
@@ -67,7 +70,7 @@
     {#if features.length === 0}
         <EmptyState icon="category" message="No features yet." />
     {:else}
-        {#each features as feature}
+        {#each features as feature (feature.id)}
             <button class="feature-item" class:selected={selected_feature?.id === feature.id} onclick={() => on_select(feature)}>
                 <div class="feature-item-header">
                     <div class="feature-name-row">

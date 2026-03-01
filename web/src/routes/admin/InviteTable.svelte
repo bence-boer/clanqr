@@ -8,8 +8,8 @@
         invites = $bindable(),
         invites_loading
     }: {
-        invites: InviteToken[];
-        invites_loading: boolean;
+        invites: InviteToken[]
+        invites_loading: boolean
     } = $props();
 
     let revoking: Set<string> = $state(new Set());
@@ -31,9 +31,11 @@
         try {
             await api.revoke_invite(id);
             invites = invites.filter((invite) => invite.id !== id);
-        } catch (err: any) {
-            revoke_error = err.message;
-        } finally {
+        }
+        catch (err: unknown) {
+            revoke_error = err instanceof Error ? err.message : String(err);
+        }
+        finally {
             revoking = new Set([...revoking].filter((i) => i !== id));
         }
     }
@@ -165,53 +167,24 @@
 
     /* Mobile */
     @media (max-width: 768px) {
-        .table-wrap {
-            border: none;
-            border-radius: 0;
-            overflow-x: visible;
-        }
-        table {
-            display: block;
-        }
-        thead {
-            display: none;
-        }
-        tbody {
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-        }
+        .table-wrap { border: none; border-radius: 0; overflow-x: visible; }
+        table { display: block; }
+        thead { display: none; }
+        tbody { display: flex; flex-direction: column; gap: 0.75rem; }
         tbody tr {
-            display: flex;
-            flex-direction: column;
-            gap: 0.4rem;
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 0.75rem;
-        }
-        tbody tr:hover {
-            background: var(--bg-surface);
+            display: flex; flex-direction: column; gap: 0.4rem;
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 0.75rem;
         }
         td {
-            padding: 0;
-            font-size: 0.85rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            padding: 0; font-size: 0.85rem;
+            display: flex; align-items: center; gap: 0.5rem;
         }
         td::before {
-            content: attr(data-label);
-            font-size: 0.7rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            color: var(--fg-muted);
-            min-width: 80px;
-            flex-shrink: 0;
+            content: attr(data-label); font-size: 0.7rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.04em;
+            color: var(--fg-muted); min-width: 80px; flex-shrink: 0;
         }
-        .row-actions {
-            flex-wrap: wrap;
-        }
+        .row-actions { flex-wrap: wrap; }
     }
 </style>

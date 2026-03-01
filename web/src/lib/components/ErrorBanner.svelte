@@ -4,9 +4,9 @@
     type Variant = 'error' | 'warning' | 'info' | 'stale';
 
     interface Props {
-        variant?: Variant;
-        icon?: MaterialSymbol;
-        message: string;
+        variant?: Variant
+        icon?: MaterialSymbol
+        message: string
     }
 
     const { variant = 'error', icon, message }: Props = $props();

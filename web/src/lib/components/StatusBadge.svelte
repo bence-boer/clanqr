@@ -3,7 +3,7 @@
     import { status_class, status_icon } from '$lib/utils/status';
 
     interface Props {
-        status: string;
+        status: string
     }
 
     const { status }: Props = $props();

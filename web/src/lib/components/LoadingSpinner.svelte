@@ -1,7 +1,7 @@
 <script lang="ts">
   interface Props {
-    size?: 'sm' | 'md' | 'lg';
-    label?: string;
+      size?: 'sm' | 'md' | 'lg'
+      label?: string
   }
 
   const { size = 'md', label = 'Loading...' }: Props = $props();

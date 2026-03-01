@@ -1,17 +1,19 @@
 <script lang="ts">
+  import { resolve } from '$app/paths';
+
   interface Props {
-    icon?: string;
-    value: string | number;
-    label: string;
-    unit?: string;
-    href?: string;
+      icon?: string
+      value: string | number
+      label: string
+      unit?: string
+      href?: string
   }
 
   const { icon, value, label, unit = '', href }: Props = $props();
 </script>
 
 {#if href}
-<a {href} class="stat-card stat-link">
+<a href={resolve(href as '/')} class="stat-card stat-link">
   {#if icon}
     <span class="icon stat-icon">{icon}</span>
   {/if}

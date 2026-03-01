@@ -1,5 +1,6 @@
 <script lang="ts">
     import { Button } from '$lib/components/primitives';
+    import { resolve } from '$app/paths';
     import type { PipelineStatus } from '$lib/types';
 
     let {
@@ -7,9 +8,9 @@
         onpause,
         onresume
     }: {
-        pipeline: PipelineStatus | null;
-        onpause: () => void;
-        onresume: () => void;
+        pipeline: PipelineStatus | null
+        onpause: () => void
+        onresume: () => void
     } = $props();
 
     function pipeline_state_label(state: string) {
@@ -29,7 +30,7 @@
     <section class="section">
         <div class="section-header">
             <h3>Pipeline</h3>
-            <a href="/pipeline" class="btn-link">View details →</a>
+            <a href={resolve('/pipeline')} class="btn-link">View details →</a>
         </div>
         <div class="pipeline-card">
             <div class="pipeline-state" style="color: {pipeline_state_color(pipeline.state)}">
@@ -48,7 +49,7 @@
                 {:else if pipeline.state === 'paused'}
                     <Button variant="primary" size="sm" icon="play_arrow" onclick={onresume}>Resume</Button>
                 {:else if pipeline.queue_depth > 0}
-                    <a href="/pipeline" style="text-decoration:none"><Button variant="primary" size="sm" icon="play_arrow">View Queue</Button></a>
+                    <a href={resolve('/pipeline')} style="text-decoration:none"><Button variant="primary" size="sm" icon="play_arrow">View Queue</Button></a>
                 {/if}
             </div>
         </div>

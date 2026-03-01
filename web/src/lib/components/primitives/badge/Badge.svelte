@@ -2,7 +2,13 @@
     import type { Snippet } from 'svelte';
     import type { HTMLAttributes } from 'svelte/elements';
 
-    type Variant = 'default' | 'muted' | 'info' | 'warning' | 'success' | 'danger';
+    export type BadgeVariant = 'default' | 'muted' | 'info' | 'warning' | 'success' | 'danger';
+
+    export type BadgeProperties = HTMLAttributes<HTMLSpanElement> & {
+        variant?: BadgeVariant
+        icon?: string
+        children?: Snippet
+    };
 
     let {
         variant = 'default',
@@ -10,13 +16,9 @@
         icon,
         children,
         ...rest_props
-    }: HTMLAttributes<HTMLSpanElement> & {
-        variant?: Variant;
-        icon?: string;
-        children?: Snippet;
-    } = $props();
+    }: BadgeProperties = $props();
 
-    const variant_classes = {
+    const variant_classes: Record<BadgeVariant, string> = {
         default: 'badge-default',
         muted: 'badge-muted',
         info: 'badge-info',

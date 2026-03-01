@@ -1,5 +1,6 @@
 <script lang="ts">
     import { page } from '$app/state';
+    import { resolve } from '$app/paths';
     import { Button } from '$lib/components/primitives';
 </script>
 
@@ -18,7 +19,7 @@
             <p class="error-detail">{page.error.message}</p>
         {/if}
         <div class="error-actions">
-            <a href="/" style="text-decoration:none">
+            <a href={resolve('/')} style="text-decoration:none">
                 <Button variant="primary" icon="home">Go Home</Button>
             </a>
             <Button variant="default" onclick={() => window.location.reload()}>

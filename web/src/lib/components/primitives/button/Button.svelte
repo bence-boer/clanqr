@@ -3,8 +3,18 @@
     import type { Snippet } from 'svelte';
     import type { HTMLButtonAttributes } from 'svelte/elements';
 
-    type Variant = 'default' | 'primary' | 'secondary' | 'danger' | 'ghost' | 'tab' | 'filter';
-    type Size = 'default' | 'sm' | 'icon';
+    export type ButtonVariant = 'default' | 'primary' | 'secondary' | 'danger' | 'ghost' | 'tab' | 'filter';
+    export type ButtonSize = 'default' | 'sm' | 'icon';
+
+    export type ButtonProperties = HTMLButtonAttributes & {
+        ref?: HTMLButtonElement | null
+        variant?: ButtonVariant
+        size?: ButtonSize
+        icon?: MaterialSymbol
+        loading?: boolean
+        active?: boolean
+        children?: Snippet
+    };
 
     let {
         ref = $bindable(null),
@@ -16,17 +26,9 @@
         class: class_name,
         children,
         ...rest_props
-    }: HTMLButtonAttributes & {
-        ref?: HTMLButtonElement | null;
-        variant?: Variant;
-        size?: Size;
-        icon?: MaterialSymbol;
-        loading?: boolean;
-        active?: boolean;
-        children?: Snippet;
-    } = $props();
+    }: ButtonProperties = $props();
 
-    const variant_classes = {
+    const variant_classes: Record<ButtonVariant, string> = {
         default: 'btn-default',
         primary: 'btn-primary',
         secondary: 'btn-default',
@@ -36,7 +38,7 @@
         filter: 'btn-filter'
     };
 
-    const size_classes = {
+    const size_classes: Record<ButtonSize, string> = {
         default: 'size-default',
         sm: 'size-sm',
         icon: 'size-icon'

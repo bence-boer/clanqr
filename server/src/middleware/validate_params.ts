@@ -1,5 +1,5 @@
-import { z } from "zod";
-import type { Context, Next } from "hono";
+import { z } from 'zod';
+import type { Context, Next } from 'hono';
 
 const uuid_schema = z.string().uuid();
 
@@ -11,7 +11,7 @@ export function validate_uuid_params(...param_names: string[]) {
             if (value && !uuid_schema.safeParse(value).success) {
                 return c.json(
                     { error: `Invalid ${name}: must be a valid UUID` },
-                    400,
+                    400
                 );
             }
         }

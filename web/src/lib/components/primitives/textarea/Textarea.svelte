@@ -1,37 +1,32 @@
 <script lang="ts">
     import type { HTMLTextareaAttributes } from 'svelte/elements';
-    import type { Snippet } from 'svelte';
     import { Label } from '../label';
+
+    export type TextareaProperties = HTMLTextareaAttributes & {
+        ref?: HTMLTextAreaElement | null
+        value?: unknown
+        label?: string
+        id?: string
+        required?: boolean
+    };
 
     let {
         ref = $bindable(null),
         value = $bindable(),
         class: class_name,
         label,
-        labelSnippet,
         id,
         required,
         ...rest_props
-    }: HTMLTextareaAttributes & {
-        ref?: HTMLTextAreaElement | null;
-        value?: any;
-        label?: string;
-        labelSnippet?: Snippet;
-        id?: string;
-        required?: boolean;
-    } = $props();
+    }: TextareaProperties = $props();
 
     const textarea_id = $derived(id || `textarea-${Math.random().toString(36).slice(2, 9)}`);
 </script>
 
 <div class="textarea">
-    {#if label || labelSnippet}
-        <Label for={textarea_id} required={Boolean(required)}>
-            {#if labelSnippet}
-                {@render labelSnippet()}
-            {:else}
-                {label}
-            {/if}
+    {#if label}
+        <Label for={textarea_id} {required}>
+            {label}
         </Label>
     {/if}
 

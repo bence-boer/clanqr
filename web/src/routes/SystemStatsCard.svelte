@@ -9,11 +9,11 @@
         onrefresh,
         ontoggle_auto_refresh
     }: {
-        system_stats: SystemStats | null;
-        system_alerts?: SystemAlert[];
-        stats_auto_refresh: boolean;
-        onrefresh: () => void;
-        ontoggle_auto_refresh: () => void;
+        system_stats: SystemStats | null
+        system_alerts?: SystemAlert[]
+        stats_auto_refresh: boolean
+        onrefresh: () => void
+        ontoggle_auto_refresh: () => void
     } = $props();
 </script>
 
@@ -30,7 +30,7 @@
 
     {#if system_alerts.length > 0}
         <div class="alerts" role="alert">
-            {#each system_alerts as alert}
+            {#each system_alerts as alert, i (i)}
                 <div class="alert" class:alert-warning={alert.severity === 'warning'} class:alert-critical={alert.severity === 'critical'}>
                     <span class="icon" style="font-size:14px">{alert.severity === 'critical' ? 'error' : 'warning'}</span>
                     {alert.message}

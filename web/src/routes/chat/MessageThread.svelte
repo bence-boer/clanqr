@@ -3,32 +3,32 @@
   import type { ChatMessage } from '$lib/types';
 
   let {
-    messages,
-    loading_messages,
-    is_streaming,
-    streaming_content,
+      messages,
+      loading_messages,
+      is_streaming,
+      streaming_content
   }: {
-    messages: ChatMessage[];
-    loading_messages: boolean;
-    is_streaming: boolean;
-    streaming_content: string;
+      messages: ChatMessage[]
+      loading_messages: boolean
+      is_streaming: boolean
+      streaming_content: string
   } = $props();
 
   let messages_container = $state<HTMLElement | null>(null);
 
   function scroll_to_bottom() {
-    setTimeout(() => {
-      if (messages_container) {
-        messages_container.scrollTop = messages_container.scrollHeight;
-      }
-    }, 50);
+      setTimeout(() => {
+          if (messages_container) {
+              messages_container.scrollTop = messages_container.scrollHeight;
+          }
+      }, 50);
   }
 
   $effect(() => {
-    // Re-run whenever messages array or streaming content changes
-    messages;
-    streaming_content;
-    scroll_to_bottom();
+      // Re-run whenever messages array or streaming content changes
+      void messages;
+      void streaming_content;
+      scroll_to_bottom();
   });
 </script>
 

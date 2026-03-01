@@ -1,11 +1,11 @@
-import type { Context, Next } from "hono";
-import type { AppBindings } from "./supabase";
+import type { Context, Next } from 'hono';
+import type { AppBindings } from './supabase';
 
 interface RouteMetrics {
-    total_requests: number;
-    total_errors: number;
-    avg_latency_ms: number;
-    latency_samples: number[];
+    total_requests: number
+    total_errors: number
+    avg_latency_ms: number
+    latency_samples: number[]
 }
 
 const metrics = new Map<string, RouteMetrics>();
@@ -27,7 +27,7 @@ export function metrics_middleware() {
             total_requests: 0,
             total_errors: 0,
             avg_latency_ms: 0,
-            latency_samples: [],
+            latency_samples: []
         };
 
         entry.total_requests++;
@@ -38,16 +38,16 @@ export function metrics_middleware() {
             entry.latency_samples = entry.latency_samples.slice(-MAX_SAMPLES);
         }
 
-        entry.avg_latency_ms =
-            entry.latency_samples.reduce((a, b) => a + b, 0) /
-            entry.latency_samples.length;
+        entry.avg_latency_ms
+            = entry.latency_samples.reduce((a, b) => a + b, 0)
+              / entry.latency_samples.length;
 
         metrics.set(key, entry);
     };
 }
 
 export interface MetricsSnapshot {
-    [route: string]: Omit<RouteMetrics, "latency_samples"> & { p95_latency_ms: number };
+    [route: string]: Omit<RouteMetrics, 'latency_samples'> & { p95_latency_ms: number }
 }
 
 export function get_metrics(): MetricsSnapshot {
@@ -59,7 +59,7 @@ export function get_metrics(): MetricsSnapshot {
             total_requests: entry.total_requests,
             total_errors: entry.total_errors,
             avg_latency_ms: Math.round(entry.avg_latency_ms * 100) / 100,
-            p95_latency_ms: Math.round((sorted[p95_idx] ?? 0) * 100) / 100,
+            p95_latency_ms: Math.round((sorted[p95_idx] ?? 0) * 100) / 100
         };
     }
     return result;

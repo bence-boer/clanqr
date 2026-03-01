@@ -1,7 +1,7 @@
 <script lang="ts">
     interface Props {
-        content: string;
-        max_height?: string;
+        content: string
+        max_height?: string
     }
 
     const { content, max_height = '350px' }: Props = $props();

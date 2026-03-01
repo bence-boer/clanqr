@@ -21,16 +21,14 @@
     let log_text = $state('');
     let log_visible = $state(false);
     let log_loading = $state(false);
-
     let action_error = $state('');
     let action_busy = $state(false);
-
-    // ── Data loading ──────────────────────────────────────────────────────────
 
     async function load_pipeline() {
         try {
             pipeline = await api.pipeline_status();
-        } catch (err) {
+        }
+        catch (err) {
             console.error('Failed to load pipeline status:', err);
             toast_store.error('Failed to load pipeline status');
         }
@@ -39,7 +37,8 @@
     async function load_queue() {
         try {
             queue = await api.list_tasks(undefined, 'Approved');
-        } catch (err) {
+        }
+        catch (err) {
             console.error('Failed to load queue:', err);
             toast_store.error('Failed to load queue');
             queue = [];
@@ -52,7 +51,8 @@
             history = result.runs;
             history_total = result.total;
             history_total_pages = result.total_pages;
-        } catch (err) {
+        }
+        catch (err) {
             console.error('Failed to load history:', err);
             toast_store.error('Failed to load history');
             history = [];
@@ -64,11 +64,13 @@
         try {
             const result = await api.pipeline_log();
             log_text = result.log;
-        } catch (err) {
+        }
+        catch (err) {
             console.error('Failed to load log:', err);
             toast_store.error('Failed to load log');
             log_text = 'Failed to load log.';
-        } finally {
+        }
+        finally {
             log_loading = false;
         }
     }
@@ -83,51 +85,32 @@
 
     // Reload history when filter or page changes
     $effect(() => {
-        filter_status;
-        history_page;
+        void filter_status;
+        void history_page;
         load_history();
     });
 
-    // ── Actions ───────────────────────────────────────────────────────────────
-
-    async function do_pause() {
+    async function do_action(action: () => Promise<unknown>, fail_msg: string) {
         action_busy = true;
         action_error = '';
         try {
-            await api.pipeline_pause();
+            await action();
             await load_pipeline();
-        } catch (e) {
-            action_error = e instanceof Error ? e.message : 'Failed to pause';
-        } finally {
+        }
+        catch (e) {
+            action_error = e instanceof Error ? e.message : fail_msg;
+        }
+        finally {
             action_busy = false;
         }
     }
 
-    async function do_resume() {
-        action_busy = true;
-        action_error = '';
-        try {
-            await api.pipeline_resume();
-            await load_pipeline();
-        } catch (e) {
-            action_error = e instanceof Error ? e.message : 'Failed to resume';
-        } finally {
-            action_busy = false;
-        }
-    }
+    const do_pause = () => do_action(() => api.pipeline_pause(), 'Failed to pause');
+    const do_resume = () => do_action(() => api.pipeline_resume(), 'Failed to resume');
 
     async function do_stop() {
         if (!confirm('Stop the currently running task?')) return;
-        action_busy = true;
-        action_error = '';
-        try {
-            await api.pipeline_stop_current();
-            await load_pipeline();
-        } catch (e) {
-            action_error = e instanceof Error ? e.message : 'Failed to stop';
-        } finally {
-            action_busy = false;
-        }
+        await do_action(() => api.pipeline_stop_current(), 'Failed to stop');
     }
 
     async function toggle_log() {
@@ -140,8 +123,7 @@
         const elapsed = Math.floor((Date.now() - new Date(started_at).getTime()) / 1000);
         if (elapsed < 60) return `${elapsed}s`;
         const m = Math.floor(elapsed / 60);
-        const s = elapsed % 60;
-        return `${m}m ${s}s`;
+        return `${m}m ${elapsed % 60}s`;
     }
 </script>
 
@@ -194,26 +176,9 @@
 </div>
 
 <style>
-    .page {
-        max-width: 900px;
-    }
-
-    .page-header {
-        margin-bottom: 1.5rem;
-    }
-    .page-header h2 {
-        font-size: 1.5rem;
-        color: var(--fg);
-    }
-    .subtitle {
-        color: var(--fg-muted);
-        font-size: 0.875rem;
-        margin-top: 0.2rem;
-    }
-
-    @media (max-width: 768px) {
-        .page {
-            overflow-x: hidden;
-        }
-    }
+    .page { max-width: 900px; }
+    .page-header { margin-bottom: 1.5rem; }
+    .page-header h2 { font-size: 1.5rem; color: var(--fg); }
+    .subtitle { color: var(--fg-muted); font-size: 0.875rem; margin-top: 0.2rem; }
+    @media (max-width: 768px) { .page { overflow-x: hidden; } }
 </style>

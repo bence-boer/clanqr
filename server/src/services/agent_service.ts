@@ -1,67 +1,33 @@
-import { type Subprocess } from "bun";
-import { z } from "zod";
-import type { SupabaseClient } from "../db";
-import type { FeatureRow, TaskRow } from "../types";
-import { readFileSync, existsSync, mkdirSync, readdirSync, statSync, rmSync } from "fs";
-import { join } from "path";
-import { WORKSPACE_DIR } from "../env";
-import { env } from "../env";
-import { prompt_service } from "./prompt_service";
-import { check_and_complete_feature } from "./feature_utils";
-import { spawn_agent } from "./spawn_agent";
-import { logger } from "../utils/logger";
+import { type Subprocess } from 'bun';
+import type { SupabaseClient } from '../db';
+import type { FeatureRow } from '../types';
+import { readFileSync, existsSync, mkdirSync, readdirSync, statSync, rmSync } from 'fs';
+import { join } from 'path';
+import { WORKSPACE_DIR } from '../env';
+import { prompt_service } from './prompt_service';
+import { spawn_agent } from './spawn_agent';
+import { logger } from '../utils/logger';
+import { can_spawn_agent, increment_agent_count, decrement_agent_count } from './agent_concurrency';
+import { parse_manager_output } from './manager_output';
 
-// --- Zod schemas for agent output validation ---
+// Re-export concurrency utilities for consumers
+export { can_spawn_agent, increment_agent_count, decrement_agent_count, set_on_agent_freed, get_agent_concurrency } from './agent_concurrency';
 
-const task_output_schema = z.object({
-    description: z.string().min(20, "Task description must be at least 20 characters").max(5000, "Task description must not exceed 5000 characters"),
-}).strict();
-
-const manager_output_schema = z.array(task_output_schema)
-    .min(1, "At least one task is required")
-    .max(50, "Maximum 50 tasks allowed");
-
-const MAX_OUTPUT_FILE_SIZE = 1024 * 1024; // 1MB
 const MANAGER_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 
 interface AgentProcess {
-    task_id: string;
-    run_id?: string;
-    type: "manager" | "ralph";
-    cli: string;
-    process: Subprocess | null;
-    status: "running" | "completed" | "failed" | "stopped";
-    started_at: string;
-    finished_at?: string;
-    log: string;
+    task_id: string
+    run_id?: string
+    type: 'manager' | 'ralph'
+    cli: string
+    process: Subprocess | null
+    status: 'running' | 'completed' | 'failed' | 'stopped'
+    started_at: string
+    finished_at?: string
+    log: string
 }
 
 const AGENT_WORKSPACE_DIR = WORKSPACE_DIR;
-const MAX_CONCURRENT_AGENTS = env.MAX_CONCURRENT_AGENTS;
-let active_agent_count = 0;
-
-/** Check if another agent process can be spawned */
-export function can_spawn_agent(): boolean {
-    return active_agent_count < MAX_CONCURRENT_AGENTS;
-}
-
-/** Increment the active agent counter (call before spawning) */
-export function increment_agent_count() { active_agent_count++; }
-
-/** Decrement the active agent counter (call in finally block after spawn) */
-export function decrement_agent_count() {
-    active_agent_count = Math.max(0, active_agent_count - 1);
-    on_agent_freed?.();
-}
-
-let on_agent_freed: (() => void) | null = null;
-/** Register a callback invoked whenever an agent slot is freed */
-export function set_on_agent_freed(callback: () => void) { on_agent_freed = callback; }
-
-/** Current concurrency info for diagnostics */
-export function get_agent_concurrency() {
-    return { active: active_agent_count, max: MAX_CONCURRENT_AGENTS };
-}
 
 class AgentService {
     private processes: Map<string, AgentProcess> = new Map();
@@ -73,9 +39,10 @@ class AgentService {
     }
 
     get_all_processes() {
-        const result: Record<string, Omit<AgentProcess, "process">> = {};
+        const result: Record<string, Omit<AgentProcess, 'process'>> = {};
         for (const [id, proc] of this.processes) {
-            const { process: _proc, ...rest } = proc;
+            const rest = { ...proc } as Omit<AgentProcess, 'process'> & { process?: unknown };
+            delete rest.process;
             result[id] = rest;
         }
         return result;
@@ -87,14 +54,14 @@ class AgentService {
             return proc.log;
         }
 
-        const log_path = join(AGENT_WORKSPACE_DIR, task_id, "agent.log");
+        const log_path = join(AGENT_WORKSPACE_DIR, task_id, 'agent.log');
         if (existsSync(log_path)) {
-            return readFileSync(log_path, "utf-8");
+            return readFileSync(log_path, 'utf-8');
         }
-        return "";
+        return '';
     }
 
-    async spawn_manager(feature: FeatureRow & { resources?: { url: string; title: string | null }[]; projects?: { name: string } }, supabase: SupabaseClient) {
+    async spawn_manager(feature: FeatureRow & { resources?: { url: string, title: string | null }[], projects?: { name: string } }, supabase: SupabaseClient) {
         const feature_id = feature.id;
         const work_dir = join(AGENT_WORKSPACE_DIR, `manager-${feature_id}`);
         const process_id = `manager-${feature_id}`;
@@ -103,99 +70,70 @@ class AgentService {
             feature_id: feature.id,
             title: feature.title,
             description: feature.description,
-            project: feature.projects?.name ?? "Unknown",
-            resources: (feature.resources ?? []).map((r) => ({
-                url: r.url,
-                title: r.title,
-            })),
+            project: feature.projects?.name ?? 'Unknown',
+            resources: (feature.resources ?? []).map((r) => ({ url: r.url, title: r.title }))
         };
 
-        // Update feature status
         const { error: status_error } = await supabase
-            .from("features")
-            .update({ status: "In_Progress" })
-            .eq("id", feature_id);
-        if (status_error) logger.error("Failed to update feature status", { service: "agent", feature_id, error: status_error.message });
+            .from('features')
+            .update({ status: 'In_Progress' })
+            .eq('id', feature_id);
+        if (status_error) logger.error('Failed to update feature status', { service: 'agent', feature_id, error: status_error.message });
 
         const prompt = await prompt_service.resolve_for_manager(spec, feature_id, feature.project_id);
-        const cli = feature.cli || "copilot";
-        const model = feature.model || (cli === "gemini" ? "gemini-3-flash-preview" : "gpt-4o");
+        const cli = feature.cli || 'copilot';
+        const model = feature.model || (cli === 'gemini' ? 'gemini-3-flash-preview' : 'gpt-4o');
 
-        // Check agent concurrency before spawning manager
         if (!can_spawn_agent()) {
-            logger.warn("Agent concurrency limit reached, deferring manager spawn", { service: "agent", feature_id });
-            await supabase.from("features").update({ status: "Submitted" }).eq("id", feature_id);
+            logger.warn('Agent concurrency limit reached, deferring manager spawn', { service: 'agent', feature_id });
+            await supabase.from('features').update({ status: 'Submitted' }).eq('id', feature_id);
             return;
         }
 
-        // Track in process map
         const agent_proc: AgentProcess = {
-            task_id: process_id,
-            type: "manager",
-            cli,
-            process: null,
-            status: "running",
-            started_at: new Date().toISOString(),
-            log: "",
+            task_id: process_id, type: 'manager', cli, process: null,
+            status: 'running', started_at: new Date().toISOString(), log: ''
         };
         this.processes.set(process_id, agent_proc);
 
         increment_agent_count();
         try {
             const result = await spawn_agent({
-                agent_type: "manager",
-                work_dir,
-                spec_file: "feature-spec.json",
-                spec_data: spec,
-                prompt,
-                cli,
-                model,
-                feature_id,
-                timeout_ms: MANAGER_TIMEOUT_MS,
+                agent_type: 'manager', work_dir, spec_file: 'feature-spec.json',
+                spec_data: spec, prompt, cli, model, feature_id, timeout_ms: MANAGER_TIMEOUT_MS
             }, supabase);
 
             agent_proc.run_id = result.run_id;
             agent_proc.log = result.log;
-            agent_proc.status = result.exit_code === 0 ? "completed" : "failed";
+            agent_proc.status = result.exit_code === 0 ? 'completed' : 'failed';
             agent_proc.finished_at = new Date().toISOString();
 
             if (result.exit_code === 0) {
-                await this.parse_manager_output(feature_id, work_dir, supabase, result.run_id);
-                // M-6.1: Reset retry count on successful completion
-                const { error: reset_error } = await supabase
-                    .from("features")
-                    .update({ manager_retry_count: 0 })
-                    .eq("id", feature_id);
-                if (reset_error) logger.error("Failed to reset manager retry count", { service: "agent", feature_id, error: reset_error.message });
-            } else {
-                const error_msg = result.exit_code === -1
-                    ? "Manager timed out after 15 minutes"
-                    : `Manager failed with exit code ${result.exit_code}`;
-                const { error: fail_error } = await supabase
-                    .from("features")
-                    .update({
-                        status: "Submitted",
-                        last_error: error_msg,
-                        manager_retry_count: (feature.manager_retry_count ?? 0) + 1,
-                    })
-                    .eq("id", feature_id);
-                if (fail_error) logger.error("Failed to update feature after manager failure", { service: "agent", feature_id, error: fail_error.message });
+                await parse_manager_output(feature_id, work_dir, supabase, result.run_id);
+                const { error: reset_error } = await supabase.from('features').update({ manager_retry_count: 0 }).eq('id', feature_id);
+                if (reset_error) logger.error('Failed to reset manager retry count', { service: 'agent', feature_id, error: reset_error.message });
             }
-        } catch (error) {
-            agent_proc.status = "failed";
+            else {
+                const error_msg = result.exit_code === -1
+                    ? 'Manager timed out after 15 minutes'
+                    : `Manager failed with exit code ${result.exit_code}`;
+                const { error: fail_error } = await supabase.from('features').update({
+                    status: 'Submitted', last_error: error_msg, manager_retry_count: (feature.manager_retry_count ?? 0) + 1
+                }).eq('id', feature_id);
+                if (fail_error) logger.error('Failed to update feature after manager failure', { service: 'agent', feature_id, error: fail_error.message });
+            }
+        }
+        catch (error) {
+            agent_proc.status = 'failed';
             agent_proc.finished_at = new Date().toISOString();
-            const error_msg = error instanceof Error ? error.message : "Unknown error";
+            const error_msg = error instanceof Error ? error.message : 'Unknown error';
             agent_proc.log += `\nERROR: ${error_msg}`;
-            const { error: catch_error } = await supabase
-                .from("features")
-                .update({
-                    status: "Submitted",
-                    last_error: error_msg,
-                    manager_retry_count: (feature.manager_retry_count ?? 0) + 1,
-                })
-                .eq("id", feature_id);
-            if (catch_error) logger.error("Failed to update feature after manager exception", { service: "agent", feature_id, error: catch_error.message });
-        } finally {
+            const { error: catch_error } = await supabase.from('features').update({
+                status: 'Submitted', last_error: error_msg, manager_retry_count: (feature.manager_retry_count ?? 0) + 1
+            }).eq('id', feature_id);
+            if (catch_error) logger.error('Failed to update feature after manager exception', { service: 'agent', feature_id, error: catch_error.message });
+        }
+        finally {
             decrement_agent_count();
         }
     }
@@ -204,113 +142,25 @@ class AgentService {
         const proc = this.processes.get(task_id);
         if (proc?.process) {
             proc.process.kill();
-            proc.status = "stopped";
+            proc.status = 'stopped';
             proc.finished_at = new Date().toISOString();
             if (supabase && proc.run_id) {
-                supabase
-                    .from("agent_runs")
-                    .update({ status: "stopped", finished_at: proc.finished_at })
-                    .eq("id", proc.run_id)
-                    .then(() => { });
+                supabase.from('agent_runs').update({ status: 'stopped', finished_at: proc.finished_at }).eq('id', proc.run_id).then(() => {
+                });
             }
         }
     }
 
     stop_all(supabase?: SupabaseClient) {
-        for (const [_id, proc] of this.processes) {
-            if (proc.process && proc.status === "running") {
+        for (const proc of this.processes.values()) {
+            if (proc.process && proc.status === 'running') {
                 proc.process.kill();
-                proc.status = "stopped";
+                proc.status = 'stopped';
                 proc.finished_at = new Date().toISOString();
                 if (supabase && proc.run_id) {
-                    supabase
-                        .from("agent_runs")
-                        .update({ status: "stopped", finished_at: proc.finished_at })
-                        .eq("id", proc.run_id)
-                        .then(() => { });
+                    supabase.from('agent_runs').update({ status: 'stopped', finished_at: proc.finished_at }).eq('id', proc.run_id).then(() => {
+                    });
                 }
-            }
-        }
-    }
-
-    private async parse_manager_output(
-        feature_id: string,
-        work_dir: string,
-        supabase: SupabaseClient,
-        run_id?: string
-    ) {
-        const tasks_file = join(work_dir, "tasks.json");
-
-        if (!existsSync(tasks_file)) {
-            logger.error("Manager exited 0 but no tasks.json", { service: "agent", feature_id });
-            await supabase.from("features")
-                .update({ status: "Draft" })
-                .eq("id", feature_id);
-            if (run_id) {
-                await supabase.from("agent_runs")
-                    .update({ status: "failed", error: "Manager completed but produced no tasks.json" })
-                    .eq("id", run_id);
-            }
-            return;
-        }
-
-        try {
-            const { size } = Bun.file(tasks_file);
-            if (size > MAX_OUTPUT_FILE_SIZE) {
-                const error_msg = `tasks.json exceeds maximum size (${size} bytes > ${MAX_OUTPUT_FILE_SIZE})`;
-                logger.error("tasks.json exceeds size limit", { service: "agent", feature_id, size, max: MAX_OUTPUT_FILE_SIZE });
-                await supabase.from("features")
-                    .update({ status: "Draft" })
-                    .eq("id", feature_id);
-                if (run_id) {
-                    await supabase.from("agent_runs")
-                        .update({ status: "failed", error: error_msg })
-                        .eq("id", run_id);
-                }
-                return;
-            }
-
-            const content = readFileSync(tasks_file, "utf-8");
-            const raw = JSON.parse(content);
-            const result = manager_output_schema.safeParse(raw);
-
-            if (!result.success) {
-                const error_msg = `Invalid tasks.json: ${result.error.issues.map(i => i.message).join("; ")}`;
-                logger.error("Invalid tasks.json schema", { service: "agent", feature_id, error: error_msg });
-                await supabase.from("features")
-                    .update({ status: "Draft" })
-                    .eq("id", feature_id);
-                if (run_id) {
-                    await supabase.from("agent_runs")
-                        .update({ status: "failed", error: error_msg })
-                        .eq("id", run_id);
-                }
-                return;
-            }
-
-            const task_rows = result.data.map((t, index) => ({
-                feature_id,
-                description: t.description,
-                status: "Pending_Approval" as const,
-                sort_order: index,
-            }));
-
-            const { error: insert_error } = await supabase.from("tasks").insert(task_rows);
-            if (insert_error) {
-                logger.error("Failed to insert tasks", { service: "agent", feature_id, error: insert_error.message });
-                await supabase.from("features").update({ status: "Draft" }).eq("id", feature_id);
-                return;
-            }
-        } catch (error) {
-            const error_msg = error instanceof Error ? error.message : "Unknown parse error";
-            logger.error("Failed to parse manager tasks output", { service: "agent", feature_id, error: error_msg });
-            await supabase.from("features")
-                .update({ status: "Draft" })
-                .eq("id", feature_id);
-            if (run_id) {
-                await supabase.from("agent_runs")
-                    .update({ status: "failed", error: `Failed to parse tasks.json: ${error_msg}` })
-                    .eq("id", run_id);
             }
         }
     }
@@ -322,22 +172,16 @@ class AgentService {
 
         if (!existsSync(AGENT_WORKSPACE_DIR)) return 0;
 
-        // Collect IDs of actively running processes to skip
         const active_ids = new Set<string>();
         for (const [id, proc] of this.processes) {
-            if (proc.status === "running") {
-                active_ids.add(id);
-            }
+            if (proc.status === 'running') active_ids.add(id);
         }
 
         for (const entry of readdirSync(AGENT_WORKSPACE_DIR, { withFileTypes: true })) {
             if (!entry.isDirectory()) continue;
-
-            // Skip active workspaces
             const dir_name = entry.name;
-            const is_active = [...active_ids].some(id => dir_name.includes(id));
+            const is_active = [...active_ids].some((id) => dir_name.includes(id));
             if (is_active) continue;
-
             const dir_path = join(AGENT_WORKSPACE_DIR, dir_name);
             try {
                 const stat = statSync(dir_path);
@@ -345,14 +189,13 @@ class AgentService {
                     rmSync(dir_path, { recursive: true, force: true });
                     cleaned++;
                 }
-            } catch {
+            }
+            catch {
                 // Skip directories we can't stat
             }
         }
 
-        if (cleaned > 0) {
-            logger.info("Cleaned old workspaces", { service: "agent", cleaned });
-        }
+        if (cleaned > 0) logger.info('Cleaned old workspaces', { service: 'agent', cleaned });
         return cleaned;
     }
 }

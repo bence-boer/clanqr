@@ -6,15 +6,15 @@
     import type { PromptRecord } from '$lib/types';
 
     interface PromptEditState {
-        editing: boolean;
-        content: string;
-        saving: boolean;
+        editing: boolean
+        content: string
+        saving: boolean
     }
 
     interface Props {
-        prompts: PromptRecord[];
-        edit_state: Record<string, PromptEditState>;
-        on_updated: () => void;
+        prompts: PromptRecord[]
+        edit_state: Record<string, PromptEditState>
+        on_updated: () => void
     }
 
     let { prompts, edit_state, on_updated }: Props = $props();
@@ -45,7 +45,8 @@
             await api.update_prompt(role, state.content);
             edit_state[role] = { editing: false, content: state.content, saving: false };
             on_updated();
-        } catch (err: any) {
+        }
+        catch {
             state.saving = false;
         }
     }

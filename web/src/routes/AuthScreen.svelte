@@ -8,11 +8,11 @@
         onregister,
         onlogin
     }: {
-        auth_state: string;
-        error?: string | null;
-        pending?: boolean;
-        onregister: (name: string) => void;
-        onlogin: () => void;
+        auth_state: string
+        error?: string | null
+        pending?: boolean
+        onregister: (name: string) => void
+        onlogin: () => void
     } = $props();
 
     let setup_name: string = $state('');

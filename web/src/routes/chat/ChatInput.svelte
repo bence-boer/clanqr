@@ -6,10 +6,10 @@
         onsend,
         onstop
     }: {
-        input_text: string;
-        is_streaming: boolean;
-        onsend: () => void;
-        onstop?: () => void;
+        input_text: string
+        is_streaming: boolean
+        onsend: () => void
+        onstop?: () => void
     } = $props();
 
     function handle_key_down(event: KeyboardEvent) {

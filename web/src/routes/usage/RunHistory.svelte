@@ -1,6 +1,6 @@
 <script lang="ts">
     import { EmptyState, LoadingSpinner, StatusBadge } from '$lib/components';
-    import { Button, Select, Badge } from '$lib/components/primitives';
+    import { Badge, Pagination, Select } from '$lib/components/primitives';
     import type { AgentRun } from '$lib/types';
 
     let {
@@ -15,16 +15,16 @@
         onfilter_status_change,
         onpage_change
     }: {
-        runs: AgentRun[];
-        total_pages: number;
-        total_count: number;
-        loading: boolean;
-        filter_type: string;
-        filter_status: string;
-        current_page: number;
-        onfilter_type_change: (value: string) => void;
-        onfilter_status_change: (value: string) => void;
-        onpage_change: (page: number) => void;
+        runs: AgentRun[]
+        total_pages: number
+        total_count: number
+        loading: boolean
+        filter_type: string
+        filter_status: string
+        current_page: number
+        onfilter_type_change: (value: string) => void
+        onfilter_status_change: (value: string) => void
+        onpage_change: (page: number) => void
     } = $props();
 
     function format_duration(ms: number | null): string {
@@ -104,7 +104,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {#each runs as run}
+                    {#each runs as run (run.id)}
                         <tr>
                             <td><Badge variant={run.type === 'manager' ? 'info' : run.type === 'chat' ? 'success' : 'warning'}>{run.type}</Badge></td>
                             <td class="model-col">{run.model ?? 'default'}</td>
@@ -118,13 +118,9 @@
             </table>
         </div>
 
-        {#if total_pages > 1}
-            <div class="pagination">
-                <Button variant="secondary" icon="chevron_left" disabled={current_page <= 1} onclick={() => onpage_change(current_page - 1)} />
-                <span class="page-info">Page {current_page} of {total_pages}</span>
-                <Button variant="secondary" icon="chevron_right" disabled={current_page >= total_pages} onclick={() => onpage_change(current_page + 1)} />
-            </div>
-        {/if}
+        <div class="pagination-border">
+            <Pagination {current_page} {total_pages} {onpage_change} />
+        </div>
     {/if}
 </div>
 
@@ -135,7 +131,6 @@
         border-radius: var(--radius);
         overflow: hidden;
     }
-
     .history-header {
         display: flex;
         justify-content: space-between;
@@ -145,7 +140,6 @@
         flex-wrap: wrap;
         gap: 0.75rem;
     }
-
     .history-header h3 {
         font-size: 1rem;
         color: var(--fg);
@@ -154,22 +148,9 @@
         gap: 0.5rem;
         min-width: 0;
     }
-
-    /* ── Table ─────────────────────────────────────────────────────────────── */
-    .table-wrap {
-        overflow-x: auto;
-    }
-
-    .runs-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.85rem;
-    }
-
-    .runs-table thead tr {
-        border-bottom: 1px solid var(--border);
-    }
-
+    .table-wrap { overflow-x: auto; }
+    .runs-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .runs-table thead tr { border-bottom: 1px solid var(--border); }
     .runs-table th {
         padding: 0.6rem 1.25rem;
         text-align: left;
@@ -180,32 +161,16 @@
         font-weight: 600;
         white-space: nowrap;
     }
-
     .runs-table td {
         padding: 0.65rem 1.25rem;
         color: var(--fg);
         border-bottom: 1px solid var(--border);
         vertical-align: middle;
     }
-
-    .runs-table tbody tr:last-child td {
-        border-bottom: none;
-    }
-
-    .runs-table tbody tr:hover {
-        background: var(--bg-elevated);
-    }
-
-    .mono {
-        font-variant-numeric: tabular-nums;
-        font-size: 0.82rem;
-    }
-
-    .runs-table td.date-col {
-        color: var(--fg-muted);
-        font-size: 0.8rem;
-    }
-
+    .runs-table tbody tr:last-child td { border-bottom: none; }
+    .runs-table tbody tr:hover { background: var(--bg-elevated); }
+    .mono { font-variant-numeric: tabular-nums; font-size: 0.82rem; }
+    .runs-table td.date-col { color: var(--fg-muted); font-size: 0.8rem; }
     .runs-table td.model-col {
         font-size: 0.8rem;
         color: var(--fg-muted);
@@ -214,42 +179,11 @@
         text-overflow: ellipsis;
         white-space: nowrap;
     }
-
-    /* ── Pagination ────────────────────────────────────────────────────────── */
-    .pagination {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.75rem;
-        padding: 0.75rem 1.25rem;
-        border-top: 1px solid var(--border);
-    }
-
-    .page-info {
-        font-size: 0.82rem;
-        color: var(--fg-muted);
-    }
-
-    .loading-row {
-        padding: 2rem 1.25rem;
-        display: flex;
-        justify-content: center;
-    }
-
-    @media (max-width: 768px) {
-        .filters {
-            flex-wrap: wrap;
-        }
-    }
-
+    .pagination-border { border-top: 1px solid var(--border); padding: 0.75rem 1.25rem; }
+    .loading-row { padding: 2rem 1.25rem; display: flex; justify-content: center; }
+    @media (max-width: 768px) { .filters { flex-wrap: wrap; } }
     @media (max-width: 640px) {
-        .history-header {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-        .filters {
-            flex-direction: column;
-            width: 100%;
-        }
+        .history-header { flex-direction: column; align-items: flex-start; }
+        .filters { flex-direction: column; width: 100%; }
     }
 </style>

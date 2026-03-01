@@ -1,6 +1,12 @@
 <script lang="ts">
-    import type { HTMLLabelAttributes } from 'svelte/elements';
     import type { Snippet } from 'svelte';
+    import type { HTMLLabelAttributes } from 'svelte/elements';
+
+    export type LabelProperties = HTMLLabelAttributes & {
+        ref?: HTMLLabelElement | null
+        children?: Snippet
+        required?: boolean
+    };
 
     let {
         ref = $bindable(null),
@@ -8,11 +14,7 @@
         class: class_name,
         required = false,
         ...rest_props
-    }: HTMLLabelAttributes & {
-        ref?: HTMLLabelElement | null;
-        children?: Snippet;
-        required?: boolean;
-    } = $props();
+    }: LabelProperties = $props();
 </script>
 
 <label {...rest_props} data-slot="label" bind:this={ref} class={['base-label', class_name].filter(Boolean).join(' ')}>
