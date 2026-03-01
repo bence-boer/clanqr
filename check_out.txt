@@ -1,0 +1,72 @@
+$ bun run check:server && bun run check:web
+$ cd server && bun run --bun tsc --noEmit
+$ cd web && bun run --bun check
+$ svelte-kit sync && svelte-check --tsconfig ./tsconfig.json
+Loading svelte-check in workspace: /home/scoy/projects/ralph-agent-workspace/web
+Getting Svelte diagnostics...
+
+/home/scoy/projects/ralph-agent-workspace/web/src/lib/stores/auth.svelte.ts:42:26
+Error: 'err' is of type 'unknown'. 
+        } catch (err: unknown) {
+            this.error = err.message;
+            return false;
+
+/home/scoy/projects/ralph-agent-workspace/web/src/lib/stores/auth.svelte.ts:63:26
+Error: 'err' is of type 'unknown'. 
+        } catch (err: unknown) {
+            this.error = err.message;
+            return false;
+
+/home/scoy/projects/ralph-agent-workspace/web/src/routes/SystemStatsCard.svelte:33:50
+Error: Property 'id' does not exist on type 'SystemAlert'. (ts)
+        <div class="alerts" role="alert">
+            {#each system_alerts as alert (alert.id)}
+                <div class="alert" class:alert-warning={alert.severity === 'warning'} class:alert-critical={alert.severity === 'critical'}>
+
+/home/scoy/projects/ralph-agent-workspace/web/src/routes/admin/InviteTable.svelte:35:28
+Error: 'err' is of type 'unknown'. (ts)
+        } catch (err: unknown) {
+            revoke_error = err.message;
+        } finally {
+
+/home/scoy/projects/ralph-agent-workspace/web/src/routes/projects/[id]/FeatureForm.svelte:120:39
+Error: Property 'id' does not exist on type 'ModelOption'. (ts)
+            <Select id="model-select" label={`Model ${loading_models ? '(loading...)' : ''}`} bind:value={model} class="input select" disabled={loading_models}>
+                {#each models as m (m.id)}
+                    <option value={m.value}>{m.label}</option>
+
+/home/scoy/projects/ralph-agent-workspace/web/src/routes/projects/[id]/TaskArtifacts.svelte:99:57
+Error: Property 'id' does not exist on type '{ name: string; description: string; }'. (ts)
+            {:else}
+                {#each available_skills as skill (skill.id)}
+                    <label class="artifact-check">
+
+/home/scoy/projects/ralph-agent-workspace/web/src/routes/prompts/+page.svelte:38:29
+Error: 'err' is of type 'unknown'. (ts)
+        } catch (err: unknown) {
+            prompts_error = err.message ?? 'Failed to load prompts';
+        } finally {
+
+/home/scoy/projects/ralph-agent-workspace/web/src/routes/prompts/+page.svelte:54:31
+Error: 'err' is of type 'unknown'. (ts)
+        } catch (err: unknown) {
+            toast_store.error(err.message ?? 'Sync failed');
+        } finally {
+
+/home/scoy/projects/ralph-agent-workspace/web/src/routes/prompts/+page.svelte:71:28
+Error: 'err' is of type 'unknown'. (ts)
+        } catch (err: unknown) {
+            traits_error = err.message ?? 'Failed to load traits';
+        } finally {
+
+/home/scoy/projects/ralph-agent-workspace/web/src/routes/skills/+page.svelte:122:74
+Error: Property 'id' does not exist on type '{ name: string; content: string; }'. (ts)
+                                    <div class="skill-extra-files">
+                                        {#each skill_files as file (file.id)}
+                                            <details class="extra-file">
+
+====================================
+svelte-check found 10 errors and 0 warnings in 7 files
+error: script "check" exited with code 1
+error: script "check:web" exited with code 1
+error: script "check" exited with code 1

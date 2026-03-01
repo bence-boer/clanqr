@@ -8,21 +8,21 @@
     import type { FailureBehavior } from '$lib/types';
 
     interface ModelOption {
-        value: string;
-        label: string;
+        value: string
+        label: string
     }
 
     interface Props {
         on_create: (data: {
-            title: string;
-            description?: string;
-            cli: string;
-            model: string | null;
-            on_task_failure: FailureBehavior;
-            task_timeout_minutes: number;
-            resources: { url: string; title?: string }[];
-        }) => Promise<void>;
-        on_cancel: () => void;
+            title: string
+            description?: string
+            cli: string
+            model: string | null
+            on_task_failure: FailureBehavior
+            task_timeout_minutes: number
+            resources: { url: string, title?: string }[]
+        }) => Promise<void>
+        on_cancel: () => void
     }
 
     let { on_create, on_cancel }: Props = $props();
@@ -34,7 +34,7 @@
     let on_task_failure = $state<FailureBehavior>('stop');
     let task_timeout_minutes = $state(10);
     let models = $state<ModelOption[]>([]);
-    let resources = $state<{ url: string; title: string }[]>([]);
+    let resources = $state<{ url: string, title: string }[]>([]);
     let creating = $state(false);
     let loading_models = $state(false);
 
@@ -50,10 +50,12 @@
             if (!models.find((m) => m.value === model) && models.length > 0) {
                 model = models[0].value;
             }
-        } catch (err) {
+        }
+        catch (err) {
             console.error('Failed to load models:', err);
             toast_store.error('Failed to load models');
-        } finally {
+        }
+        finally {
             loading_models = false;
         }
     }
@@ -92,7 +94,8 @@
             on_task_failure = 'stop';
             task_timeout_minutes = 10;
             resources = [];
-        } finally {
+        }
+        finally {
             creating = false;
         }
     }
@@ -117,7 +120,7 @@
         </div>
         <div class="field">
             <Select id="model-select" label={`Model ${loading_models ? '(loading...)' : ''}`} bind:value={model} class="input select" disabled={loading_models}>
-                {#each models as m}
+                {#each models as m (m.value)}
                     <option value={m.value}>{m.label}</option>
                 {/each}
             </Select>
@@ -141,10 +144,12 @@
                 <span class="icon" style="font-size:14px">add</span> Add URL
             </Button>
         </div>
-        {#each resources as resource, index}
+        {#each resources as resource, index (index)}
             <div class="resource-row">
                 <Input type="url" placeholder="https://..." bind:value={resource.url} class="input" />
-                <Input type="text" placeholder="Title" bind:value={resource.title} class="input input-title" />
+                <div class="title-field">
+                    <Input type="text" placeholder="Title" bind:value={resource.title} class="input" />
+                </div>
                 <Button type="button" variant="danger" size="icon" onclick={() => remove_resource(index)}>
                     <span class="icon" style="font-size:16px">close</span>
                 </Button>
@@ -162,70 +167,26 @@
 
 <style>
     .create-form {
-        background: var(--bg-surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 1.25rem;
-        margin-bottom: 1.5rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
+        background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius);
+        padding: 1.25rem; margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem;
     }
-    :global(.input-title) {
-        max-width: 180px;
-    }
-    .resources-section {
-        margin-top: 0.5rem;
-    }
+    .resources-section { margin-top: 0.5rem; }
     .resources-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 0.5rem;
-        font-size: 0.875rem;
-        color: var(--fg-muted);
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 0.5rem; font-size: 0.875rem; color: var(--fg-muted);
     }
-    .resources-header span {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.3rem;
-    }
+    .resources-header span { display: inline-flex; align-items: center; gap: 0.3rem; }
     .resource-row {
-        display: flex;
-        gap: 0.5rem;
-        align-items: center;
-        margin-bottom: 0.5rem;
-        flex-wrap: wrap;
+        display: flex; gap: 0.5rem; align-items: center;
+        margin-bottom: 0.5rem; flex-wrap: wrap;
     }
-    .form-actions {
-        display: flex;
-        gap: 0.5rem;
-        justify-content: flex-end;
-    }
+    .title-field { max-width: 180px; }
+    .form-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+    .selection-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .field { display: flex; flex-direction: column; gap: 0.35rem; }
     @media (max-width: 768px) {
-        .resource-row {
-            flex-direction: column;
-        }
-        :global(.input-title) {
-            max-width: 100%;
-        }
-        .selection-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-    .selection-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 0.75rem;
-    }
-    .field {
-        display: flex;
-        flex-direction: column;
-        gap: 0.35rem;
-    }
-    :global(.field-label) {
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: var(--fg-muted);
+        .resource-row { flex-direction: column; }
+        .title-field { max-width: 100%; }
+        .selection-grid { grid-template-columns: 1fr; }
     }
 </style>

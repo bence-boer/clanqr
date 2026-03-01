@@ -1,16 +1,16 @@
-import { check_auth, register_passkey, login_passkey, logout } from "$lib/auth";
-import type { AuthStatus } from "$lib/auth";
+import { check_auth, register_passkey, login_passkey, logout } from '$lib/auth';
+import type { AuthStatus } from '$lib/auth';
 
-export type AuthState = "loading" | "setup" | "login" | "authenticated" | "error";
+export type AuthState = 'loading' | 'setup' | 'login' | 'authenticated' | 'error';
 
 class AuthStore {
-    state: AuthState = $state("loading");
-    error: string = $state("");
+    state: AuthState = $state('loading');
+    error: string = $state('');
     role: string | null = $state(null);
     passkey_id: string | null = $state(null);
     pending: boolean = $state(false);
 
-    is_admin = $derived(this.role === "admin");
+    is_admin = $derived(this.role === 'admin');
 
     async check(): Promise<void> {
         try {
@@ -18,37 +18,42 @@ class AuthStore {
             if (status.authenticated) {
                 this.role = status.role;
                 this.passkey_id = status.passkey_id;
-                this.state = "authenticated";
-            } else if (!status.is_setup) {
-                this.state = "setup";
-            } else {
-                this.state = "login";
+                this.state = 'authenticated';
             }
-        } catch (err) {
-            console.error("Auth check failed:", err);
-            this.state = "error";
+            else if (!status.is_setup) {
+                this.state = 'setup';
+            }
+            else {
+                this.state = 'login';
+            }
+        }
+        catch (err) {
+            console.error('Auth check failed:', err);
+            this.state = 'error';
         }
     }
 
     async register(display_name: string): Promise<boolean> {
         if (this.pending) return false;
-        this.error = "";
+        this.error = '';
         this.pending = true;
         try {
-            const ok = await register_passkey(display_name || "Admin");
-            if (ok) this.state = "authenticated";
+            const ok = await register_passkey(display_name || 'Admin');
+            if (ok) this.state = 'authenticated';
             return ok;
-        } catch (err: any) {
-            this.error = err.message;
+        }
+        catch (err: unknown) {
+            this.error = err instanceof Error ? err.message : String(err);
             return false;
-        } finally {
+        }
+        finally {
             this.pending = false;
         }
     }
 
     async login(): Promise<boolean> {
         if (this.pending) return false;
-        this.error = "";
+        this.error = '';
         this.pending = true;
         try {
             const ok = await login_passkey();
@@ -56,13 +61,15 @@ class AuthStore {
                 const status = await check_auth();
                 this.role = status.role;
                 this.passkey_id = status.passkey_id;
-                this.state = "authenticated";
+                this.state = 'authenticated';
             }
             return ok;
-        } catch (err: any) {
-            this.error = err.message;
+        }
+        catch (err: unknown) {
+            this.error = err instanceof Error ? err.message : String(err);
             return false;
-        } finally {
+        }
+        finally {
             this.pending = false;
         }
     }
@@ -71,7 +78,7 @@ class AuthStore {
         await logout();
         this.role = null;
         this.passkey_id = null;
-        this.state = "login";
+        this.state = 'login';
     }
 }
 

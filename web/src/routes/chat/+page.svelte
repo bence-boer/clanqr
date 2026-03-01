@@ -1,42 +1,26 @@
 <script lang="ts">
-    import { ErrorBanner } from '$lib/components';
-    import { Button } from '$lib/components/primitives/button';
     import { onMount } from 'svelte';
     import { api } from '$lib/api/client';
     import { toast_store } from '$lib/stores/toast.svelte';
     import { read_sse_stream } from '$lib/utils/sse';
     import type { ChatMessage, ChatSession } from '$lib/types';
     import SessionList from './SessionList.svelte';
-    import MessageThread from './MessageThread.svelte';
-    import ChatInput from './ChatInput.svelte';
-    import { Select } from '$lib/components/primitives/select';
+    import ChatActions from './ChatActions.svelte';
 
-    const MODELS = [
+    const models = [
         {
             group: 'Claude',
             models: [
-                'claude-sonnet-4.6',
-                'claude-sonnet-4.5',
-                'claude-haiku-4.5',
-                'claude-opus-4.6',
-                'claude-opus-4.6-fast',
-                'claude-opus-4.5',
-                'claude-sonnet-4'
+                'claude-sonnet-4.6', 'claude-sonnet-4.5', 'claude-haiku-4.5',
+                'claude-opus-4.6', 'claude-opus-4.6-fast', 'claude-opus-4.5', 'claude-sonnet-4'
             ]
         },
         { group: 'Gemini', models: ['gemini-3-pro-preview'] },
         {
             group: 'GPT',
             models: [
-                'gpt-5.3-codex',
-                'gpt-5.2-codex',
-                'gpt-5.2',
-                'gpt-5.1-codex-max',
-                'gpt-5.1-codex',
-                'gpt-5.1',
-                'gpt-5.1-codex-mini',
-                'gpt-5-mini',
-                'gpt-4.1'
+                'gpt-5.3-codex', 'gpt-5.2-codex', 'gpt-5.2', 'gpt-5.1-codex-max',
+                'gpt-5.1-codex', 'gpt-5.1', 'gpt-5.1-codex-mini', 'gpt-5-mini', 'gpt-4.1'
             ]
         }
     ];
@@ -65,10 +49,11 @@
     async function load_sessions() {
         try {
             sessions = await api.list_chat_sessions();
-        } catch (err) {
-            console.error('Failed to load chat sessions:', err);
+        }
+        catch {
             toast_store.error('Failed to load chat sessions');
-        } finally {
+        }
+        finally {
             loading_sessions = false;
         }
     }
@@ -80,13 +65,13 @@
         loading_messages = true;
         messages = [];
         try {
-            const data = await api.get_chat_session(session.id);
-            messages = data.messages ?? [];
-        } catch (err) {
-            console.error('Failed to load messages:', err);
+            messages = (await api.get_chat_session(session.id)).messages ?? [];
+        }
+        catch {
             error_msg = 'Failed to load messages';
-            toast_store.error('Failed to load messages');
-        } finally {
+            toast_store.error(error_msg);
+        }
+        finally {
             loading_messages = false;
         }
     }
@@ -96,10 +81,10 @@
             const session = await api.create_chat_session({ model: selected_model });
             sessions = [session, ...sessions];
             await select_session(session);
-        } catch (err) {
-            console.error('Failed to create session:', err);
+        }
+        catch {
             error_msg = 'Failed to create session';
-            toast_store.error('Failed to create session');
+            toast_store.error(error_msg);
         }
     }
 
@@ -108,40 +93,33 @@
         if (!confirm('Delete this session?')) return;
         try {
             await api.delete_chat_session(session_id);
-            sessions = sessions.filter((session) => session.id !== session_id);
+            sessions = sessions.filter((s) => s.id !== session_id);
             if (active_session?.id === session_id) {
                 active_session = null;
                 messages = [];
                 sessionStorage.removeItem('active_chat_session');
             }
-        } catch (err) {
-            console.error('Failed to delete session:', err);
+        }
+        catch {
             error_msg = 'Failed to delete session';
-            toast_store.error('Failed to delete session');
+            toast_store.error(error_msg);
         }
     }
 
     async function send_message() {
         if (!input_text.trim() || !active_session || is_streaming) return;
-
         const message_content = input_text.trim();
         input_text = '';
         error_msg = '';
         is_streaming = true;
         streaming_content = '';
-
         const user_message: ChatMessage = {
-            id: crypto.randomUUID(),
-            session_id: active_session.id,
-            role: 'user',
-            content: message_content,
-            created_at: new Date().toISOString()
+            id: crypto.randomUUID(), session_id: active_session.id,
+            role: 'user', content: message_content, created_at: new Date().toISOString()
         };
         messages = [...messages, user_message];
-
         try {
             const response = await api.send_chat_message(active_session.id, message_content, selected_model);
-
             await read_sse_stream(response, {
                 on_chunk: (chunk) => {
                     streaming_content += chunk;
@@ -150,24 +128,20 @@
                     error_msg = err;
                 }
             });
-
             if (streaming_content) {
-                const assistant_message: ChatMessage = {
-                    id: crypto.randomUUID(),
-                    session_id: active_session!.id,
-                    role: 'assistant',
-                    content: streaming_content,
-                    created_at: new Date().toISOString()
-                };
-                messages = [...messages, assistant_message];
+                messages = [...messages, {
+                    id: crypto.randomUUID(), session_id: active_session.id,
+                    role: 'assistant', content: streaming_content, created_at: new Date().toISOString()
+                }];
             }
             streaming_content = '';
             is_streaming = false;
             load_sessions();
-        } catch (send_error) {
+        }
+        catch {
             error_msg = 'Failed to send message';
             is_streaming = false;
-            messages = messages.filter((message) => message.id !== user_message.id);
+            messages = messages.filter((m) => m.id !== user_message.id);
         }
     }
 
@@ -179,18 +153,16 @@
         if (!active_session || !is_streaming) return;
         try {
             await api.cancel_chat(active_session.id);
-        } catch {
-            // Best-effort cancel
+        }
+        catch {
+            /* Best-effort cancel */
         }
         if (streaming_content) {
-            const partial_message: ChatMessage = {
-                id: crypto.randomUUID(),
-                session_id: active_session!.id,
-                role: 'assistant',
-                content: streaming_content + '\n\n*(generation stopped)*',
+            messages = [...messages, {
+                id: crypto.randomUUID(), session_id: active_session.id,
+                role: 'assistant', content: streaming_content + '\n\n*(generation stopped)*',
                 created_at: new Date().toISOString()
-            };
-            messages = [...messages, partial_message];
+            }];
         }
         streaming_content = '';
         is_streaming = false;
@@ -199,39 +171,11 @@
 
 <div class="chat-page">
     <SessionList {sessions} {active_session} {loading_sessions} onselect={select_session} ondelete={delete_session} oncreate={create_session} />
-
-    <div class="chat-area">
-        {#if !active_session}
-            <div class="empty-chat">
-                <span class="icon large-icon">chat</span>
-                <p>Select a session or create a new one</p>
-                <Button variant="primary" onclick={create_session}>
-                    <span class="icon">add</span> New Chat
-                </Button>
-            </div>
-        {:else}
-            <div class="chat-header">
-                <span class="chat-session-title">{format_session_title(active_session)}</span>
-                <Select class="model-select" bind:value={selected_model}>
-                    {#each MODELS as group}
-                        <optgroup label={group.group}>
-                            {#each group.models as model}
-                                <option value={model}>{model}</option>
-                            {/each}
-                        </optgroup>
-                    {/each}
-                </Select>
-            </div>
-
-            <MessageThread {messages} {loading_messages} {is_streaming} {streaming_content} />
-
-            {#if error_msg}
-                <ErrorBanner message={error_msg} />
-            {/if}
-
-            <ChatInput bind:input_text {is_streaming} onsend={send_message} onstop={stop_generating} />
-        {/if}
-    </div>
+    <ChatActions
+        {active_session} {messages} {loading_messages} {is_streaming} {streaming_content}
+        bind:input_text bind:selected_model {error_msg} {models}
+        {format_session_title} on_send={send_message} on_stop={stop_generating} on_create={create_session}
+    />
 </div>
 
 <style>
@@ -242,54 +186,10 @@
         background: var(--bg);
     }
 
-    .chat-area {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        background: var(--bg-surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        overflow: hidden;
-    }
-
-    .empty-chat {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 1rem;
-        color: var(--fg-muted);
-    }
-
-    .large-icon {
-        font-size: 48px;
-        color: var(--accent);
-    }
-
-    .chat-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0.75rem 1rem;
-        border-bottom: 1px solid var(--border);
-        flex-shrink: 0;
-    }
-
-    .chat-session-title {
-        font-size: 0.875rem;
-        font-weight: 600;
-        color: var(--fg);
-    }
-
     @media (max-width: 768px) {
         .chat-page {
             flex-direction: column;
             gap: 1rem;
-            min-height: 0;
-        }
-        .chat-area {
-            flex: 1;
             min-height: 0;
         }
     }

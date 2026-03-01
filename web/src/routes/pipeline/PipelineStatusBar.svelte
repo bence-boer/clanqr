@@ -10,12 +10,12 @@
         onresume,
         onstop
     }: {
-        pipeline: PipelineStatus | null;
-        action_busy: boolean;
-        action_error: string;
-        onpause: () => void;
-        onresume: () => void;
-        onstop: () => void;
+        pipeline: PipelineStatus | null
+        action_busy: boolean
+        action_error: string
+        onpause: () => void
+        onresume: () => void
+        onstop: () => void
     } = $props();
 
     function state_icon(state: string) {

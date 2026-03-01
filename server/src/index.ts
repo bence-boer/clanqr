@@ -1,117 +1,104 @@
-import { Hono } from "hono";
-import { HTTPException } from "hono/http-exception";
-import { cors } from "hono/cors";
-import { secureHeaders } from "hono/secure-headers";
-import { logger as hono_logger } from "hono/logger";
-import { env } from "./env";
-import { supabase_middleware, type AppBindings } from "./middleware/supabase";
-import { auth_middleware, admin_middleware } from "./middleware/auth";
-import { rate_limit } from "./middleware/rate_limit";
-import { request_id_middleware } from "./middleware/request_id";
-import { metrics_middleware } from "./middleware/metrics";
-import { auth_routes } from "./routes/auth";
-import { projects_routes } from "./routes/projects";
-import { features_routes } from "./routes/features";
-import { tasks_routes } from "./routes/tasks";
-import { agents_routes } from "./routes/agents";
-import { prompts_routes } from "./routes/prompts";
-import { system_routes } from "./routes/system";
-import { chat_routes } from "./routes/chat";
-import { traits_routes } from "./routes/traits";
-import { skills_routes } from "./routes/skills";
-import { usage_routes } from "./routes/usage";
-import { admin_routes } from "./routes/admin";
-import { watcher_service } from "./services/watcher_service";
-import { prompt_service } from "./services/prompt_service";
-import { pipeline_service } from "./services/pipeline_service";
-import { agent_service } from "./services/agent_service";
-import { create_supabase_client } from "./db";
-import { logger } from "./utils/logger";
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import { HTTPException } from 'hono/http-exception';
+import { logger as hono_logger } from 'hono/logger';
+import { secureHeaders } from 'hono/secure-headers';
+import { create_supabase_client } from './db';
+import { env } from './env';
+import { admin_middleware, auth_middleware } from './middleware/auth';
+import { metrics_middleware } from './middleware/metrics';
+import { rate_limit } from './middleware/rate_limit';
+import { request_id_middleware } from './middleware/request_id';
+import { supabase_middleware, type AppBindings } from './middleware/supabase';
+import { admin_routes } from './routes/admin';
+import { agents_routes } from './routes/agents';
+import { auth_routes } from './routes/auth';
+import { chat_routes } from './routes/chat';
+import { features_routes } from './routes/features';
+import { projects_routes } from './routes/projects';
+import { prompts_routes } from './routes/prompts';
+import { skills_routes } from './routes/skills';
+import { system_routes } from './routes/system';
+import { tasks_routes } from './routes/tasks';
+import { traits_routes } from './routes/traits';
+import { usage_routes } from './routes/usage';
+import { agent_service } from './services/agent_service';
+import { pipeline_service } from './services/pipeline_service';
+import { prompt_service } from './services/prompt_service';
+import { watcher_service } from './services/watcher_service';
+import { logger } from './utils/logger';
 
-const app = new Hono<AppBindings>();
+const allowed_origins = env.FRONTEND_URL.split(',').map((origin) => origin.trim());
 
-// ── Error boundary (BE-001) ─────────────────────────────────────────────
-app.onError((error, context) => {
-    if (error instanceof HTTPException) {
+const app = new Hono<AppBindings>()
+    .onError((error, context) => {
+        if (error instanceof HTTPException) {
+            return context.json(
+                { error: { code: error.status, message: error.message } },
+                error.status
+            );
+        }
+        logger.error('Unhandled error', { method: context.req.method, path: context.req.path, error: String(error) });
         return context.json(
-            { error: { code: error.status, message: error.message } },
-            error.status,
+            { error: { code: 500, message: 'Internal server error' } },
+            500
         );
-    }
-    logger.error("Unhandled error", { method: context.req.method, path: context.req.path, error: String(error) });
-    return context.json(
-        { error: { code: 500, message: "Internal server error" } },
-        500,
-    );
-});
-
-app.notFound((context) => {
-    return context.json(
-        { error: { code: 404, message: "Not found" } },
-        404,
-    );
-});
-
-// Global middleware
-app.use("*", hono_logger());
-app.use("*", secureHeaders());
-app.use("*", request_id_middleware());
-app.use("*", metrics_middleware());
-
-// ── CORS with explicit origin allowlist (BE-002) ────────────────────────
-const allowed_origins = env.FRONTEND_URL.split(",").map((origin) => origin.trim());
-app.use(
-    "*",
-    cors({
-        origin: allowed_origins,
-        allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-        allowHeaders: ["Content-Type", "Authorization"],
-        credentials: true,
     })
-);
-// ── Request size limit (M-4.3) ──────────────────────────────────────────
-app.use("*", async (c, next) => {
-    const content_length = parseInt(c.req.header("content-length") ?? "0");
-    if (content_length > 1_000_000) {
-        return c.json({ error: "Request body too large (max 1MB)" }, 413);
-    }
-    await next();
-});
-
-// ── Global rate limit (M-4.2): 100 requests/minute per IP ──────────────
-app.use("*", rate_limit(100, 60_000));
-
-app.use("*", supabase_middleware());
-
-// Health check (no auth)
-app.get("/health", (context) => {
-    return context.json({ status: "ok", timestamp: new Date().toISOString() });
-});
-
-// Auth routes (no auth required, rate-limited: 10 req/min)
-app.use("/api/auth/*", rate_limit(10, 60_000));
-app.route("/api/auth", auth_routes);
-
-// Protected API routes
-app.use("/api/*", auth_middleware());
-// Agent spawning rate limit (M-4.2): 5 req/min
-app.use("/api/agents/spawn/*", rate_limit(5, 60_000));
-app.route("/api/projects", projects_routes);
-app.route("/api/features", features_routes);
-app.route("/api/tasks", tasks_routes);
-app.route("/api/agents", agents_routes);
-app.route("/api/prompts", prompts_routes);
-app.route("/api/system", system_routes);
-// Chat routes (rate-limited: 20 req/min)
-app.use("/api/chat/*", rate_limit(20, 60_000));
-app.route("/api/chat", chat_routes);
-app.route("/api/traits", traits_routes);
-app.route("/api/skills", skills_routes);
-app.route("/api/usage", usage_routes);
-
-// Admin routes (role check — auth already applied by /api/* above)
-app.use("/api/admin/*", admin_middleware());
-app.route("/api/admin", admin_routes);
+    .notFound((context) => {
+        return context.json(
+            { error: { code: 404, message: 'Not found' } },
+            404
+        );
+    })
+    // Global middleware
+    .use('*', hono_logger())
+    .use('*', secureHeaders())
+    .use('*', request_id_middleware())
+    .use('*', metrics_middleware())
+    .use(
+        '*',
+        cors({
+            origin: allowed_origins,
+            allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+            allowHeaders: ['Content-Type', 'Authorization'],
+            credentials: true
+        })
+    )
+    .use('*', async (c, next) => {
+        const content_length = parseInt(c.req.header('content-length') ?? '0');
+        if (content_length > 1_000_000) {
+            return c.json({ error: 'Request body too large (max 1MB)' }, 413);
+        }
+        await next();
+    })
+    .use('*', rate_limit(100, 60_000))
+    .use('*', supabase_middleware())
+    // Health check (no auth)
+    .get('/health', (context) => {
+        return context.json({ status: 'ok', timestamp: new Date().toISOString() });
+    })
+    // Auth routes (no auth required, rate-limited: 10 req/min)
+    .use('/api/auth/*', rate_limit(10, 60_000))
+    .route('/api/auth', auth_routes)
+    // Protected API routes
+    .use('/api/*', auth_middleware())
+    // Agent spawning rate limit (M-4.2): 5 req/min
+    .use('/api/agents/spawn/*', rate_limit(5, 60_000))
+    .route('/api/projects', projects_routes)
+    .route('/api/features', features_routes)
+    .route('/api/tasks', tasks_routes)
+    .route('/api/agents', agents_routes)
+    .route('/api/prompts', prompts_routes)
+    .route('/api/system', system_routes)
+    // Chat routes (rate-limited: 20 req/min)
+    .use('/api/chat/*', rate_limit(20, 60_000))
+    .route('/api/chat', chat_routes)
+    .route('/api/traits', traits_routes)
+    .route('/api/skills', skills_routes)
+    .route('/api/usage', usage_routes)
+    // Admin routes (role check — auth already applied by /api/* above)
+    .use('/api/admin/*', admin_middleware())
+    .route('/api/admin', admin_routes);
 
 // Boot sequence
 async function boot() {
@@ -122,49 +109,49 @@ async function boot() {
 
     // Find features with interrupted managers BEFORE marking runs as failed
     const { data: interrupted_runs } = await supabase
-        .from("agent_runs")
-        .select("feature_id")
-        .eq("type", "manager")
-        .eq("status", "running");
+        .from('agent_runs')
+        .select('feature_id')
+        .eq('type', 'manager')
+        .eq('status', 'running');
     const interrupted_feature_ids = (interrupted_runs ?? [])
         .map((r: { feature_id: string | null }) => r.feature_id)
         .filter(Boolean);
 
     await supabase
-        .from("agent_runs")
-        .update({ status: "failed", error: "Server restarted during execution", finished_at: now })
-        .eq("status", "running");
+        .from('agent_runs')
+        .update({ status: 'failed', error: 'Server restarted during execution', finished_at: now })
+        .eq('status', 'running');
     await supabase
-        .from("tasks")
-        .update({ status: "Approved" })
-        .eq("status", "In_Progress");
+        .from('tasks')
+        .update({ status: 'Approved' })
+        .eq('status', 'In_Progress');
 
     // Only reset features whose managers were actually interrupted
     if (interrupted_feature_ids.length > 0) {
         await supabase
-            .from("features")
-            .update({ status: "Submitted" })
-            .eq("status", "In_Progress")
-            .in("id", interrupted_feature_ids);
+            .from('features')
+            .update({ status: 'Submitted' })
+            .eq('status', 'In_Progress')
+            .in('id', interrupted_feature_ids);
     }
 
     // M-6.5: Reset In_Progress features that have no tasks (missing tasks.json scenario)
     const { data: in_progress_features } = await supabase
-        .from("features")
-        .select("id, tasks(id)")
-        .eq("status", "In_Progress");
+        .from('features')
+        .select('id, tasks(id)')
+        .eq('status', 'In_Progress');
 
     for (const feature of in_progress_features ?? []) {
         if (!feature.tasks?.length) {
             await supabase
-                .from("features")
-                .update({ status: "Submitted" })
-                .eq("id", feature.id);
-            logger.info("Reset feature to Submitted (no tasks found)", { service: "boot", feature_id: feature.id });
+                .from('features')
+                .update({ status: 'Submitted' })
+                .eq('id', feature.id);
+            logger.info('Reset feature to Submitted (no tasks found)', { service: 'boot', feature_id: feature.id });
         }
     }
 
-    logger.info("Stale process recovery complete", { service: "boot" });
+    logger.info('Stale process recovery complete', { service: 'boot' });
 
     // 2. Sync base prompts from repo files → DB
     await prompt_service.sync_from_repo();
@@ -176,15 +163,15 @@ async function boot() {
     // Schedule daily cleanup
     setInterval(() => {
         agent_service.cleanup_old_workspaces(7);
-        cleanup_expired_data(supabase).catch((err) => logger.error("Cleanup error", { service: "boot", error: String(err) }));
+        cleanup_expired_data(supabase).catch((err) => logger.error('Cleanup error', { service: 'boot', error: String(err) }));
     }, 24 * 60 * 60 * 1000);
 
     // 4. Start watcher service (manager-only — pipeline handles task execution)
     watcher_service.start();
 
     // 5. Start pipeline service — trigger on any already-approved tasks
-    pipeline_service.process_next().catch((err) => logger.error("Pipeline start error", { service: "boot", error: String(err) }));
-    logger.info("Pipeline service started", { service: "boot" });
+    pipeline_service.process_next().catch((err) => logger.error('Pipeline start error', { service: 'boot', error: String(err) }));
+    logger.info('Pipeline service started', { service: 'boot' });
 }
 
 /** M-5.5: Clean expired sessions and used/expired invite tokens */
@@ -194,42 +181,42 @@ async function cleanup_expired_data(supabase: ReturnType<typeof create_supabase_
 
     // Delete expired sessions
     const { count: sessions_deleted } = await supabase
-        .from("sessions")
-        .delete({ count: "exact" })
-        .lt("expires_at", now);
+        .from('sessions')
+        .delete({ count: 'exact' })
+        .lt('expires_at', now);
 
     // Delete used invites older than 30 days
     const { count: used_invites_deleted } = await supabase
-        .from("invite_tokens")
-        .delete({ count: "exact" })
-        .not("used_at", "is", null)
-        .lt("used_at", thirty_days_ago);
+        .from('invite_tokens')
+        .delete({ count: 'exact' })
+        .not('used_at', 'is', null)
+        .lt('used_at', thirty_days_ago);
 
     // Delete expired unused invites
     const { count: expired_invites_deleted } = await supabase
-        .from("invite_tokens")
-        .delete({ count: "exact" })
-        .is("used_at", null)
-        .lt("expires_at", now);
+        .from('invite_tokens')
+        .delete({ count: 'exact' })
+        .is('used_at', null)
+        .lt('expires_at', now);
 
     const total = (sessions_deleted ?? 0) + (used_invites_deleted ?? 0) + (expired_invites_deleted ?? 0);
     if (total > 0) {
-        logger.info("Cleaned expired data", {
-            service: "boot",
+        logger.info('Cleaned expired data', {
+            service: 'boot',
             sessions_deleted: sessions_deleted ?? 0,
-            invites_deleted: (used_invites_deleted ?? 0) + (expired_invites_deleted ?? 0),
+            invites_deleted: (used_invites_deleted ?? 0) + (expired_invites_deleted ?? 0)
         });
     }
 }
 
-boot().catch((err) => logger.error("Boot failed", { error: String(err) }));
+boot().catch((err) => logger.error('Boot failed', { error: String(err) }));
 
 const port = env.PORT;
-logger.info("Server running", { port, url: `http://localhost:${port}` });
+logger.info('Server running', { port, url: `http://localhost:${port}` });
 
 export { app };
 
 export default {
     port,
-    fetch: app.fetch,
+    fetch: app.fetch
 };

@@ -4,9 +4,9 @@
  */
 
 export interface SseCallbacks {
-    on_chunk: (chunk: string) => void;
-    on_done?: () => void;
-    on_error?: (error: string) => void;
+    on_chunk: (chunk: string) => void
+    on_done?: () => void
+    on_error?: (error: string) => void
 }
 
 /**
@@ -36,18 +36,22 @@ export async function read_sse_stream(response: Response, callbacks: SseCallback
                     const data = JSON.parse(data_str);
                     if (data.done) {
                         callbacks.on_done?.();
-                    } else if (data.error) {
+                    }
+                    else if (data.error) {
                         callbacks.on_error?.(data.error);
-                    } else if (data.chunk) {
+                    }
+                    else if (data.chunk) {
                         callbacks.on_chunk(data.chunk);
                     }
-                } catch {
+                }
+                catch {
                     // Non-JSON data, treat as raw chunk
                     callbacks.on_chunk(data_str);
                 }
             }
         }
-    } finally {
+    }
+    finally {
         reader.releaseLock();
     }
 }

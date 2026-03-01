@@ -1,21 +1,21 @@
-import { existsSync, readdirSync, readFileSync } from "fs";
-import { join } from "path";
-import { logger } from "../utils/logger";
+import { existsSync, readdirSync, readFileSync } from 'fs';
+import { join } from 'path';
+import { logger } from '../utils/logger';
 
-const SKILLS_DIR = join(process.env.HOME ?? "/tmp", ".copilot", "skills");
+const SKILLS_DIR = join(process.env.HOME ?? '/tmp', '.copilot', 'skills');
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 export interface SkillInfo {
-    name: string;
-    description: string;
-    path: string;
-    content: string;
-    files: { name: string; content: string }[];
+    name: string
+    description: string
+    path: string
+    content: string
+    files: { name: string, content: string }[]
 }
 
 interface SkillCache {
-    skills: SkillInfo[];
-    cached_at: number;
+    skills: SkillInfo[]
+    cached_at: number
 }
 
 class SkillService {
@@ -59,8 +59,9 @@ class SkillService {
                 const skill = this.read_skill(skill_path);
                 if (skill) skills.push(skill);
             }
-        } catch (error) {
-            logger.error("Failed to scan skills directory", { service: "skill", error: String(error) });
+        }
+        catch (error) {
+            logger.error('Failed to scan skills directory', { service: 'skill', error: String(error) });
         }
 
         this.cache = { skills, cached_at: Date.now() };
@@ -68,19 +69,19 @@ class SkillService {
     }
 
     private read_skill(skill_path: string): SkillInfo | null {
-        const candidate_files = ["SKILL.md", "skill.md"];
-        const READABLE_EXTENSIONS = new Set([".md", ".txt", ".yaml", ".yml", ".json", ".ts", ".js"]);
+        const candidate_files = ['SKILL.md', 'skill.md'];
+        const READABLE_EXTENSIONS = new Set(['.md', '.txt', '.yaml', '.yml', '.json', '.ts', '.js']);
 
         for (const filename of candidate_files) {
             const file_path = join(skill_path, filename);
             if (!existsSync(file_path)) continue;
 
             try {
-                const content = readFileSync(file_path, "utf-8");
+                const content = readFileSync(file_path, 'utf-8');
                 const { name, description } = parse_skill_frontmatter(content);
 
                 // Read additional files in the skill directory (recursively)
-                const files: { name: string; content: string }[] = [];
+                const files: { name: string, content: string }[] = [];
                 const scan_dir = (dir_path: string, prefix: string) => {
                     try {
                         const entries = readdirSync(dir_path, { withFileTypes: true });
@@ -88,34 +89,38 @@ class SkillService {
                             const rel_name = prefix ? `${prefix}/${entry.name}` : entry.name;
                             if (entry.isDirectory()) {
                                 scan_dir(join(dir_path, entry.name), rel_name);
-                            } else if (entry.isFile()) {
+                            }
+                            else if (entry.isFile()) {
                                 if (dir_path === skill_path && entry.name === filename) continue;
-                                const ext_idx = entry.name.lastIndexOf(".");
-                                const ext = ext_idx === -1 ? "" : entry.name.slice(ext_idx).toLowerCase();
+                                const ext_idx = entry.name.lastIndexOf('.');
+                                const ext = ext_idx === -1 ? '' : entry.name.slice(ext_idx).toLowerCase();
                                 if (!READABLE_EXTENSIONS.has(ext)) continue;
                                 try {
-                                    const file_content = readFileSync(join(dir_path, entry.name), "utf-8");
+                                    const file_content = readFileSync(join(dir_path, entry.name), 'utf-8');
                                     files.push({ name: rel_name, content: file_content });
-                                } catch (error) {
-                                    logger.warn("Failed to read skill file", { service: "skill", file: rel_name, error: String(error) });
+                                }
+                                catch (error) {
+                                    logger.warn('Failed to read skill file', { service: 'skill', file: rel_name, error: String(error) });
                                 }
                             }
                         }
-                    } catch (error) {
-                        logger.warn("Failed to scan skill directory", { service: "skill", dir: dir_path, error: String(error) });
+                    }
+                    catch (error) {
+                        logger.warn('Failed to scan skill directory', { service: 'skill', dir: dir_path, error: String(error) });
                     }
                 };
-                scan_dir(skill_path, "");
+                scan_dir(skill_path, '');
 
                 return {
-                    name: name ?? skill_path.split("/").pop() ?? "unknown",
-                    description: description ?? "",
+                    name: name ?? skill_path.split('/').pop() ?? 'unknown',
+                    description: description ?? '',
                     path: skill_path,
                     content,
-                    files,
+                    files
                 };
-            } catch (error) {
-                logger.warn("Failed to read skill", { service: "skill", path: skill_path, error: String(error) });
+            }
+            catch (error) {
+                logger.warn('Failed to read skill', { service: 'skill', path: skill_path, error: String(error) });
                 continue;
             }
         }
@@ -125,22 +130,22 @@ class SkillService {
 }
 
 function parse_skill_frontmatter(content: string): {
-    name?: string;
-    description?: string;
+    name?: string
+    description?: string
 } {
     const frontmatter_match = content.match(/^---\n([\s\S]*?)\n---/);
     if (!frontmatter_match) return {};
 
     const result: Record<string, string> = {};
-    for (const line of frontmatter_match[1].split("\n")) {
-        const colon_index = line.indexOf(":");
+    for (const line of frontmatter_match[1].split('\n')) {
+        const colon_index = line.indexOf(':');
         if (colon_index === -1) continue;
         const key = line.slice(0, colon_index).trim();
         const value = line.slice(colon_index + 1).trim();
         if (key && value) result[key] = value;
     }
 
-    return { name: result["name"], description: result["description"] };
+    return { name: result['name'], description: result['description'] };
 }
 
 export const skill_service = new SkillService();

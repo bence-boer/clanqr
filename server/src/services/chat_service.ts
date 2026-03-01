@@ -1,11 +1,11 @@
-import type { SupabaseClient } from "../db";
-import { COPILOT_BIN, GEMINI_BIN, ENRICHED_PATH, build_agent_env } from "../env";
-import { logger } from "../utils/logger";
-import { can_spawn_agent, increment_agent_count, decrement_agent_count } from "./agent_service";
+import type { SupabaseClient } from '../db';
+import { COPILOT_BIN, build_agent_env } from '../env';
+import { logger } from '../utils/logger';
+import { can_spawn_agent, decrement_agent_count, increment_agent_count } from './agent_service';
 
 interface ActiveChat {
-    session_id: string;
-    process: ReturnType<typeof Bun.spawn>;
+    session_id: string
+    process: ReturnType<typeof Bun.spawn>
 }
 
 class ChatService {
@@ -20,41 +20,41 @@ class ChatService {
     ): Promise<void> {
         // M-10.4: Check agent concurrency limit
         if (!can_spawn_agent()) {
-            throw new Error("Agent concurrency limit reached — please try again shortly");
+            throw new Error('Agent concurrency limit reached — please try again shortly');
         }
 
         // Insert user message
-        await supabase.from("chat_messages").insert({
+        await supabase.from('chat_messages').insert({
             session_id,
-            role: "user",
-            content,
+            role: 'user',
+            content
         });
 
-        const cli = "copilot"; // Chat is currently hardcoded to copilot cli
-        const resolved_model = model || "gpt-4o";
+        const cli = 'copilot'; // Chat is currently hardcoded to copilot cli
+        const resolved_model = model || 'gpt-4o';
 
         // Create agent_runs record
         const started_at = new Date().toISOString();
         const { data: run_record } = await supabase
-            .from("agent_runs")
+            .from('agent_runs')
             .insert({
-                type: "chat",
+                type: 'chat',
                 session_id,
-                status: "running",
+                status: 'running',
                 cli,
                 model: resolved_model,
-                started_at,
+                started_at
             })
-            .select("id")
+            .select('id')
             .single();
 
         const proc = Bun.spawn(
-            [COPILOT_BIN, "-p", content, "--model", resolved_model, "--allow-all-tools"],
+            [COPILOT_BIN, '-p', content, '--model', resolved_model, '--allow-all-tools'],
             {
-                cwd: process.env.HOME ?? "/tmp",
-                stdout: "pipe",
-                stderr: "pipe",
-                env: build_agent_env(),
+                cwd: process.env.HOME ?? '/tmp',
+                stdout: 'pipe',
+                stderr: 'pipe',
+                env: build_agent_env()
             }
         );
 
@@ -62,15 +62,20 @@ class ChatService {
         this.active_sessions.set(session_id, { session_id, process: proc });
 
         try {
-            let full_response = "";
+            let full_response = '';
             const reader = proc.stdout?.getReader();
             const decoder = new TextDecoder();
 
             const CHAT_TIMEOUT_MS = 10 * 60 * 1000;
             const timeout_promise = new Promise<void>((_, reject) =>
                 setTimeout(() => {
-                    try { proc.kill(); } catch {}
-                    reject(new Error("Chat timed out"));
+                    try {
+                        proc.kill();
+                    }
+                    catch {
+                        /* empty */
+                    }
+                    reject(new Error('Chat timed out'));
                 }, CHAT_TIMEOUT_MS)
             );
 
@@ -84,8 +89,9 @@ class ChatService {
                             full_response += chunk;
                             on_token(chunk);
                         }
-                    } catch (error) {
-                        logger.warn("Stream read error", { service: "chat", session_id, error: String(error) });
+                    }
+                    catch (error) {
+                        logger.warn('Stream read error', { service: 'chat', session_id, error: String(error) });
                     }
                 }
 
@@ -97,37 +103,39 @@ class ChatService {
             try {
                 exit_code = await Promise.race([
                     read_promise,
-                    timeout_promise.then(() => -1),
+                    timeout_promise.then(() => -1)
                 ]) as number;
-            } catch {
+            }
+            catch {
                 exit_code = -1;
             }
 
             const finished_at = new Date().toISOString();
             const duration_ms = Date.now() - new Date(started_at).getTime();
-            const status = exit_code === 0 ? "completed" : "failed";
+            const status = exit_code === 0 ? 'completed' : 'failed';
 
             // Save assistant message
-            await supabase.from("chat_messages").insert({
+            await supabase.from('chat_messages').insert({
                 session_id,
-                role: "assistant",
-                content: full_response,
+                role: 'assistant',
+                content: full_response
             });
 
             // Update session
             await supabase
-                .from("chat_sessions")
+                .from('chat_sessions')
                 .update({ updated_at: finished_at })
-                .eq("id", session_id);
+                .eq('id', session_id);
 
             // Update agent_runs
             if (run_record?.id) {
                 await supabase
-                    .from("agent_runs")
+                    .from('agent_runs')
                     .update({ status, finished_at, duration_ms, log: full_response.slice(-10000) })
-                    .eq("id", run_record.id);
+                    .eq('id', run_record.id);
             }
-        } finally {
+        }
+        finally {
             decrement_agent_count();
             this.active_sessions.delete(session_id);
         }

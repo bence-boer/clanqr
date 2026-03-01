@@ -1,5 +1,6 @@
 <script lang="ts">
     import { goto } from '$app/navigation';
+    import { resolve } from '$app/paths';
     import { api } from '$lib/api/client';
     import { LoadingSpinner } from '$lib/components';
     import { Button } from '$lib/components/primitives';
@@ -20,8 +21,9 @@
         if (auth_store.role !== null) {
             if (auth_store.role !== 'admin') {
                 toast_store.error('Admin access required');
-                goto('/');
-            } else {
+                goto(resolve('/'));
+            }
+            else {
                 role_checked = true;
             }
         }
@@ -42,9 +44,11 @@
         users_error = '';
         try {
             users = await api.list_users();
-        } catch (err: any) {
-            users_error = err.message;
-        } finally {
+        }
+        catch (err: unknown) {
+            users_error = err instanceof Error ? err.message : String(err);
+        }
+        finally {
             users_loading = false;
         }
     }
@@ -58,10 +62,11 @@
 
         try {
             await api.update_user_role(user.id, new_role);
-        } catch (err: any) {
+        }
+        catch (err: unknown) {
             // Rollback
             users = users.map((u) => (u.id === user.id ? { ...u, role: prev_role } : u));
-            users_error = err.message;
+            users_error = err instanceof Error ? err.message : String(err);
             throw err;
         }
     }
@@ -70,8 +75,9 @@
         try {
             await api.delete_user(user_id);
             users = users.filter((u) => u.id !== user_id);
-        } catch (err: any) {
-            users_error = err.message;
+        }
+        catch (err: unknown) {
+            users_error = err instanceof Error ? err.message : String(err);
             throw err;
         }
     }
@@ -84,9 +90,11 @@
         invites_loading = true;
         try {
             invites = await api.list_invites();
-        } catch (err: any) {
+        }
+        catch {
             // Errors handled by subcomponents
-        } finally {
+        }
+        finally {
             invites_loading = false;
         }
     }

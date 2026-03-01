@@ -11,12 +11,12 @@
         ondelete,
         oncreate
     }: {
-        sessions: ChatSession[];
-        active_session: ChatSession | null;
-        loading_sessions: boolean;
-        onselect: (session: ChatSession) => void;
-        ondelete: (session_id: string, event: MouseEvent) => void;
-        oncreate: () => void;
+        sessions: ChatSession[]
+        active_session: ChatSession | null
+        loading_sessions: boolean
+        onselect: (session: ChatSession) => void
+        ondelete: (session_id: string, event: MouseEvent) => void
+        oncreate: () => void
     } = $props();
 
     function format_session_title(session: ChatSession) {

@@ -14,15 +14,15 @@
         onrefresh_log,
         format_duration
     }: {
-        pipeline: PipelineStatus | null;
-        log_visible: boolean;
-        log_text: string;
-        log_loading: boolean;
-        action_busy: boolean;
-        ontoggle_log: () => void;
-        onstop: () => void;
-        onrefresh_log: () => void;
-        format_duration: (started_at: string | null) => string;
+        pipeline: PipelineStatus | null
+        log_visible: boolean
+        log_text: string
+        log_loading: boolean
+        action_busy: boolean
+        ontoggle_log: () => void
+        onstop: () => void
+        onrefresh_log: () => void
+        format_duration: (started_at: string | null) => string
     } = $props();
 </script>
 

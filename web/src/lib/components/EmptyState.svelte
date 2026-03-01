@@ -1,8 +1,8 @@
 <script lang="ts">
   interface Props {
-    icon?: string;
-    message: string;
-    detail?: string;
+      icon?: string
+      message: string
+      detail?: string
   }
 
   const { icon = 'inbox', message, detail }: Props = $props();

@@ -1,38 +1,35 @@
 <script lang="ts">
     import type { Snippet } from 'svelte';
     import type { HTMLSelectAttributes } from 'svelte/elements';
-    import { Label } from '../label';
+    import { Label, type LabelProperties } from '../label';
+
+    export type SelectProperties = HTMLSelectAttributes & {
+        ref?: HTMLSelectElement | null
+        value?: unknown
+        label?: string
+        id?: string
+        required?: LabelProperties['required']
+        children?: Snippet
+    };
 
     let {
         ref = $bindable(null),
         value = $bindable(),
         class: class_name,
         label,
-        labelSnippet,
         id,
         children,
         required,
         ...rest_props
-    }: HTMLSelectAttributes & {
-        ref?: HTMLSelectElement | null;
-        value?: any;
-        label?: string;
-        labelSnippet?: Snippet;
-        id?: string;
-        children?: Snippet;
-    } = $props();
+    }: SelectProperties = $props();
 
     const select_id = $derived(id || `select-${Math.random().toString(36).slice(2, 9)}`);
 </script>
 
 <div class="select">
-    {#if label || labelSnippet}
-        <Label for={select_id} required={Boolean(required)}>
-            {#if labelSnippet}
-                {@render labelSnippet()}
-            {:else}
-                {label}
-            {/if}
+    {#if label}
+        <Label for={select_id} {required}>
+            {label}
         </Label>
     {/if}
     <select

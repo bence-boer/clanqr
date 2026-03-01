@@ -46,7 +46,8 @@
             const [stats, alerts_resp] = await Promise.all([api.system_stats(), api.system_alerts().catch(() => ({ alerts: [] }))]);
             system_stats = stats;
             critical_alerts = alerts_resp.alerts.filter((a: SystemAlert) => a.severity === 'critical');
-        } catch (err) {
+        }
+        catch {
             toast_store.error('Failed to load system stats');
         }
     }

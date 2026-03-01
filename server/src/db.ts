@@ -1,5 +1,5 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { env } from "./env";
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { env } from './env';
 
 // Singleton — safe because we use the service_role key (not user-specific)
 const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);

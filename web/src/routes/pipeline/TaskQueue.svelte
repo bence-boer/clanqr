@@ -19,7 +19,7 @@
         <EmptyState icon="done_all" message="No tasks waiting in queue" />
     {:else}
         <div class="queue-list">
-            {#each queue as task, i}
+            {#each queue as task, i (i)}
                 <div class="queue-item">
                     <span class="queue-number">{i + 1}</span>
                     <span class="queue-desc">{task.description}</span>

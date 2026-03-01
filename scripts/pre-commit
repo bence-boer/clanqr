@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pre-commit hook -- type-checks and unit tests.
+# Pre-commit hook -- lint (auto-fix), type-check, and unit tests.
 # Installed by: ./scripts/dev-setup.sh  (or:  bun run prepare)
 #
 # E2E tests are excluded here because they require the full dev stack.
@@ -8,6 +8,16 @@
 set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
+
+echo "[pre-commit] Linting & auto-fixing staged files..."
+(cd "$ROOT" && bun run lint:fix)
+
+# Re-stage any files that were auto-fixed
+git diff --name-only | while IFS= read -r file; do
+    if [ -f "$file" ]; then
+        git add "$file"
+    fi
+done
 
 echo "[pre-commit] Type-checking server..."
 (cd "$ROOT/server" && bun run --bun tsc --noEmit)

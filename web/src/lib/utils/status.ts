@@ -4,7 +4,7 @@
  * to Material Symbols icons or badge variants.
  */
 
-import type { MaterialSymbol } from "$lib/types";
+import type { MaterialSymbol } from '$lib/types';
 
 export type BadgeVariant = 'default' | 'muted' | 'info' | 'warning' | 'success' | 'danger';
 

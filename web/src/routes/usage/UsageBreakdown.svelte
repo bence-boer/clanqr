@@ -2,25 +2,25 @@
   import type { UsageBreakdown } from '$lib/types';
 
   let { breakdown, loading }: {
-    breakdown: UsageBreakdown | null;
-    loading: boolean;
+      breakdown: UsageBreakdown | null
+      loading: boolean
   } = $props();
 
   function bar_pct(value: number, record: Record<string, number>): number {
-    const max = Math.max(...Object.values(record), 1);
-    return Math.round((value / max) * 100);
+      const max = Math.max(...Object.values(record), 1);
+      return Math.round((value / max) * 100);
   }
 
   let by_type_entries = $derived(
-    breakdown
-      ? Object.entries(breakdown.by_type).sort(([, count_a], [, count_b]) => count_b - count_a)
-      : []
+      breakdown
+          ? Object.entries(breakdown.by_type).sort(([, count_a], [, count_b]) => count_b - count_a)
+          : []
   );
 
   let by_model_entries = $derived(
-    breakdown
-      ? Object.entries(breakdown.by_model).sort(([, count_a], [, count_b]) => count_b - count_a)
-      : []
+      breakdown
+          ? Object.entries(breakdown.by_model).sort(([, count_a], [, count_b]) => count_b - count_a)
+          : []
   );
 </script>
 
@@ -29,7 +29,7 @@
     <div class="breakdown-panel">
       <h3 class="panel-title">Breakdown by Type</h3>
       <div class="bar-list">
-        {#each by_type_entries as [type_name, count]}
+        {#each by_type_entries as [type_name, count] (type_name)}
           <div class="bar-row">
             <span class="bar-label">{type_name}</span>
             <div class="bar-track">
@@ -46,7 +46,7 @@
     <div class="breakdown-panel">
       <h3 class="panel-title">Breakdown by Model</h3>
       <div class="bar-list">
-        {#each by_model_entries as [model_name, count]}
+        {#each by_model_entries as [model_name, count] (model_name)}
           <div class="bar-row">
             <span class="bar-label">{model_name}</span>
             <div class="bar-track">

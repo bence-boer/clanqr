@@ -2,12 +2,9 @@
     import { api } from '$lib/api/client';
     import { ErrorBanner } from '$lib/components';
     import { Button, Input, Select } from '$lib/components/primitives';
+    import InviteSuccess from './InviteSuccess.svelte';
 
-    let {
-        oninvite_created
-    }: {
-        oninvite_created: () => void;
-    } = $props();
+    let { oninvite_created }: { oninvite_created: () => void } = $props();
 
     let invites_error = $state('');
     let invite_label = $state('');
@@ -16,19 +13,14 @@
     let relative_minutes = $state(60);
     let absolute_datetime = $state('');
     let generating = $state(false);
-
     let new_invite_url: string | null = $state(null);
     let copy_done = $state(false);
 
     const RELATIVE_PRESETS = [
-        { label: '1m', minutes: 1 },
-        { label: '5m', minutes: 5 },
-        { label: '30m', minutes: 30 },
-        { label: '1h', minutes: 60 },
-        { label: '3h', minutes: 180 },
-        { label: '6h', minutes: 360 },
-        { label: '12h', minutes: 720 },
-        { label: '24h', minutes: 1440 }
+        { label: '1m', minutes: 1 }, { label: '5m', minutes: 5 },
+        { label: '30m', minutes: 30 }, { label: '1h', minutes: 60 },
+        { label: '3h', minutes: 180 }, { label: '6h', minutes: 360 },
+        { label: '12h', minutes: 720 }, { label: '24h', minutes: 1440 }
     ];
 
     function compute_expires_at(): string {
@@ -41,17 +33,15 @@
         invites_error = '';
         try {
             const expires_at = compute_expires_at();
-            const result = await api.create_invite({
-                role: invite_role,
-                expires_at,
-                label: invite_label.trim() || undefined
-            });
+            const result = await api.create_invite({ role: invite_role, expires_at, label: invite_label.trim() || undefined });
             const base = typeof window !== 'undefined' ? window.location.origin : '';
             new_invite_url = `${base}/invite?token=${result.token}`;
             oninvite_created();
-        } catch (err: any) {
-            invites_error = err.message;
-        } finally {
+        }
+        catch (err: unknown) {
+            invites_error = err instanceof Error ? err.message : String(err);
+        }
+        finally {
             generating = false;
         }
     }
@@ -64,8 +54,9 @@
             setTimeout(() => {
                 copy_done = false;
             }, 2000);
-        } catch (_) {
-            // clipboard not available
+        }
+        catch {
+            /* clipboard not available */
         }
     }
 </script>
@@ -79,9 +70,13 @@
 
     <div class="form-row">
         <div class="form-field">
-            <Input id="invite-label" type="text" bind:value={invite_label} placeholder="e.g. For Alice">
-                {#snippet labelSnippet()}Label <span class="optional">(optional)</span>{/snippet}
-            </Input>
+            <Input
+                id="invite-label"
+                type="text"
+                label="Label"
+                bind:value={invite_label}
+                placeholder="(Optional) e.g. For Alice"
+            />
         </div>
         <div class="form-field">
             <Select id="invite-role" label="Role" bind:value={invite_role}>
@@ -100,7 +95,7 @@
 
         {#if expiry_mode === 'relative'}
             <div class="preset-buttons">
-                {#each RELATIVE_PRESETS as preset}
+                {#each RELATIVE_PRESETS as preset (preset.label)}
                     <Button variant="filter" active={relative_minutes === preset.minutes} onclick={() => (relative_minutes = preset.minutes)}
                         >{preset.label}</Button
                     >
@@ -122,34 +117,9 @@
     </Button>
 </div>
 
-{#if new_invite_url}
-    <div class="invite-success">
-        <div class="invite-success-header">
-            <span class="icon" style="color:var(--success)">check_circle</span>
-            <strong>Invite link created</strong>
-            <Button
-                variant="secondary"
-                size="sm"
-                onclick={() => {
-                    new_invite_url = null;
-                }}
-            >
-                <span class="icon" style="font-size:14px">close</span>
-            </Button>
-        </div>
-        <div class="invite-url-row">
-            <code class="invite-url">{new_invite_url}</code>
-            <Button variant="secondary" size="sm" onclick={copy_invite_url}>
-                <span class="icon" style="font-size:14px">{copy_done ? 'check' : 'content_copy'}</span>
-                {copy_done ? 'Copied!' : 'Copy Link'}
-            </Button>
-        </div>
-        <p class="invite-warning">
-            <span class="icon" style="font-size:14px;color:var(--warning, #f59e0b)">warning</span>
-            This link will not be shown again.
-        </p>
-    </div>
-{/if}
+<InviteSuccess bind:new_invite_url {copy_done} on_copy={copy_invite_url} on_dismiss={() => {
+    new_invite_url = null;
+}} />
 
 <style>
     /* Invite form */
@@ -181,7 +151,7 @@
         min-width: 160px;
         margin-bottom: 0.75rem;
     }
-    
+
     .optional {
         font-weight: 400;
         text-transform: none;
@@ -211,68 +181,10 @@
         margin-bottom: 0.75rem;
     }
 
-    /* Invite success */
-    .invite-success {
-        background: rgba(74, 158, 110, 0.08);
-        border: 1px solid rgba(74, 158, 110, 0.3);
-        border-radius: var(--radius);
-        padding: 1rem;
-        margin-bottom: 1.5rem;
-    }
-    .invite-success-header {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        margin-bottom: 0.75rem;
-    }
-    .invite-success-header strong {
-        flex: 1;
-        color: var(--fg);
-    }
-
-    .invite-url-row {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        flex-wrap: wrap;
-        margin-bottom: 0.5rem;
-    }
-    .invite-url {
-        flex: 1;
-        font-family: 'SF Mono', 'Fira Code', monospace;
-        font-size: 0.75rem;
-        color: var(--fg);
-        background: var(--bg-elevated);
-        padding: 0.4rem 0.6rem;
-        border-radius: 4px;
-        word-break: break-all;
-        min-width: 0;
-    }
-    .invite-warning {
-        font-size: 0.8rem;
-        color: var(--fg-muted);
-        display: flex;
-        align-items: center;
-        gap: 0.35rem;
-    }
-
     /* Mobile */
     @media (max-width: 768px) {
-        .form-row {
-            flex-direction: column;
-        }
-        .form-field {
-            min-width: 0;
-        }
-        .invite-url-row {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-        .invite-url {
-            width: 100%;
-        }
-        .preset-buttons {
-            gap: 0.3rem;
-        }
+        .form-row { flex-direction: column; }
+        .form-field { min-width: 0; }
+        .preset-buttons { gap: 0.3rem; }
     }
 </style>

@@ -18,9 +18,9 @@
     let syncing = $state(false);
 
     interface PromptEditState {
-        editing: boolean;
-        content: string;
-        saving: boolean;
+        editing: boolean
+        content: string
+        saving: boolean
     }
     let edit_state = $state<Record<string, PromptEditState>>({});
 
@@ -34,9 +34,11 @@
                     edit_state[prompt.role] = { editing: false, content: prompt.content, saving: false };
                 }
             }
-        } catch (err: any) {
-            prompts_error = err.message ?? 'Failed to load prompts';
-        } finally {
+        }
+        catch (err: unknown) {
+            prompts_error = err instanceof Error ? err.message : (typeof err === 'string' ? err : 'Failed to load prompts');
+        }
+        finally {
             prompts_loading = false;
         }
     }
@@ -50,9 +52,11 @@
             for (const prompt of prompts) {
                 edit_state[prompt.role] = { editing: false, content: prompt.content, saving: false };
             }
-        } catch (err: any) {
-            toast_store.error(err.message ?? 'Sync failed');
-        } finally {
+        }
+        catch (err: unknown) {
+            toast_store.error(err instanceof Error ? err.message : (typeof err === 'string' ? err : 'Sync failed'));
+        }
+        finally {
             syncing = false;
         }
     }
@@ -67,9 +71,11 @@
         try {
             traits_error = '';
             traits = await api.list_traits();
-        } catch (err: any) {
-            traits_error = err.message ?? 'Failed to load traits';
-        } finally {
+        }
+        catch (err: unknown) {
+            traits_error = err instanceof Error ? err.message : (typeof err === 'string' ? err : 'Failed to load traits');
+        }
+        finally {
             traits_loading = false;
         }
     }
@@ -184,6 +190,5 @@
         border-radius: 10px;
         font-weight: 600;
     }
-
 
 </style>

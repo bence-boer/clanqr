@@ -5,14 +5,14 @@
     import type { SkillLink, Trait } from '$lib/types';
 
     interface Props {
-        task_id: string;
+        task_id: string
     }
 
     let { task_id }: Props = $props();
 
     let available_traits = $state<Trait[]>([]);
-    let available_skills = $state<{ name: string; description: string }[]>([]);
-    let trait_assignments = $state<{ id: string; trait_id: string }[]>([]);
+    let available_skills = $state<{ name: string, description: string }[]>([]);
+    let trait_assignments = $state<{ id: string, trait_id: string }[]>([]);
     let skill_links = $state<SkillLink[]>([]);
     let loading = $state(true);
 
@@ -29,10 +29,12 @@
             available_skills = skills;
             trait_assignments = assignments;
             skill_links = links;
-        } catch (error) {
+        }
+        catch (error) {
             console.error('Failed to load artifacts:', error);
             toast_store.error('Failed to load artifacts');
-        } finally {
+        }
+        finally {
             loading = false;
         }
     }
@@ -42,11 +44,13 @@
         try {
             if (existing) {
                 await api.remove_trait_assignment(existing.id);
-            } else {
+            }
+            else {
                 await api.assign_trait({ trait_id: trait.id, scope: 'task', task_id });
             }
             trait_assignments = await api.list_trait_assignments({ scope: 'task', task_id });
-        } catch (error) {
+        }
+        catch (error) {
             console.error('Failed to toggle trait:', error);
             toast_store.error('Failed to toggle trait');
         }
@@ -57,11 +61,13 @@
         try {
             if (existing) {
                 await api.unlink_skill(existing.id);
-            } else {
+            }
+            else {
                 await api.link_skill(task_id, skill_name);
             }
             skill_links = await api.get_task_skills(task_id);
-        } catch (error) {
+        }
+        catch (error) {
             console.error('Failed to toggle skill:', error);
             toast_store.error('Failed to toggle skill');
         }
@@ -80,7 +86,7 @@
             {#if available_traits.length === 0}
                 <p class="empty">No traits available</p>
             {:else}
-                {#each available_traits as trait}
+                {#each available_traits as trait (trait.id)}
                     <label class="artifact-check">
                         <input type="checkbox" checked={trait_assignments.some((a) => a.trait_id === trait.id)} onchange={() => toggle_trait(trait)} />
                         <span class="artifact-name">{trait.name}</span>
@@ -96,7 +102,7 @@
             {#if available_skills.length === 0}
                 <p class="empty">No skills available</p>
             {:else}
-                {#each available_skills as skill}
+                {#each available_skills as skill (skill.name)}
                     <label class="artifact-check">
                         <input type="checkbox" checked={skill_links.some((sl) => sl.skill_name === skill.name)} onchange={() => toggle_skill(skill.name)} />
                         <span class="artifact-name">{skill.name}</span>
