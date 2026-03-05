@@ -1,18 +1,20 @@
 import type { Context, Next } from 'hono';
 
-const request_counts = new Map<string, { count: number, reset_at: number }>();
-
-// Periodic cleanup to prevent memory leak from stale entries
-setInterval(() => {
-    const now = Date.now();
-    for (const [ip, entry] of request_counts) {
-        if (now > entry.reset_at) {
-            request_counts.delete(ip);
-        }
-    }
-}, 60_000);
-
 export function rate_limit(max_requests: number, window_ms: number) {
+    // Each rate_limit instance gets its own counter map to avoid
+    // stacked middleware depleting a shared counter multiple times per request
+    const request_counts = new Map<string, { count: number, reset_at: number }>();
+
+    // Periodic cleanup to prevent memory leak from stale entries
+    setInterval(() => {
+        const now = Date.now();
+        for (const [ip, entry] of request_counts) {
+            if (now > entry.reset_at) {
+                request_counts.delete(ip);
+            }
+        }
+    }, 60_000);
+
     return async (c: Context, next: Next) => {
         const forwarded = c.req.header('x-forwarded-for');
         const ip = forwarded ? forwarded.split(',').pop()?.trim() ?? 'unknown' : c.req.header('x-real-ip') ?? 'unknown';

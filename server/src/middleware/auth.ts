@@ -6,7 +6,7 @@ interface SessionWithPasskey {
     id: string
     passkey_id: string
     expires_at: string
-    passkeys: { role: 'admin' | 'user' }[] | null
+    passkeys: { role: 'admin' | 'user' } | null
 }
 
 export function auth_middleware() {
@@ -31,7 +31,7 @@ export function auth_middleware() {
             return context.json({ error: 'Session expired' }, 401);
         }
 
-        const role = session.passkeys?.[0]?.role ?? 'user';
+        const role = session.passkeys?.role ?? 'user';
         context.set('passkey_id', session.passkey_id);
         context.set('role', role);
 

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '../db';
-import { COPILOT_BIN, build_agent_env } from '../env';
+import { COPILOT_BIN, GEMINI_BIN, build_agent_env } from '../env';
 import { logger } from '../utils/logger';
 import { can_spawn_agent, decrement_agent_count, increment_agent_count } from './agent_service';
 
@@ -30,8 +30,12 @@ class ChatService {
             content
         });
 
-        const cli = 'copilot'; // Chat is currently hardcoded to copilot cli
         const resolved_model = model || 'gpt-4o';
+        // Detect CLI from model name: gemini models use gemini CLI, everything else uses copilot
+        const is_gemini = resolved_model.toLowerCase().startsWith('gemini');
+        const cli = is_gemini ? 'gemini' : 'copilot';
+        const bin = is_gemini ? GEMINI_BIN : COPILOT_BIN;
+        const tool_flag = is_gemini ? '--yolo' : '--allow-all-tools';
 
         // Create agent_runs record
         const started_at = new Date().toISOString();
@@ -49,7 +53,7 @@ class ChatService {
             .single();
 
         const proc = Bun.spawn(
-            [COPILOT_BIN, '-p', content, '--model', resolved_model, '--allow-all-tools'],
+            [bin, '-p', content, '--model', resolved_model, tool_flag],
             {
                 cwd: process.env.HOME ?? '/tmp',
                 stdout: 'pipe',
