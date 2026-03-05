@@ -96,6 +96,27 @@ tasks_routes.post('/:id/approve', validate_uuid_params('id'), async (context) =>
     const id = context.req.param('id');
     const supabase = context.get('supabase');
 
+    // Check current task state first
+    const { data: current_task, error: fetch_error } = await supabase
+        .from('tasks')
+        .select('id, status')
+        .eq('id', id)
+        .single();
+
+    if (fetch_error || !current_task) {
+        return context.json({ error: 'Task not found' }, 404);
+    }
+
+    if (current_task.status === 'Approved' || current_task.status === 'In_Progress' || current_task.status === 'Complete') {
+        // Already approved or beyond — return current state
+        const { data } = await supabase.from('tasks').select('*').eq('id', id).single();
+        return context.json(data);
+    }
+
+    if (current_task.status !== 'Pending_Approval') {
+        return context.json({ error: `Cannot approve task in '${current_task.status}' state` }, 409);
+    }
+
     const { data, error } = await supabase
         .from('tasks')
         .update({ status: 'Approved' })

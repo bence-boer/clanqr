@@ -153,7 +153,7 @@
 
     /* Tabs */
     .tabs {
-        box-sizing: border-boxs;
+        box-sizing: border-box;
         display: flex;
         gap: 0.25rem;
         margin-bottom: 1.5rem;

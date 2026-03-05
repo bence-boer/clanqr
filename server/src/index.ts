@@ -5,7 +5,7 @@ import { logger as hono_logger } from 'hono/logger';
 import { secureHeaders } from 'hono/secure-headers';
 import { create_supabase_client } from './db';
 import { env } from './env';
-import { admin_middleware, auth_middleware } from './middleware/auth';
+import { auth_middleware } from './middleware/auth';
 import { metrics_middleware } from './middleware/metrics';
 import { rate_limit } from './middleware/rate_limit';
 import { request_id_middleware } from './middleware/request_id';
@@ -96,8 +96,7 @@ const app = new Hono<AppBindings>()
     .route('/api/traits', traits_routes)
     .route('/api/skills', skills_routes)
     .route('/api/usage', usage_routes)
-    // Admin routes (role check — auth already applied by /api/* above)
-    .use('/api/admin/*', admin_middleware())
+    // Admin routes (role check handled inside admin_routes, auth already applied by /api/* above)
     .route('/api/admin', admin_routes);
 
 // Boot sequence
