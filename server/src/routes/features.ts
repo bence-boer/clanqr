@@ -8,7 +8,7 @@ import { logger } from '../utils/logger';
 const create_feature_schema = z.object({
     project_id: z.string().uuid(),
     title: z.string().min(1).max(200),
-    description: z.string().max(10_000).optional(),
+    description: z.string().max(10_000).nullable().optional(),
     cli: z.string().default('copilot'),
     planning_model: z.string().min(1, 'Planning model is required'),
     execution_model: z.string().min(1, 'Execution model is required'),
@@ -19,7 +19,7 @@ const create_feature_schema = z.object({
 
 const update_feature_schema = z.object({
     title: z.string().min(1).max(255).optional(),
-    description: z.string().optional(),
+    description: z.string().nullable().optional(),
     status: z.enum(['Draft', 'Submitted', 'In_Progress', 'Done']).optional(),
     cli: z.string().optional(),
     planning_model: z.string().nullable().optional(),

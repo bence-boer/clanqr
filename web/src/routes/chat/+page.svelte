@@ -3,6 +3,7 @@
     import { api } from '$lib/api/client';
     import { toast_store } from '$lib/stores/toast.svelte';
     import { read_sse_stream } from '$lib/utils/sse';
+    import { generate_id } from '$lib/utils/id';
     import type { ChatMessage, ChatSession } from '$lib/types';
     import SessionList from './SessionList.svelte';
     import ChatActions from './ChatActions.svelte';
@@ -114,7 +115,7 @@
         is_streaming = true;
         streaming_content = '';
         const user_message: ChatMessage = {
-            id: crypto.randomUUID(), session_id: active_session.id,
+            id: generate_id(), session_id: active_session.id,
             role: 'user', content: message_content, created_at: new Date().toISOString()
         };
         messages = [...messages, user_message];
@@ -130,7 +131,7 @@
             });
             if (streaming_content) {
                 messages = [...messages, {
-                    id: crypto.randomUUID(), session_id: active_session.id,
+                    id: generate_id(), session_id: active_session.id,
                     role: 'assistant', content: streaming_content, created_at: new Date().toISOString()
                 }];
             }
@@ -159,7 +160,7 @@
         }
         if (streaming_content) {
             messages = [...messages, {
-                id: crypto.randomUUID(), session_id: active_session.id,
+                id: generate_id(), session_id: active_session.id,
                 role: 'assistant', content: streaming_content + '\n\n*(generation stopped)*',
                 created_at: new Date().toISOString()
             }];

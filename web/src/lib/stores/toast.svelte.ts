@@ -1,3 +1,5 @@
+import { generate_id } from '$lib/utils/id';
+
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
 interface Toast {
@@ -10,7 +12,7 @@ class ToastStore {
     items: Toast[] = $state([]);
 
     show(message: string, type: ToastType = 'info') {
-        const id = crypto.randomUUID();
+        const id = generate_id();
         this.items.push({ id, message, type });
         const dismiss_ms = type === 'error' ? 10000 : 5000;
         setTimeout(() => this.dismiss(id), dismiss_ms);
