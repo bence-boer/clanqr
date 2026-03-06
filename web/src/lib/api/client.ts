@@ -66,7 +66,7 @@ export const api = {
         api_fetch<Task[]>(`/api/tasks/approve-all/${feature_id}`, { method: 'POST' }),
     create_task: (data: { feature_id: string, description: string }) =>
         api_fetch<Task>('/api/tasks', { method: 'POST', body: JSON.stringify(data) }),
-    update_task: (id: string, data: { description?: string }) =>
+    update_task: (id: string, data: { description?: string, model?: string | null }) =>
         api_fetch<Task>(`/api/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     delete_task: (id: string) =>
         api_fetch<{ success: boolean }>(`/api/tasks/${id}`, { method: 'DELETE' }),

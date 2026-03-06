@@ -135,7 +135,7 @@ class PipelineService {
 
         const prompt = await prompt_service.resolve_for_task(task_id, task_spec);
         const cli = task.features?.cli || 'copilot';
-        const model = task.features?.model || (cli === 'gemini' ? 'gemini-3-flash-preview' : 'gpt-4o');
+        const model = task.model || task.features?.execution_model || (cli === 'gemini' ? 'gemini-2.5-flash' : 'gpt-4.1');
 
         this.active_run = { task_id, run_id: '', feature_id };
 

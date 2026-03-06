@@ -10,7 +10,7 @@
         on_approve_all: (feature_id: string) => Promise<void>
         on_spawn: (task_id: string) => Promise<void>
         on_add: (description: string) => Promise<void>
-        on_update: (task_id: string, description: string) => Promise<void>
+        on_update: (task_id: string, description: string, model?: string | null) => Promise<void>
         on_delete: (task_id: string) => Promise<void>
         on_toggle_auto_approve: (enabled: boolean) => Promise<void>
     }
@@ -21,6 +21,7 @@
     let new_task_desc = $state('');
     let editing_task_id = $state<string | null>(null);
     let editing_task_desc = $state('');
+    let editing_task_model = $state<string | null>(null);
     let saving_task = $state(false);
     let managing_task_id: string | null = $state(null);
     let auto_approve = $state(false);
@@ -41,13 +42,14 @@
     function start_edit(task: Task) {
         editing_task_id = task.id;
         editing_task_desc = task.description;
+        editing_task_model = task.model;
     }
 
     async function save_edit() {
         if (!editing_task_id || !editing_task_desc.trim()) return;
         saving_task = true;
         try {
-            await on_update(editing_task_id, editing_task_desc.trim());
+            await on_update(editing_task_id, editing_task_desc.trim(), editing_task_model);
             editing_task_id = null;
         }
         finally {
@@ -108,8 +110,10 @@
             {#each feature.tasks as task (task.id)}
                 <TaskItem
                     {task}
+                    feature_cli={feature.cli || 'copilot'}
                     editing={editing_task_id === task.id}
                     bind:editing_desc={editing_task_desc}
+                    bind:editing_model={editing_task_model}
                     saving={saving_task}
                     {on_approve}
                     {on_spawn}

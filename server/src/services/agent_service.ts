@@ -82,7 +82,7 @@ class AgentService {
 
         const prompt = await prompt_service.resolve_for_manager(spec, feature_id, feature.project_id);
         const cli = feature.cli || 'copilot';
-        const model = feature.model || (cli === 'gemini' ? 'gemini-3-flash-preview' : 'gpt-4o');
+        const model = feature.planning_model || (cli === 'gemini' ? 'gemini-2.5-flash' : 'gpt-4.1');
 
         if (!can_spawn_agent()) {
             logger.warn('Agent concurrency limit reached, deferring manager spawn', { service: 'agent', feature_id });

@@ -10,13 +10,15 @@ const update_task_schema = z.object({
         .enum(['Pending_Approval', 'Approved', 'In_Progress', 'Complete'])
         .optional(),
     description: z.string().optional(),
-    agent_log: z.string().optional()
+    agent_log: z.string().optional(),
+    model: z.string().nullable().optional()
 });
 
 const create_task_schema = z.object({
     feature_id: z.string().uuid(),
     description: z.string().min(1),
-    sort_order: z.number().int().optional()
+    sort_order: z.number().int().optional(),
+    model: z.string().nullable().optional()
 });
 
 export const tasks_routes = new Hono<AppBindings>();

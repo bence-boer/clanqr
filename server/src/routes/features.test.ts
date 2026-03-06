@@ -33,7 +33,9 @@ describe('features routes', () => {
                 headers: { ...auth_headers(), 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     project_id: '00000000-0000-0000-0000-000000000001',
-                    title: 'New Feature'
+                    title: 'New Feature',
+                    planning_model: 'gpt-4.1',
+                    execution_model: 'gpt-4.1'
                 })
             });
             expect(res.status).toBe(201);

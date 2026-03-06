@@ -17,7 +17,8 @@
             title: string
             description?: string
             cli: string
-            model: string | null
+            planning_model: string | null
+            execution_model: string | null
             on_task_failure: FailureBehavior
             task_timeout_minutes: number
             resources: { url: string, title?: string }[]
@@ -30,7 +31,8 @@
     let title = $state('');
     let description = $state('');
     let cli = $state('copilot');
-    let model = $state('');
+    let planning_model = $state('');
+    let execution_model = $state('');
     let on_task_failure = $state<FailureBehavior>('stop');
     let task_timeout_minutes = $state(10);
     let models = $state<ModelOption[]>([]);
@@ -46,9 +48,11 @@
         try {
             models = await api.list_models(target_cli);
             last_cli = target_cli;
-            // Select the first model if current model is not in the new list
-            if (!models.find((m) => m.value === model) && models.length > 0) {
-                model = models[0].value;
+            if (!models.find((m) => m.value === planning_model) && models.length > 0) {
+                planning_model = models[0].value;
+            }
+            if (!models.find((m) => m.value === execution_model) && models.length > 0) {
+                execution_model = models[0].value;
             }
         }
         catch (err) {
@@ -82,7 +86,8 @@
                 title: title.trim(),
                 description: description.trim() || undefined,
                 cli,
-                model: model || null,
+                planning_model: planning_model || null,
+                execution_model: execution_model || null,
                 on_task_failure,
                 task_timeout_minutes,
                 resources: clean_resources
@@ -90,7 +95,8 @@
             title = '';
             description = '';
             cli = 'copilot';
-            model = '';
+            planning_model = '';
+            execution_model = '';
             on_task_failure = 'stop';
             task_timeout_minutes = 10;
             resources = [];
@@ -119,17 +125,24 @@
             </Select>
         </div>
         <div class="field">
-            <Select id="model-select" label={`Model ${loading_models ? '(loading...)' : ''}`} bind:value={model} class="input select" disabled={loading_models}>
+            <Select id="failure-select" label="On Task Failure" bind:value={on_task_failure} class="input select">
+                <option value="stop">Stop</option>
+                <option value="retry">Retry</option>
+                <option value="skip">Skip</option>
+            </Select>
+        </div>
+        <div class="field">
+            <Select id="planning-model-select" label={`Planning Model ${loading_models ? '(loading...)' : ''}`} bind:value={planning_model} class="input select" disabled={loading_models}>
                 {#each models as m (m.value)}
                     <option value={m.value}>{m.label}</option>
                 {/each}
             </Select>
         </div>
         <div class="field">
-            <Select id="failure-select" label="On Task Failure" bind:value={on_task_failure} class="input select">
-                <option value="stop">Stop</option>
-                <option value="retry">Retry</option>
-                <option value="skip">Skip</option>
+            <Select id="execution-model-select" label={`Execution Model ${loading_models ? '(loading...)' : ''}`} bind:value={execution_model} class="input select" disabled={loading_models}>
+                {#each models as m (m.value)}
+                    <option value={m.value}>{m.label}</option>
+                {/each}
             </Select>
         </div>
         <div class="field">
@@ -158,7 +171,7 @@
     </div>
     <div class="form-actions">
         <Button type="button" variant="secondary" onclick={on_cancel}>Cancel</Button>
-        <Button type="submit" variant="primary" disabled={creating || !title.trim()}>
+        <Button type="submit" variant="primary" disabled={creating || !title.trim() || !planning_model || !execution_model}>
             <span class="icon" style="font-size:16px">save</span>
             {creating ? 'Creating...' : 'Save Draft'}
         </Button>
