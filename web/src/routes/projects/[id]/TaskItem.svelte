@@ -1,5 +1,6 @@
 <script lang="ts">
-    import { Badge, Button, Input } from '$lib/components/primitives';
+    import { api } from '$lib/api/client';
+    import { Badge, Button, Input, Select } from '$lib/components/primitives';
     import { CodeBlock } from '$lib/components';
     import type { Task } from '$lib/types';
     import { status_icon, status_class } from '$lib/utils/status';
@@ -7,8 +8,10 @@
 
     interface Props {
         task: Task
+        feature_cli: string
         editing: boolean
         editing_desc: string
+        editing_model: string | null
         saving: boolean
         on_approve: (task_id: string) => Promise<void>
         on_spawn: (task_id: string) => Promise<void>
@@ -21,10 +24,33 @@
     }
 
     let {
-        task, editing, editing_desc = $bindable(), saving,
+        task, feature_cli, editing, editing_desc = $bindable(), editing_model = $bindable(), saving,
         on_approve, on_spawn, on_start_edit, on_save_edit,
         on_cancel_edit, on_delete, on_toggle_artifacts, show_artifacts
     }: Props = $props();
+
+    let model_options = $state<{ value: string, label: string }[]>([]);
+    let loading_models = $state(false);
+    let last_loaded_cli = $state('');
+
+    async function load_models() {
+        if (feature_cli === last_loaded_cli) return;
+        loading_models = true;
+        try {
+            model_options = await api.list_models(feature_cli);
+            last_loaded_cli = feature_cli;
+        }
+        catch {
+            model_options = [];
+        }
+        finally {
+            loading_models = false;
+        }
+    }
+
+    $effect(() => {
+        if (editing) load_models();
+    });
 </script>
 
 <div class="task-item">
@@ -39,6 +65,14 @@
                     if (event.key === 'Escape') on_cancel_edit();
                 }}
             />
+            <div class="task-model-field">
+                <Select id="task-model-{task.id}" label={`Model Override ${loading_models ? '(...)' : ''}`} bind:value={editing_model} class="input select" disabled={loading_models}>
+                    <option value={null}>Feature default</option>
+                    {#each model_options as m (m.value)}
+                        <option value={m.value}>{m.label}</option>
+                    {/each}
+                </Select>
+            </div>
             <div class="task-edit-actions">
                 <Button variant="primary" size="sm" onclick={on_save_edit} disabled={saving}>Save</Button>
                 <Button variant="secondary" size="sm" onclick={on_cancel_edit}>Cancel</Button>
@@ -47,9 +81,14 @@
     {:else}
         <div class="task-header">
             <span class="task-desc">{task.description}</span>
-            <Badge variant={status_class(task.status) as 'success' | 'danger' | 'muted' | 'info' | 'warning'} icon={status_icon(task.status)}>
-                {task.status.replace(/_/g, ' ')}
-            </Badge>
+            <div class="task-badges">
+                {#if task.model}
+                    <Badge variant="info" style="transform: scale(0.85)">{task.model}</Badge>
+                {/if}
+                <Badge variant={status_class(task.status) as 'success' | 'danger' | 'muted' | 'info' | 'warning'} icon={status_icon(task.status)}>
+                    {task.status.replace(/_/g, ' ')}
+                </Badge>
+            </div>
         </div>
         <div class="task-actions">
             {#if task.status === 'Pending_Approval'}
@@ -87,6 +126,7 @@
         display: flex; justify-content: space-between;
         align-items: flex-start; gap: 0.5rem;
     }
+    .task-badges { display: flex; gap: 0.35rem; align-items: center; flex-shrink: 0; }
     .task-desc { font-size: 0.85rem; color: var(--fg); }
     .task-actions {
         margin-top: 0.5rem; display: flex;
@@ -97,6 +137,7 @@
         background: var(--bg); border: 1px solid var(--accent);
         border-radius: var(--radius); padding: 0.75rem;
     }
+    .task-model-field { max-width: 300px; }
     .task-edit-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
     .log-details { width: 100%; }
     .log-details summary {

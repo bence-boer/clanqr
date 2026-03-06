@@ -6,12 +6,12 @@ import { logger } from '../utils/logger';
 
 const create_project_schema = z.object({
     name: z.string().min(1).max(255),
-    description: z.string().optional()
+    description: z.string().nullable().optional()
 });
 
 const update_project_schema = z.object({
     name: z.string().min(1).max(255).optional(),
-    description: z.string().optional(),
+    description: z.string().nullable().optional(),
     status: z.enum(['Active', 'Archived']).optional()
 });
 

@@ -42,7 +42,8 @@ export interface FeatureRow {
     description: string | null
     status: FeatureStatus
     cli: string | null
-    model: string | null
+    planning_model: string | null
+    execution_model: string | null
     on_task_failure: FailureBehavior
     auto_approve: boolean
     last_error: string | null
@@ -61,6 +62,7 @@ export interface TaskRow {
     description: string
     status: TaskStatus
     sort_order: number
+    model: string | null
     agent_log: string | null
     retry_count: number
     max_retries: number

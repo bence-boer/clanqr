@@ -17,7 +17,8 @@ export interface Feature {
     description: string | null
     status: FeatureStatus
     cli: string
-    model: string | null
+    planning_model: string | null
+    execution_model: string | null
     on_task_failure: FailureBehavior
     auto_approve: boolean
     last_error: string | null
@@ -46,6 +47,7 @@ export interface Task {
     status: TaskStatus
     agent_log: string | null
     sort_order: number
+    model: string | null
     retry_count: number
     max_retries: number
     created_at: string

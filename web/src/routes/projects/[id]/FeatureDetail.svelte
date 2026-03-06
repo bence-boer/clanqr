@@ -24,7 +24,8 @@
     let editing = $state(false);
     let edit_title = $state('');
     let edit_description = $state('');
-    let edit_model = $state('');
+    let edit_planning_model = $state('');
+    let edit_execution_model = $state('');
     let edit_cli = $state('copilot');
     let edit_models = $state<{ value: string, label: string }[]>([]);
     let loading_edit_models = $state(false);
@@ -37,8 +38,11 @@
         loading_edit_models = true;
         try {
             edit_models = await api.list_models(cli);
-            if (!edit_models.find((m) => m.value === edit_model) && edit_models.length > 0) {
-                edit_model = edit_models[0].value;
+            if (!edit_models.find((m) => m.value === edit_planning_model) && edit_models.length > 0) {
+                edit_planning_model = edit_models[0].value;
+            }
+            if (!edit_models.find((m) => m.value === edit_execution_model) && edit_models.length > 0) {
+                edit_execution_model = edit_models[0].value;
             }
             last_edit_cli = cli;
             last_edit_feature_id = feature.id;
@@ -60,7 +64,8 @@
         edit_title = feature.title;
         edit_description = feature.description ?? '';
         edit_cli = feature.cli ?? 'copilot';
-        edit_model = feature.model ?? '';
+        edit_planning_model = feature.planning_model ?? '';
+        edit_execution_model = feature.execution_model ?? '';
         editing = true;
     }
 
@@ -72,7 +77,8 @@
                 title: edit_title.trim(),
                 description: edit_description.trim() || null,
                 cli: edit_cli,
-                model: edit_model || null
+                planning_model: edit_planning_model || null,
+                execution_model: edit_execution_model || null
             });
             editing = false;
         }
@@ -126,7 +132,12 @@
                     </Select>
                 </div>
                 <div class="field">
-                    <Select id="edit-model" label={`Model ${loading_edit_models ? '(...)' : ''}`} bind:value={edit_model} class="input select" disabled={loading_edit_models}>
+                    <Select id="edit-planning-model" label={`Planning Model ${loading_edit_models ? '(...)' : ''}`} bind:value={edit_planning_model} class="input select" disabled={loading_edit_models}>
+                        {#each edit_models as m (m.value)}<option value={m.value}>{m.label}</option>{/each}
+                    </Select>
+                </div>
+                <div class="field">
+                    <Select id="edit-execution-model" label={`Execution Model ${loading_edit_models ? '(...)' : ''}`} bind:value={edit_execution_model} class="input select" disabled={loading_edit_models}>
                         {#each edit_models as m (m.value)}<option value={m.value}>{m.label}</option>{/each}
                     </Select>
                 </div>
@@ -135,7 +146,7 @@
                 <Button type="button" variant="secondary" size="sm" onclick={() => {
                     editing = false;
                 }}>Cancel</Button>
-                <Button type="submit" variant="primary" size="sm" disabled={saving_edit || !edit_title.trim()}>{saving_edit ? 'Saving...' : 'Save'}</Button>
+                <Button type="submit" variant="primary" size="sm" disabled={saving_edit || !edit_title.trim() || !edit_planning_model || !edit_execution_model}>{saving_edit ? 'Saving...' : 'Save'}</Button>
             </div>
         </form>
     {:else}
@@ -145,9 +156,10 @@
         </div>
         <div class="detail-section">
             <h4><span class="icon" style="font-size:16px">smart_toy</span> Engine & Model</h4>
-            <div style="display:flex; gap:0.5rem">
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap">
                 <Badge variant="muted">{feature.cli || 'copilot'}</Badge>
-                <Badge variant="info">{feature.model || 'Default (auto)'}</Badge>
+                <Badge variant="info">Planning: {feature.planning_model || 'Not set'}</Badge>
+                <Badge variant="info">Execution: {feature.execution_model || 'Not set'}</Badge>
             </div>
         </div>
         <ResourceList

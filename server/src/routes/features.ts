@@ -10,7 +10,8 @@ const create_feature_schema = z.object({
     title: z.string().min(1).max(200),
     description: z.string().max(10_000).optional(),
     cli: z.string().default('copilot'),
-    model: z.string().optional(),
+    planning_model: z.string().min(1, 'Planning model is required'),
+    execution_model: z.string().min(1, 'Execution model is required'),
     resources: z
         .array(z.object({ url: z.string().url(), title: z.string().optional() }))
         .optional()
@@ -21,7 +22,8 @@ const update_feature_schema = z.object({
     description: z.string().optional(),
     status: z.enum(['Draft', 'Submitted', 'In_Progress', 'Done']).optional(),
     cli: z.string().optional(),
-    model: z.string().nullable().optional()
+    planning_model: z.string().nullable().optional(),
+    execution_model: z.string().nullable().optional()
 });
 
 export const features_routes = new Hono<AppBindings>();
@@ -141,6 +143,12 @@ features_routes.patch('/:id', validate_uuid_params('id'), async (context) => {
 features_routes.post('/:id/submit', validate_uuid_params('id'), async (context) => {
     const id = context.req.param('id');
     const supabase = context.get('supabase');
+
+    // Validate that models are set before allowing submission
+    const { data: feature_check } = await supabase.from('features').select('planning_model, execution_model').eq('id', id).single();
+    if (!feature_check?.planning_model || !feature_check?.execution_model) {
+        return context.json({ error: 'Planning model and execution model must be set before submitting' }, 400);
+    }
 
     const { data, error } = await supabase
         .from('features')

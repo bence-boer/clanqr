@@ -15,7 +15,8 @@ export async function create_feature(
         title: string
         description?: string
         cli: string
-        model: string | null
+        planning_model: string | null
+        execution_model: string | null
         on_task_failure: FailureBehavior
         task_timeout_minutes: number
         resources: { url: string, title?: string }[]
@@ -28,7 +29,8 @@ export async function create_feature(
             title: data.title,
             description: data.description,
             cli: data.cli,
-            model: data.model,
+            planning_model: data.planning_model,
+            execution_model: data.execution_model,
             on_task_failure: data.on_task_failure,
             task_timeout_minutes: data.task_timeout_minutes,
             resources: data.resources.length > 0 ? (data.resources as FeatureInput['resources']) : undefined
