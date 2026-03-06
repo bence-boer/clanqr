@@ -77,8 +77,10 @@ const app = new Hono<AppBindings>()
     .get('/health', (context) => {
         return context.json({ status: 'ok', timestamp: new Date().toISOString() });
     })
-    // Auth routes (no auth required, rate-limited: 10 req/min)
-    .use('/api/auth/*', rate_limit(10, 60_000))
+    // Auth mutation routes (register/login) rate-limited: 10 req/min
+    // Status check uses global rate limit only (called on every page load)
+    .use('/api/auth/register/*', rate_limit(10, 60_000))
+    .use('/api/auth/login/*', rate_limit(10, 60_000))
     .route('/api/auth', auth_routes)
     // Protected API routes
     .use('/api/*', auth_middleware())
@@ -217,5 +219,6 @@ export { app };
 
 export default {
     port,
-    fetch: app.fetch
+    fetch: app.fetch,
+    idleTimeout: 120
 };

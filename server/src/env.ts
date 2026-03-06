@@ -38,12 +38,30 @@ export const env = parse_env();
 export const COPILOT_BIN = env.COPILOT_BIN ?? join(env.HOME, '.local/bin/copilot');
 
 /** Resolved path to gemini binary */
-export const GEMINI_BIN = env.GEMINI_BIN ?? 'gemini';
+export const GEMINI_BIN = env.GEMINI_BIN ?? (() => {
+    const candidates = [
+        join(env.HOME, '.local/share/fnm/aliases/default/bin/gemini'),
+        join(env.HOME, '.local/bin/gemini'),
+        join(env.HOME, '.bun/bin/gemini'),
+        'gemini'
+    ];
+    for (const candidate of candidates) {
+        try {
+            const stat = Bun.file(candidate);
+            if (stat.size > 0) return candidate;
+        }
+        catch {
+            /* skip */
+        }
+    }
+    return 'gemini';
+})();
 
 /** Enriched PATH for spawned processes */
 export const ENRICHED_PATH = [
     join(env.HOME, '.local/bin'),
     join(env.HOME, '.bun/bin'),
+    join(env.HOME, '.local/share/fnm/aliases/default/bin'),
     env.PATH
 ].join(':');
 
