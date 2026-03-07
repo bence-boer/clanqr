@@ -63,6 +63,15 @@
             if (selected_feature) {
                 selected_feature = features.find((feat: Feature) => feat.id === (selected_feature as Feature).id) ?? null;
             }
+            // Deep-link to feature via query param
+            const feature_param = new URLSearchParams(window.location.search).get('feature');
+            if (feature_param && !selected_feature) {
+                const target = features.find((feat: Feature) => feat.id === feature_param);
+                if (target) {
+                    selected_feature = target;
+                    show_mobile_detail = true;
+                }
+            }
         }
         catch (error) {
             console.error('Failed to load project:', error);

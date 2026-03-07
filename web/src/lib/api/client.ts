@@ -45,9 +45,9 @@ export const api = {
         unwrap(await (await client.api.tasks[':id'].run.$post({ param: { id } })).json()),
     approve_all_tasks: async (feature_id: string) =>
         unwrap(await (await client.api.tasks['approve-all'][':feature_id'].$post({ param: { feature_id } })).json()),
-    create_task: async (data: { feature_id: string, description: string }): Promise<Types.Task> =>
+    create_task: async (data: { feature_id: string, description: string }): Promise<Types.TaskRow> =>
         unwrap(await (await client.api.tasks.$post({ json: data })).json()),
-    update_task: async (id: string, data: { description?: string, model?: string | null }): Promise<Types.Task> =>
+    update_task: async (id: string, data: { description?: string, model?: string | null }): Promise<Types.TaskRow> =>
         unwrap(await (await client.api.tasks[':id'].$patch({ param: { id }, json: data })).json()),
     delete_task: async (id: string): Promise<{ success: boolean }> =>
         unwrap(await (await client.api.tasks[':id'].$delete({ param: { id } })).json()),

@@ -464,9 +464,11 @@ export type Database = {
           id: string
           max_retries: number
           model: string | null
+          output: string | null
           retry_count: number
           sort_order: number
           status: Database["public"]["Enums"]["task_status"]
+          title: string | null
           updated_at: string
         }
         Insert: {
@@ -477,9 +479,11 @@ export type Database = {
           id?: string
           max_retries?: number
           model?: string | null
+          output?: string | null
           retry_count?: number
           sort_order?: number
           status?: Database["public"]["Enums"]["task_status"]
+          title?: string | null
           updated_at?: string
         }
         Update: {
@@ -490,9 +494,11 @@ export type Database = {
           id?: string
           max_retries?: number
           model?: string | null
+          output?: string | null
           retry_count?: number
           sort_order?: number
           status?: Database["public"]["Enums"]["task_status"]
+          title?: string | null
           updated_at?: string
         }
         Relationships: [

@@ -11,6 +11,7 @@ const update_task_schema = z.object({
     status: z
         .enum(['Pending_Approval', 'Approved', 'In_Progress', 'Complete'])
         .optional(),
+    title: z.string().nullable().optional(),
     description: z.string().optional(),
     agent_log: z.string().optional(),
     model: z.string().nullable().optional()
@@ -33,7 +34,7 @@ export const tasks_routes = new Hono<AppBindings>()
 
         let query = supabase
             .from('tasks')
-            .select('*')
+            .select('*, features(id, title, project_id, projects(id, name))')
             .order('created_at', { ascending: true });
 
         if (feature_id) {

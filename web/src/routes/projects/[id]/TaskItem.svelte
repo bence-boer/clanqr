@@ -2,7 +2,7 @@
     import { api } from '$lib/api/client';
     import { Badge, Button, Input, Select } from '$lib/components/primitives';
     import { CodeBlock } from '$lib/components';
-    import type { Task } from '$lib/types';
+    import type { TaskRow as Task } from '$lib/types';
     import { status_icon, status_class } from '$lib/utils/status';
     import TaskArtifacts from './TaskArtifacts.svelte';
 
@@ -80,7 +80,20 @@
         </div>
     {:else}
         <div class="task-header">
-            <span class="task-desc">{task.description}</span>
+            <div class="task-info">
+                {#if task.title}
+                    <span class="task-title">{task.title}</span>
+                    <span class="task-desc">{task.description}</span>
+                {:else}
+                    <span class="task-desc">{task.description}</span>
+                {/if}
+                {#if task.output}
+                    <p class="task-output">
+                        <span class="icon" style="font-size:13px">output</span>
+                        {task.output}
+                    </p>
+                {/if}
+            </div>
             <div class="task-badges">
                 {#if task.model}
                     <Badge variant="info" style="transform: scale(0.85)">{task.model}</Badge>
@@ -126,8 +139,14 @@
         display: flex; justify-content: space-between;
         align-items: flex-start; gap: 0.5rem;
     }
+    .task-info { flex: 1; min-width: 0; }
+    .task-title { font-size: 0.875rem; font-weight: 600; color: var(--fg); display: block; margin-bottom: 0.15rem; }
     .task-badges { display: flex; gap: 0.35rem; align-items: center; flex-shrink: 0; }
-    .task-desc { font-size: 0.85rem; color: var(--fg); }
+    .task-desc { font-size: 0.85rem; color: var(--fg-muted); }
+    .task-output {
+        font-size: 0.8rem; color: var(--fg-muted); margin-top: 0.3rem;
+        display: flex; align-items: flex-start; gap: 0.25rem; line-height: 1.3;
+    }
     .task-actions {
         margin-top: 0.5rem; display: flex;
         gap: 0.5rem; align-items: center; flex-wrap: wrap;

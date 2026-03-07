@@ -45,7 +45,7 @@ export const usage_routes = new Hono<AppBindings>()
 
         let query = supabase
             .from('agent_runs')
-            .select('*', { count: 'exact' })
+            .select('*, tasks(id, title, feature_id, features(id, title, project_id, projects(id, name)))', { count: 'exact' })
             .order('created_at', { ascending: false })
             .range(offset, offset + per_page - 1);
 
