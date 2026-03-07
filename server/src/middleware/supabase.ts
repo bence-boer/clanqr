@@ -1,9 +1,9 @@
 import type { MiddlewareHandler } from 'hono';
-import { create_supabase_client, type SupabaseClient } from '../db';
+import { create_supabase_client, type TypedSupabaseClient } from '../db';
 
 export type AppBindings = {
     Variables: {
-        supabase: SupabaseClient
+        supabase: TypedSupabaseClient
         passkey_id: string
         role: string
         request_id: string

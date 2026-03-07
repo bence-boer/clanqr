@@ -1,7 +1,8 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { create_supabase_client } from '../db';
-import type { SupabaseClient } from '../db';
+import type { TypedSupabaseClient } from '../db';
+import type { Enums } from '../database.types';
 import { WORKSPACE_DIR } from '../env';
 import { resolve_task_traits, resolve_feature_traits } from './trait_service';
 import { skill_service } from './skill_service';
@@ -27,7 +28,7 @@ class PromptService {
             const content = readFileSync(file_path, 'utf-8');
 
             const { error } = await supabase.from('prompts').upsert(
-                { role, content, updated_at: new Date().toISOString() },
+                { role: role as Enums<'prompt_role'>, content, updated_at: new Date().toISOString() },
                 { onConflict: 'role' }
             );
 
@@ -40,19 +41,19 @@ class PromptService {
         }
     }
 
-    async get_prompt(role: string, supabase?: SupabaseClient): Promise<string | null> {
+    async get_prompt(role: string, supabase?: TypedSupabaseClient): Promise<string | null> {
         const db = supabase ?? create_supabase_client();
         const { data, error } = await db
             .from('prompts')
             .select('content')
-            .eq('role', role)
+            .eq('role', role as Enums<'prompt_role'>)
             .single();
 
         if (error || !data) return null;
         return data.content;
     }
 
-    async update_prompt(role: string, content: string, supabase?: SupabaseClient): Promise<boolean> {
+    async update_prompt(role: string, content: string, supabase?: TypedSupabaseClient): Promise<boolean> {
         const db = supabase ?? create_supabase_client();
 
         // Write back to repo file
@@ -64,7 +65,7 @@ class PromptService {
         const { error } = await db
             .from('prompts')
             .update({ content, updated_at: new Date().toISOString() })
-            .eq('role', role);
+            .eq('role', role as Enums<'prompt_role'>);
 
         return !error;
     }
@@ -73,7 +74,7 @@ class PromptService {
     async resolve_for_task(
         task_id: string,
         task_spec: { description: string, feature_title: string, project_name: string },
-        supabase?: SupabaseClient
+        supabase?: TypedSupabaseClient
     ): Promise<string> {
         const db = supabase ?? create_supabase_client();
 
@@ -126,7 +127,7 @@ class PromptService {
         feature_spec: { title: string, description: string | null, project: string, resources: { url: string, title?: string | null }[] },
         feature_id: string,
         project_id: string,
-        supabase?: SupabaseClient
+        supabase?: TypedSupabaseClient
     ): Promise<string> {
         const db = supabase ?? create_supabase_client();
 

@@ -11,6 +11,7 @@
     import SystemStatsCard from './SystemStatsCard.svelte';
 
     let projects = $state<Project[]>([]);
+    let feature_count = $state(0);
     let loading = $state(true);
     let pipeline = $state<PipelineStatus | null>(null);
     let system_stats = $state<SystemStats | null>(null);
@@ -20,8 +21,11 @@
 
     async function load_data() {
         try {
-            const [project_list, pipeline_status] = await Promise.all([api.list_projects(), api.pipeline_status().catch(() => null)]);
+            const [project_list, feature_list, pipeline_status] = await Promise.all([
+                api.list_projects(), api.list_features(), api.pipeline_status().catch(() => null)
+            ]);
             projects = project_list;
+            feature_count = feature_list.length;
             pipeline = pipeline_status;
             polling.mark_success();
         }
@@ -69,7 +73,6 @@
         }
     }
 
-    let total_features = $derived(projects.reduce((sum, project) => sum + (project.features?.length ?? 0), 0));
 </script>
 
 <div class="dashboard" aria-busy={loading}>
@@ -84,7 +87,7 @@
     {:else}
         <div class="stats">
             <StatCard icon="folder" value={projects.length} label="Projects" href="/projects" />
-            <StatCard icon="category" value={total_features} label="Features" href="/projects" />
+            <StatCard icon="category" value={feature_count} label="Features" href="/projects" />
             <PipelineStat {pipeline} />
         </div>
 

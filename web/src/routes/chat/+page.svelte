@@ -4,7 +4,7 @@
     import { toast_store } from '$lib/stores/toast.svelte';
     import { read_sse_stream } from '$lib/utils/sse';
     import { generate_id } from '$lib/utils/id';
-    import type { ChatMessage, ChatSession } from '$lib/types';
+    import type { ChatSession, ChatSessionFull, ChatMessage } from '$lib/types';
     import SessionList from './SessionList.svelte';
     import ChatActions from './ChatActions.svelte';
 
@@ -27,7 +27,7 @@
     ];
 
     let sessions = $state<ChatSession[]>([]);
-    let active_session = $state<ChatSession | null>(null);
+    let active_session = $state<ChatSessionFull | null>(null);
     let messages = $state<ChatMessage[]>([]);
     let input_text = $state('');
     let selected_model = $state('claude-sonnet-4.5');
@@ -60,13 +60,19 @@
     }
 
     async function select_session(session: ChatSession) {
-        active_session = session;
+        active_session = { ...session, messages: [] };
         selected_model = session.model;
         sessionStorage.setItem('active_chat_session', session.id);
         loading_messages = true;
         messages = [];
         try {
-            messages = (await api.get_chat_session(session.id)).messages ?? [];
+            const { chat_messages, ...rest } = await api.get_chat_session(session.id);
+            const full_session: ChatSessionFull = {
+                ...rest,
+                messages: chat_messages ?? []
+            };
+            messages = full_session.messages;
+            active_session = full_session;
         }
         catch {
             error_msg = 'Failed to load messages';
@@ -173,7 +179,7 @@
 <div class="chat-page">
     <SessionList {sessions} {active_session} {loading_sessions} onselect={select_session} ondelete={delete_session} oncreate={create_session} />
     <ChatActions
-        {active_session} {messages} {loading_messages} {is_streaming} {streaming_content}
+        session={active_session} {messages} {loading_messages} {is_streaming} {streaming_content}
         bind:input_text bind:selected_model {error_msg} {models}
         {format_session_title} on_send={send_message} on_stop={stop_generating} on_create={create_session}
     />

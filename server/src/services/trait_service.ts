@@ -1,14 +1,24 @@
-import type { SupabaseClient } from '../db';
-import type { ResolvedTrait, TraitAssignmentRow, TraitRow, TraitTarget } from '../types';
+import type { TypedSupabaseClient } from '../db';
+import type { Tables, Enums } from '../database.types';
+
+export interface ResolvedTrait {
+    id: string
+    name: string
+    description: string | null
+    target: string
+    content: string
+    is_global: boolean
+    scope_source: 'global' | 'project' | 'feature' | 'task'
+}
 
 /**
  * Resolves the effective set of traits for a feature (used by manager agents).
  */
 export async function resolve_feature_traits(
-    supabase: SupabaseClient,
+    supabase: TypedSupabaseClient,
     feature_id: string,
     project_id: string,
-    target: TraitTarget
+    target: Enums<'trait_target'>
 ): Promise<ResolvedTrait[]> {
     return resolve_scope_traits(supabase, {
         scope: 'feature',
@@ -23,9 +33,9 @@ export async function resolve_feature_traits(
  * inheritance chain: global → project → feature → task.
  */
 export async function resolve_task_traits(
-    supabase: SupabaseClient,
+    supabase: TypedSupabaseClient,
     task_id: string,
-    target: TraitTarget
+    target: Enums<'trait_target'>
 ): Promise<ResolvedTrait[]> {
     const { data: task, error: task_error } = await supabase
         .from('tasks')
@@ -53,7 +63,7 @@ interface ResolveScopeOptions {
     project_id?: string
     feature_id?: string
     task_id?: string
-    target?: TraitTarget
+    target?: Enums<'trait_target'>
 }
 
 /**
@@ -61,7 +71,7 @@ interface ResolveScopeOptions {
  * Global traits are included first, then overridden by narrower scope assignments.
  */
 export async function resolve_scope_traits(
-    supabase: SupabaseClient,
+    supabase: TypedSupabaseClient,
     options: ResolveScopeOptions
 ): Promise<ResolvedTrait[]> {
     const { scope, project_id, feature_id, task_id, target } = options;
@@ -72,15 +82,13 @@ export async function resolve_scope_traits(
     const { data: all_traits, error: traits_error } = await traits_query;
     if (traits_error || !all_traits) return [];
 
-    const trait_map = new Map<string, TraitRow>(
-        (all_traits as TraitRow[]).map((trait) => [trait.id, trait])
-    );
+    const trait_map = new Map(all_traits.map((trait) => [trait.id, trait]));
 
     // 2. Start with global traits
-    const active: Map<string, { trait: TraitRow, source: 'global' | 'project' | 'feature' | 'task' }>
+    const active: Map<string, { trait: Tables<'traits'>, source: 'global' | 'project' | 'feature' | 'task' }>
         = new Map();
 
-    for (const trait of all_traits as TraitRow[]) {
+    for (const trait of all_traits) {
         if (trait.is_global) active.set(trait.id, { trait, source: 'global' });
     }
 
@@ -99,12 +107,12 @@ export async function resolve_scope_traits(
 
         if (!assign_error && assignments) {
             const scope_order: Record<string, number> = { project: 0, feature: 1, task: 2 };
-            (assignments as TraitAssignmentRow[]).sort(
+            assignments.sort(
                 (assignment_a, assignment_b) =>
                     scope_order[assignment_a.scope] - scope_order[assignment_b.scope]
             );
 
-            for (const assignment of assignments as TraitAssignmentRow[]) {
+            for (const assignment of assignments) {
                 const assignment_scope = assignment.scope;
 
                 if (

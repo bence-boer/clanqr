@@ -1,6 +1,6 @@
 import { join } from 'path';
 import { create_supabase_client } from '../db';
-import type { SupabaseClient } from '../db';
+import type { TypedSupabaseClient } from '../db';
 import { WORKSPACE_DIR } from '../env';
 import { prompt_service } from './prompt_service';
 import { check_and_complete_feature } from './feature_utils';
@@ -100,7 +100,7 @@ class PipelineService {
         return agent_service.get_log(this.active_run.task_id);
     }
 
-    private async get_next_task(supabase: SupabaseClient): Promise<PipelineTask | null> {
+    private async get_next_task(supabase: TypedSupabaseClient): Promise<PipelineTask | null> {
         const { data, error } = await supabase
             .from('tasks')
             .select('*, features(*, projects(*))')
@@ -114,7 +114,7 @@ class PipelineService {
         return data;
     }
 
-    private async execute_task(task: PipelineTask, supabase: SupabaseClient): Promise<void> {
+    private async execute_task(task: PipelineTask, supabase: TypedSupabaseClient): Promise<void> {
         if (!can_spawn_agent()) {
             logger.warn('Agent concurrency limit reached, deferring task', { service: 'pipeline', task_id: task.id });
             setTimeout(() => this.process_next().catch((err) => logger.error('Deferred pipeline error', { service: 'pipeline', error: String(err) })), 5000);

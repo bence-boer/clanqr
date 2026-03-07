@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
-import type { SupabaseClient } from '../db';
+import type { TypedSupabaseClient } from '../db';
 import { logger } from '../utils/logger';
 
 const task_output_schema = z.object({
@@ -17,7 +17,7 @@ const MAX_OUTPUT_FILE_SIZE = 1024 * 1024; // 1MB
 export async function parse_manager_output(
     feature_id: string,
     work_dir: string,
-    supabase: SupabaseClient,
+    supabase: TypedSupabaseClient,
     run_id?: string
 ) {
     const tasks_file = join(work_dir, 'tasks.json');

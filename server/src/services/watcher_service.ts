@@ -1,6 +1,6 @@
 import { create_supabase_client } from '../db';
-import type { SupabaseClient } from '../db';
-import type { FeatureRow } from '../types';
+import type { TypedSupabaseClient } from '../db';
+import type { Tables } from '../database.types';
 import { agent_service } from './agent_service';
 import { pipeline_service } from './pipeline_service';
 import { logger } from '../utils/logger';
@@ -41,7 +41,7 @@ class WatcherService {
         await this.check_submitted_features(supabase);
     }
 
-    private async check_submitted_features(supabase: SupabaseClient) {
+    private async check_submitted_features(supabase: TypedSupabaseClient) {
         const { data: features, error } = await supabase
             .from('features')
             .select('*, resources(*), projects(*)')
@@ -86,8 +86,8 @@ class WatcherService {
     }
 
     private async spawn_manager_and_maybe_auto_approve(
-        feature: FeatureRow & { resources?: { url: string, title: string | null }[], projects?: { name: string } },
-        supabase: SupabaseClient
+        feature: Tables<'features'> & { resources?: { url: string, title: string | null }[], projects?: { name: string } },
+        supabase: TypedSupabaseClient
     ) {
         await agent_service.spawn_manager(feature, supabase);
 

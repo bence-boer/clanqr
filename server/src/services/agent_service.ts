@@ -1,6 +1,6 @@
 import { type Subprocess } from 'bun';
-import type { SupabaseClient } from '../db';
-import type { FeatureRow } from '../types';
+import type { TypedSupabaseClient } from '../db';
+import type { Tables } from '../database.types';
 import { readFileSync, existsSync, mkdirSync, readdirSync, statSync, rmSync } from 'fs';
 import { join } from 'path';
 import { WORKSPACE_DIR } from '../env';
@@ -61,7 +61,10 @@ class AgentService {
         return '';
     }
 
-    async spawn_manager(feature: FeatureRow & { resources?: { url: string, title: string | null }[], projects?: { name: string } }, supabase: SupabaseClient) {
+    async spawn_manager(
+        feature: Tables<'features'> & { resources?: { url: string, title: string | null }[], projects?: { name: string } },
+        supabase: TypedSupabaseClient
+    ) {
         const feature_id = feature.id;
         const work_dir = join(AGENT_WORKSPACE_DIR, `manager-${feature_id}`);
         const process_id = `manager-${feature_id}`;
@@ -138,7 +141,7 @@ class AgentService {
         }
     }
 
-    stop_process(task_id: string, supabase?: SupabaseClient) {
+    stop_process(task_id: string, supabase?: TypedSupabaseClient) {
         const proc = this.processes.get(task_id);
         if (proc?.process) {
             proc.process.kill();
@@ -151,7 +154,7 @@ class AgentService {
         }
     }
 
-    stop_all(supabase?: SupabaseClient) {
+    stop_all(supabase?: TypedSupabaseClient) {
         for (const proc of this.processes.values()) {
             if (proc.process && proc.status === 'running') {
                 proc.process.kill();

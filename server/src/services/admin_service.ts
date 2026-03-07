@@ -1,8 +1,8 @@
-import type { SupabaseClient } from '../db';
+import type { TypedSupabaseClient } from '../db';
 
 export interface UserInfo {
     id: string
-    display_name: string
+    display_name: string | null
     role: string
     created_at: string
     session_count: number
@@ -20,7 +20,7 @@ export interface InviteInfo {
     token_preview: string | null
 }
 
-export async function get_users(supabase: SupabaseClient): Promise<UserInfo[]> {
+export async function get_users(supabase: TypedSupabaseClient): Promise<UserInfo[]> {
     const { data, error } = await supabase
         .from('passkeys')
         .select('id, display_name, role, created_at, sessions(count)')
@@ -28,7 +28,7 @@ export async function get_users(supabase: SupabaseClient): Promise<UserInfo[]> {
 
     if (error) throw error;
 
-    return (data ?? []).map((p: { id: string, display_name: string, role: string, created_at: string, sessions?: { count: number }[] }) => ({
+    return (data ?? []).map((p) => ({
         id: p.id,
         display_name: p.display_name,
         role: p.role,
@@ -37,7 +37,7 @@ export async function get_users(supabase: SupabaseClient): Promise<UserInfo[]> {
     }));
 }
 
-export async function check_last_admin(supabase: SupabaseClient): Promise<boolean> {
+export async function check_last_admin(supabase: TypedSupabaseClient): Promise<boolean> {
     const { count } = await supabase
         .from('passkeys')
         .select('*', { count: 'exact', head: true })
@@ -45,7 +45,7 @@ export async function check_last_admin(supabase: SupabaseClient): Promise<boolea
     return (count ?? 0) <= 1;
 }
 
-export async function get_invites(supabase: SupabaseClient): Promise<InviteInfo[]> {
+export async function get_invites(supabase: TypedSupabaseClient): Promise<InviteInfo[]> {
     const now = new Date().toISOString();
 
     const { data, error } = await supabase
@@ -76,7 +76,7 @@ export async function get_invites(supabase: SupabaseClient): Promise<InviteInfo[
 }
 
 export async function generate_invite(
-    supabase: SupabaseClient,
+    supabase: TypedSupabaseClient,
     options: { role: string, expires_at: string, label?: string, created_by_passkey_id: string }
 ): Promise<{ id: string, label: string | null, role: string, expires_at: string, created_at: string, token: string }> {
     const bytes = new Uint8Array(32);

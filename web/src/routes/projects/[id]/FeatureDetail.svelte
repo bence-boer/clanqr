@@ -3,14 +3,14 @@
     import { ErrorBanner } from '$lib/components';
     import { Badge, Button, Input, Select, Textarea } from '$lib/components/primitives';
     import { toast_store } from '$lib/stores/toast.svelte';
-    import type { AgentRun, Feature } from '$lib/types';
+    import type { Feature, AbbreviatedAgentProcess } from '$lib/types';
     import TaskList from './TaskList.svelte';
     import ResourceList from './ResourceList.svelte';
     import { create_feature_handlers } from './feature_handlers';
 
     interface Props {
         feature: Feature
-        agent_info: { processes: AgentRun[], pipeline: { state: string, is_active_feature: boolean, current_task_id: string | null } } | null
+        agent_info: { processes: AbbreviatedAgentProcess[], pipeline: { state: string, is_active_feature: boolean, current_task_id: string | null } } | null
         on_submit: (feature_id: string) => Promise<void>
         on_delete: (feature_id: string) => Promise<void>
         on_update: () => Promise<void>

@@ -1,4 +1,4 @@
-import type { SupabaseClient } from '../db';
+import type { TypedSupabaseClient } from '../db';
 
 /**
  * Check if all tasks for a feature are complete (Complete or Skipped).
@@ -7,7 +7,7 @@ import type { SupabaseClient } from '../db';
  */
 export async function check_and_complete_feature(
     feature_id: string,
-    supabase: SupabaseClient
+    supabase: TypedSupabaseClient
 ): Promise<boolean> {
     const { count } = await supabase
         .from('tasks')

@@ -27,7 +27,8 @@ export default [
             'e2e/**',
             'eslint-types.d.ts',
             'eslint.config.ts',
-            'web/src/lib/types/material-symbols.ts'
+            'web/src/lib/types/material-symbols.ts',
+            'server/src/database.types.ts',
         ]
     },
 
