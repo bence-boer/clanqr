@@ -1,13 +1,13 @@
-import type { SupabaseClient } from '../db';
-import type { TaskRow, FeatureRow } from '../types';
+import type { TypedSupabaseClient } from '../db';
+import type { Tables } from '../database.types';
 import { check_and_complete_feature } from './feature_utils';
 import { logger } from '../utils/logger';
 
-export type PipelineTask = TaskRow & { features?: FeatureRow & { projects?: { name: string } } };
+export type PipelineTask = Tables<'tasks'> & { features?: Tables<'features'> & { projects?: { name: string } } };
 
 export async function handle_task_failure(
     task: PipelineTask,
-    supabase: SupabaseClient,
+    supabase: TypedSupabaseClient,
     run_id: string,
     reason?: string
 ): Promise<'retry' | 'skip' | 'stop'> {

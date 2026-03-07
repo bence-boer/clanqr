@@ -1,21 +1,21 @@
 {
-  "name": "server",
-  "version": "0.0.1",
-  "private": true,
-  "scripts": {
-    "dev": "bun run --watch src/index.ts",
-    "start": "bun run src/index.ts",
-    "test": "bun test"
-  },
-  "dependencies": {
-    "@simplewebauthn/server": "^13.2.2",
-    "@supabase/supabase-js": "^2",
-    "hono": "^4",
-    "shared": "workspace:*",
-    "zod": "^3"
-  },
-  "devDependencies": {
-    "@types/bun": "latest",
-    "typescript": "^5"
-  }
+    "name": "server",
+    "version": "0.0.1",
+    "private": true,
+    "scripts": {
+        "dev": "bun run --watch src/index.ts",
+        "start": "bun run src/index.ts",
+        "test": "bun test"
+    },
+    "dependencies": {
+        "@hono/zod-validator": "^0.7.6",
+        "@simplewebauthn/server": "^13.2.2",
+        "@supabase/supabase-js": "^2",
+        "hono": "^4",
+        "zod": "^3"
+    },
+    "devDependencies": {
+        "@types/bun": "latest",
+        "typescript": "^5"
+    }
 }

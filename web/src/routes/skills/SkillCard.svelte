@@ -1,6 +1,6 @@
 <script lang="ts">
     import { LoadingSpinner } from '$lib/components';
-    import type { SkillInfo } from '$lib/types';
+    import type { SkillInfoListItem } from '$lib/types';
 
     let {
         skill,
@@ -10,7 +10,7 @@
         content_loading,
         on_toggle
     }: {
-        skill: Omit<SkillInfo, 'content'>
+        skill: SkillInfoListItem
         expanded: boolean
         content: string | null
         files: { name: string, content: string }[]

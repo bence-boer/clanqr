@@ -1,4 +1,4 @@
-import type { SupabaseClient } from '../db';
+import type { TypedSupabaseClient } from '../db';
 import { COPILOT_BIN, GEMINI_BIN, build_agent_env } from '../env';
 import { logger } from '../utils/logger';
 import { can_spawn_agent, decrement_agent_count, increment_agent_count } from './agent_service';
@@ -15,7 +15,7 @@ class ChatService {
         session_id: string,
         content: string,
         model: string,
-        supabase: SupabaseClient,
+        supabase: TypedSupabaseClient,
         on_token: (chunk: string) => void
     ): Promise<void> {
         // M-10.4: Check agent concurrency limit

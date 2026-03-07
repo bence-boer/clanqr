@@ -4,7 +4,7 @@
     import { page } from '$app/state';
     import { api } from '$lib/api/client';
     import { check_auth, register_passkey } from '$lib/auth';
-    import { Badge, Button, Input } from '$lib/components/primitives';
+    import { Button, Input } from '$lib/components/primitives';
     import type { InviteStatus } from '$lib/types';
     import { onMount } from 'svelte';
 
@@ -95,8 +95,9 @@
             <p class="auth-subtitle">You've been invited. Create a passkey to get started.</p>
             {#if invite_info?.valid}
                 <div class="invite-meta">
-                    <Badge variant={invite_info.role === 'admin' ? 'warning' : 'muted'}>You'll join as {invite_info.role}</Badge>
-                    {#if invite_info.label}<span class="invite-label">{invite_info.label}</span>{/if}
+                    {#if invite_info.expires_at}
+                        <span>Expires {new Date(invite_info.expires_at).toLocaleDateString()}</span>
+                    {/if}
                 </div>
             {/if}
             <div class="input-wrap">
@@ -149,7 +150,6 @@
     .auth-link { color: var(--accent); text-decoration: none; font-size: 0.85rem; }
     .auth-link:hover { text-decoration: underline; }
     .invite-meta { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
-    .invite-label { color: var(--fg-muted); font-size: 0.85rem; }
     @media (max-width: 768px) {
         .auth-card { max-width: 100%; padding: 1.5rem; }
     }

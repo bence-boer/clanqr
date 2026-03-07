@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { admin_middleware } from '../middleware/auth';
 import { get_metrics } from '../middleware/metrics';
@@ -35,15 +36,11 @@ export const admin_routes = new Hono<AppBindings>()
     })
 
     // Update a user's role
-    .patch('/:id', validate_uuid_params('id'), async (context) => {
+    .patch('/:id', validate_uuid_params('id'), zValidator('json', update_role_schema), async (context) => {
         const id = context.req.param('id');
         const current_passkey_id = context.get('passkey_id');
 
-        const body = await context.req.json();
-        const parsed = update_role_schema.safeParse(body);
-        if (!parsed.success) return context.json({ error: parsed.error.flatten() }, 400);
-
-        const { role } = parsed.data;
+        const { role } = context.req.valid('json');
 
         if (id === current_passkey_id && role !== 'admin') {
             return context.json({ error: 'Cannot demote yourself' }, 400);
@@ -154,12 +151,8 @@ export const admin_routes = new Hono<AppBindings>()
     })
 
     // Create invite token
-    .post('/invites', async (context) => {
-        const body = await context.req.json();
-        const parsed = create_invite_schema.safeParse(body);
-        if (!parsed.success) return context.json({ error: parsed.error.flatten() }, 400);
-
-        const { role, expires_at, label } = parsed.data;
+    .post('/invites', zValidator('json', create_invite_schema), async (context) => {
+        const { role, expires_at, label } = context.req.valid('json');
         const now = Date.now();
         const expires_ms = new Date(expires_at).getTime();
 

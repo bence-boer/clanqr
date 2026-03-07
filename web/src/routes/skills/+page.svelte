@@ -4,10 +4,10 @@
     import { api } from '$lib/api/client';
     import { toast_store } from '$lib/stores/toast.svelte';
     import { EmptyState, ErrorBanner, LoadingSpinner } from '$lib/components';
-    import type { SkillInfo } from '$lib/types';
+    import type { SkillInfoListItem } from '$lib/types';
     import SkillCard from './SkillCard.svelte';
 
-    let skills = $state<Omit<SkillInfo, 'content'>[]>([]);
+    let skills = $state<SkillInfoListItem[]>([]);
     let loading = $state(true);
     let error = $state<string | null>(null);
     let refreshing = $state(false);

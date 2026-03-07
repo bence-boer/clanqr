@@ -46,7 +46,7 @@
             users = await api.list_users();
         }
         catch (err: unknown) {
-            users_error = err instanceof Error ? err.message : String(err);
+            toast_store.error(err instanceof Error ? err.message : 'Failed to create invite');
         }
         finally {
             users_loading = false;

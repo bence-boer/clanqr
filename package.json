@@ -17,6 +17,7 @@
         "dev:db:stop": "docker compose -f docker-compose.dev.yml down",
         "dev:db:reset": "./scripts/dev-db-reset.sh",
         "dev:setup": "./scripts/dev-setup.sh",
+        "gen-types": "npx supabase gen types typescript --db-url \"postgresql://postgres:postgres@localhost:54322/postgres\" > server/src/database.types.ts",
         "check": "bun run check:server && bun run check:web",
         "check:server": "cd server && bun run --bun tsc --noEmit",
         "check:web": "cd web && bun run --bun check",

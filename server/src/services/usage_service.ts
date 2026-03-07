@@ -1,4 +1,4 @@
-import type { SupabaseClient } from '../db';
+import type { TypedSupabaseClient } from '../db';
 
 export interface UsageSummaryStats {
     total_runs: number
@@ -17,7 +17,7 @@ export interface UsageBreakdownStats {
     by_status: Record<string, number>
 }
 
-export async function get_usage_summary(supabase: SupabaseClient): Promise<UsageSummaryStats> {
+export async function get_usage_summary(supabase: TypedSupabaseClient): Promise<UsageSummaryStats> {
     const now = new Date();
     const today_start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
     const week_start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -64,7 +64,7 @@ export async function get_usage_summary(supabase: SupabaseClient): Promise<Usage
     };
 }
 
-export async function get_usage_breakdown(supabase: SupabaseClient): Promise<UsageBreakdownStats> {
+export async function get_usage_breakdown(supabase: TypedSupabaseClient): Promise<UsageBreakdownStats> {
     const { data: runs, error } = await supabase
         .from('agent_runs')
         .select('type, model, status, duration_ms, prompt_tokens, completion_tokens');

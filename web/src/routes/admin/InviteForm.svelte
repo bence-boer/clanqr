@@ -152,12 +152,6 @@
         margin-bottom: 0.75rem;
     }
 
-    .optional {
-        font-weight: 400;
-        text-transform: none;
-        font-size: 0.75rem;
-    }
-
     .field-label {
         font-size: 0.8rem;
         font-weight: 600;

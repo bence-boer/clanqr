@@ -2,7 +2,7 @@
     import { ErrorBanner } from '$lib/components';
     import { Button } from '$lib/components/primitives/button';
     import { Select } from '$lib/components/primitives/select';
-    import type { ChatMessage, ChatSession } from '$lib/types';
+    import type { ChatMessage, ChatSession, ChatSessionFull } from '$lib/types';
     import MessageThread from './MessageThread.svelte';
     import ChatInput from './ChatInput.svelte';
 
@@ -12,7 +12,7 @@
     }
 
     let {
-        active_session,
+        session: active_session,
         messages,
         loading_messages,
         is_streaming,
@@ -26,7 +26,7 @@
         on_stop,
         on_create
     }: {
-        active_session: ChatSession | null
+        session?: ChatSessionFull | null
         messages: ChatMessage[]
         loading_messages: boolean
         is_streaming: boolean

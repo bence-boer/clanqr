@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import type { SupabaseClient } from '../db';
+import type { TypedSupabaseClient } from '../db';
 import { create_mock_supabase } from '../test-utils';
 
 // Re-register the real implementation to undo any mock.module() from other
@@ -7,7 +7,7 @@ import { create_mock_supabase } from '../test-utils';
 // This is necessary because bun's mock.module() is process-wide and persistent.
 async function real_check_and_complete_feature(
     feature_id: string,
-    supabase: SupabaseClient
+    supabase: TypedSupabaseClient
 ): Promise<boolean> {
     const { count } = await supabase
         .from('tasks')

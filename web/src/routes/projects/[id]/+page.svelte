@@ -5,7 +5,7 @@
     import { LoadingSpinner } from '$lib/components';
     import { Button } from '$lib/components/primitives/button';
     import { toast_store } from '$lib/stores/toast.svelte';
-    import type { AgentRun, Feature, Project } from '$lib/types';
+    import type { Feature, Project, FeatureAgentStatus, AbbreviatedAgentProcess } from '$lib/types';
     import { use_polling } from '$lib/utils/polling.svelte';
     import { SvelteMap } from 'svelte/reactivity';
     import FeatureDetail from './FeatureDetail.svelte';
@@ -19,7 +19,7 @@
     let show_feature_form = $state(false);
     let selected_feature = $state<Feature | null>(null);
     let show_mobile_detail = $state(false);
-    let agent_info = $state<{ processes: AgentRun[], pipeline: { state: string, is_active_feature: boolean, current_task_id: string | null } } | null>(null);
+    let agent_info = $state<FeatureAgentStatus | null>(null);
 
     const project_id = $derived(page.params.id);
 
@@ -81,9 +81,8 @@
         try {
             agent_info = await api.feature_agent_status(selected_feature.id);
             if (!agent_info) return;
-            const is_running = agent_info.processes.some((p: AgentRun) => p.status === 'running')
-              || (agent_info.pipeline.is_active_feature && agent_info.pipeline.state === 'running');
-            if (is_running) load_data();
+            const has_running = (agent_info?.processes?.some((p: AbbreviatedAgentProcess) => p.status === 'running') ?? false) || (agent_info.pipeline.is_active_feature && agent_info.pipeline.state === 'running');
+            if (has_running) load_data();
         }
         catch (err) {
             console.error('Failed to load feature agent status:', err);

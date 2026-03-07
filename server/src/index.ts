@@ -114,9 +114,9 @@ async function boot() {
         .select('feature_id')
         .eq('type', 'manager')
         .eq('status', 'running');
-    const interrupted_feature_ids = (interrupted_runs ?? [])
-        .map((r: { feature_id: string | null }) => r.feature_id)
-        .filter(Boolean);
+    const interrupted_feature_ids: string[] = (interrupted_runs ?? [])
+        .map((r) => r.feature_id)
+        .filter((id): id is string => id !== null);
 
     await supabase
         .from('agent_runs')
@@ -216,6 +216,8 @@ const port = env.PORT;
 logger.info('Server running', { port, url: `http://localhost:${port}` });
 
 export { app };
+
+export type AppType = typeof app;
 
 export default {
     port,

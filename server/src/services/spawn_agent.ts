@@ -2,8 +2,8 @@ import { type Subprocess } from 'bun';
 import { z } from 'zod';
 import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
 import { join } from 'path';
-import type { SupabaseClient } from '../db';
-import type { AgentRunType } from '../types';
+import type { TypedSupabaseClient } from '../db';
+import type { Enums } from '../database.types';
 
 import { COPILOT_BIN, GEMINI_BIN, build_agent_env } from '../env';
 import { logger } from '../utils/logger';
@@ -16,7 +16,7 @@ export const progress_schema = z.object({
 });
 
 export interface SpawnAgentOptions {
-    agent_type: AgentRunType
+    agent_type: Enums<'agent_type'>
     work_dir: string
     spec_file: string
     spec_data: Record<string, unknown>
@@ -43,7 +43,7 @@ export interface SpawnAgentResult {
  */
 export async function spawn_agent(
     options: SpawnAgentOptions,
-    supabase: SupabaseClient
+    supabase: TypedSupabaseClient
 ): Promise<SpawnAgentResult> {
     const { agent_type, work_dir, spec_file, spec_data, prompt, cli, model, timeout_ms } = options;
 
