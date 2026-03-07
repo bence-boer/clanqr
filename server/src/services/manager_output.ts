@@ -5,10 +5,16 @@ import type { TypedSupabaseClient } from '../db';
 import { logger } from '../utils/logger';
 
 const task_output_schema = z.object({
+    title: z.string().min(5, 'Task title must be at least 5 characters').max(80, 'Task title must not exceed 80 characters'),
     description: z.string().min(20, 'Task description must be at least 20 characters').max(5000, 'Task description must not exceed 5000 characters')
 }).strict();
 
-const manager_output_schema = z.array(task_output_schema)
+// Also accept legacy format (description only) for backwards compatibility
+const legacy_task_schema = z.object({
+    description: z.string().min(20, 'Task description must be at least 20 characters').max(5000, 'Task description must not exceed 5000 characters')
+}).strict();
+
+const manager_output_schema = z.array(z.union([task_output_schema, legacy_task_schema]))
     .min(1, 'At least one task is required')
     .max(50, 'Maximum 50 tasks allowed');
 
@@ -71,6 +77,7 @@ export async function parse_manager_output(
 
         const task_rows = result.data.map((t, index) => ({
             feature_id,
+            title: 'title' in t ? t.title : null,
             description: t.description,
             status: 'Pending_Approval' as const,
             sort_order: index

@@ -4,7 +4,7 @@ import type { TypedSupabaseClient } from '../db';
 import { WORKSPACE_DIR } from '../env';
 import { prompt_service } from './prompt_service';
 import { check_and_complete_feature } from './feature_utils';
-import { spawn_agent } from './spawn_agent';
+import { spawn_agent, read_progress } from './spawn_agent';
 import { logger } from '../utils/logger';
 import { can_spawn_agent, increment_agent_count, decrement_agent_count, set_on_agent_freed } from './agent_concurrency';
 import { agent_service } from './agent_service';
@@ -125,7 +125,7 @@ class PipelineService {
         const feature_id: string = task.feature_id;
         const work_dir = join(PIPELINE_WORKSPACE_DIR, `ralph-${task_id}`);
         const task_spec = {
-            task_id, description: task.description,
+            task_id, title: task.title, description: task.description,
             feature_title: task.features?.title ?? 'Unknown',
             project_name: task.features?.projects?.name ?? 'Unknown'
         };
@@ -150,7 +150,9 @@ class PipelineService {
             this.active_run.run_id = result.run_id;
 
             if (result.exit_code === 0) {
-                await supabase.from('tasks').update({ status: 'Complete' }).eq('id', task.id);
+                const progress = read_progress(work_dir);
+                const output = progress?.summary ?? null;
+                await supabase.from('tasks').update({ status: 'Complete', output }).eq('id', task.id);
                 const done = await check_and_complete_feature(task.feature_id, supabase);
                 if (done) logger.info('Feature complete', { service: 'pipeline', feature: task.features?.title, feature_id });
             }

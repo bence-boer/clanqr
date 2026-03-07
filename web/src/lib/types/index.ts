@@ -67,7 +67,10 @@ export type AgentRun = Database['public']['Tables']['agent_runs']['Row'];
 export type PromptRecord = ExtractSuccess<InferResponseType<Client['api']['prompts']['$get']>>[number];
 
 // ── Tasks ─────────────────────────────────────────────────────────────────────
-export type Task = ExtractSuccess<InferResponseType<Client['api']['tasks']['$get']>>[number] & { features?: Feature | null, projects?: Project | null };
+// TaskRow is the raw DB row (from create/update/single-get endpoints)
+export type TaskRow = Database['public']['Tables']['tasks']['Row'];
+// Task is the enriched type from list endpoint (includes feature/project joins)
+export type Task = ExtractSuccess<InferResponseType<Client['api']['tasks']['$get']>>[number];
 
 // ── Traits ────────────────────────────────────────────────────────────────────
 export type Trait = ExtractSuccess<InferResponseType<Client['api']['traits']['$get']>>[number];

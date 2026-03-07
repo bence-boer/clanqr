@@ -22,14 +22,16 @@ export const agents_routes = new Hono<AppBindings>()
         if (pipeline_info.current_task_id) {
             const { data } = await supabase
                 .from('tasks')
-                .select('*, features(title, projects(name))')
+                .select('*, features(id, title, project_id, projects(id, name))')
                 .eq('id', pipeline_info.current_task_id)
                 .single();
             if (data) {
                 current_task = {
                     ...data,
                     feature_title: data.features?.title ?? 'Unknown',
-                    project_name: data.features?.projects?.name ?? 'Unknown'
+                    feature_id: data.features?.id ?? null,
+                    project_name: data.features?.projects?.name ?? 'Unknown',
+                    project_id: data.features?.projects?.id ?? null
                 };
             }
         }

@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { resolve } from '$app/paths';
     import { CodeBlock, EmptyState } from '$lib/components';
     import { Button } from '$lib/components/primitives';
     import type { PipelineStatus } from '$lib/types';
@@ -37,14 +38,31 @@
         <div class="current-task-card">
             <div class="current-task-header">
                 <div class="current-task-info">
-                    <p class="task-desc">{task.description}</p>
+                    <div class="breadcrumb">
+                        {#if task.project_id}
+                            <a href={resolve(`/projects/${task.project_id}`)} class="breadcrumb-link">
+                                <span class="icon" style="font-size:14px">folder</span>
+                                {task.project_name}
+                            </a>
+                        {:else}
+                            <span class="breadcrumb-text">{task.project_name}</span>
+                        {/if}
+                        <span class="breadcrumb-sep">/</span>
+                        {#if task.project_id && task.feature_id}
+                            <a href={resolve(`/projects/${task.project_id}?feature=${task.feature_id}`)} class="breadcrumb-link">
+                                <span class="icon" style="font-size:14px">category</span>
+                                {task.feature_title}
+                            </a>
+                        {:else}
+                            <span class="breadcrumb-text">{task.feature_title}</span>
+                        {/if}
+                        <span class="breadcrumb-sep">/</span>
+                        <span class="breadcrumb-current">{task.title ?? task.description?.slice(0, 50)}</span>
+                    </div>
+                    {#if task.title}
+                        <p class="task-desc">{task.description}</p>
+                    {/if}
                     <div class="task-meta">
-                        <span class="icon" style="font-size:14px">category</span>
-                        {task.feature_title}
-                        <span class="sep">·</span>
-                        <span class="icon" style="font-size:14px">folder</span>
-                        {task.project_name}
-                        <span class="sep">·</span>
                         <span class="icon spin-small" style="font-size:14px">sync</span>
                         {format_duration(task.updated_at)}
                     </div>
@@ -104,11 +122,47 @@
         flex-wrap: wrap;
     }
 
-    .task-desc {
-        font-size: 0.95rem;
-        color: var(--fg);
+    .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.875rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.3rem;
+    }
+
+    .breadcrumb-link {
+        color: var(--accent);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.2rem;
         font-weight: 500;
-        margin-bottom: 0.35rem;
+    }
+
+    .breadcrumb-link:hover {
+        text-decoration: underline;
+    }
+
+    .breadcrumb-text {
+        color: var(--fg-muted);
+    }
+
+    .breadcrumb-sep {
+        color: var(--border);
+        font-size: 0.8rem;
+    }
+
+    .breadcrumb-current {
+        color: var(--fg);
+        font-weight: 600;
+    }
+
+    .task-desc {
+        font-size: 0.85rem;
+        color: var(--fg-muted);
+        margin-bottom: 0.25rem;
+        line-height: 1.4;
     }
 
     .task-meta {
@@ -118,10 +172,6 @@
         align-items: center;
         gap: 0.35rem;
         flex-wrap: wrap;
-    }
-
-    .sep {
-        color: var(--border);
     }
 
     .current-task-actions {

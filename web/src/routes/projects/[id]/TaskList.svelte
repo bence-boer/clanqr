@@ -1,7 +1,7 @@
 <script lang="ts">
     import { Button, Input } from '$lib/components/primitives';
     import { EmptyState } from '$lib/components';
-    import type { Feature, Task } from '$lib/types';
+    import type { Feature, TaskRow } from '$lib/types';
     import TaskItem from './TaskItem.svelte';
 
     interface Props {
@@ -39,7 +39,7 @@
         }
     }
 
-    function start_edit(task: Task) {
+    function start_edit(task: TaskRow) {
         editing_task_id = task.id;
         editing_task_desc = task.description;
         editing_task_model = task.model;
@@ -74,7 +74,7 @@
             <label class="toggle-label">
                 <input type="checkbox" checked={auto_approve} onchange={handle_auto_approve_change} /> Auto-Approve
             </label>
-            {#if feature.tasks?.some((t: Task) => t.status === 'Pending_Approval')}
+            {#if feature.tasks?.some((t: TaskRow) => t.status === 'Pending_Approval')}
                 <Button variant="secondary" size="sm" icon="done_all" onclick={() => on_approve_all(feature.id)}>Approve All</Button>
             {/if}
             <Button variant="secondary" size="sm" icon="add" onclick={() => {
