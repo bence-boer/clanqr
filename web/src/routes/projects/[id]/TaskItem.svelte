@@ -1,7 +1,7 @@
 <script lang="ts">
     import { api } from '$lib/api/client';
+    import { Accordion, CodeBlock } from '$lib/components';
     import { Badge, Button, Input, Select } from '$lib/components/primitives';
-    import { CodeBlock } from '$lib/components';
     import type { TaskRow as Task } from '$lib/types';
     import { status_icon, status_class } from '$lib/utils/status';
     import TaskArtifacts from './TaskArtifacts.svelte';
@@ -51,6 +51,11 @@
     $effect(() => {
         if (editing) load_models();
     });
+
+    function get_task_title(task: Task): string {
+        if (task.title) return task.title;
+        return task.description.length > 80 ? `${task.description.slice(0, 80)}...` : task.description;
+    }
 </script>
 
 <div class="task-item">
@@ -81,18 +86,7 @@
     {:else}
         <div class="task-header">
             <div class="task-info">
-                {#if task.title}
-                    <span class="task-title">{task.title}</span>
-                    <span class="task-desc">{task.description}</span>
-                {:else}
-                    <span class="task-desc">{task.description}</span>
-                {/if}
-                {#if task.output}
-                    <p class="task-output">
-                        <span class="icon" style="font-size:13px">output</span>
-                        {task.output}
-                    </p>
-                {/if}
+                <span class="task-title">{get_task_title(task)}</span>
             </div>
             <div class="task-badges">
                 {#if task.model}
@@ -103,6 +97,15 @@
                 </Badge>
             </div>
         </div>
+        {#if task.output}
+            <div class="task-result">
+                <div class="task-section-label">Result summary</div>
+                <p class="task-output">
+                    <span class="icon" style="font-size:13px">output</span>
+                    <span>{task.output}</span>
+                </p>
+            </div>
+        {/if}
         <div class="task-actions">
             {#if task.status === 'Pending_Approval'}
                 <Button variant="primary" size="sm" icon="thumb_up" onclick={() => on_approve(task.id)}>Approve</Button>
@@ -114,14 +117,20 @@
                 <Button variant="ghost" size="sm" icon="edit" title="Edit" onclick={() => on_start_edit(task)} />
                 <Button variant="danger" size="sm" icon="delete" title="Delete" onclick={() => on_delete(task.id)} />
             {/if}
-            {#if task.agent_log}
-                <details class="log-details">
-                    <summary><span class="icon" style="font-size:14px">terminal</span> View Log</summary>
-                    <CodeBlock content={task.agent_log} max_height="300px" />
-                </details>
-            {/if}
             <Button variant="secondary" size="sm" icon="tune" title="Artifacts" onclick={() => on_toggle_artifacts(task.id)}>Artifacts</Button>
         </div>
+        <div class="task-accordion">
+            <Accordion label={task.title ? 'Detailed prompt' : 'Task prompt'}>
+                <div class="task-prompt">{task.description}</div>
+            </Accordion>
+        </div>
+        {#if task.agent_log}
+            <div class="task-accordion">
+                <Accordion label="Console log">
+                    <CodeBlock content={task.agent_log} max_height="300px" />
+                </Accordion>
+            </div>
+        {/if}
         {#if show_artifacts}
             <TaskArtifacts task_id={task.id} />
         {/if}
@@ -140,16 +149,36 @@
         align-items: flex-start; gap: 0.5rem;
     }
     .task-info { flex: 1; min-width: 0; }
-    .task-title { font-size: 0.875rem; font-weight: 600; color: var(--fg); display: block; margin-bottom: 0.15rem; }
+    .task-title { font-size: 0.9rem; font-weight: 600; color: var(--fg); display: block; line-height: 1.4; }
     .task-badges { display: flex; gap: 0.35rem; align-items: center; flex-shrink: 0; }
-    .task-desc { font-size: 0.85rem; color: var(--fg-muted); }
+    .task-result {
+        margin-top: 0.65rem;
+        padding: 0.75rem;
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        border-radius: calc(var(--radius) - 2px);
+    }
+    .task-section-label {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: var(--fg-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
     .task-output {
-        font-size: 0.8rem; color: var(--fg-muted); margin-top: 0.3rem;
+        font-size: 0.8rem; color: var(--fg-muted); margin-top: 0.35rem;
         display: flex; align-items: flex-start; gap: 0.25rem; line-height: 1.3;
     }
     .task-actions {
         margin-top: 0.5rem; display: flex;
         gap: 0.5rem; align-items: center; flex-wrap: wrap;
+    }
+    .task-accordion { margin-top: 0.6rem; }
+    .task-prompt {
+        font-size: 0.85rem;
+        color: var(--fg-muted);
+        line-height: 1.55;
+        white-space: pre-wrap;
     }
     .task-edit-form {
         display: flex; flex-direction: column; gap: 0.5rem;
@@ -158,9 +187,4 @@
     }
     .task-model-field { max-width: 300px; }
     .task-edit-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
-    .log-details { width: 100%; }
-    .log-details summary {
-        cursor: pointer; font-size: 0.8rem; color: var(--accent);
-        display: inline-flex; align-items: center; gap: 0.25rem;
-    }
 </style>

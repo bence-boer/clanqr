@@ -89,10 +89,12 @@
                 {#each available_traits as trait (trait.id)}
                     <label class="artifact-check">
                         <input type="checkbox" checked={trait_assignments.some((a) => a.trait_id === trait.id)} onchange={() => toggle_trait(trait)} />
-                        <span class="artifact-name">{trait.name}</span>
-                        {#if trait.description}
-                            <span class="artifact-desc">{trait.description}</span>
-                        {/if}
+                        <span class="artifact-copy">
+                            <span class="artifact-name">{trait.name}</span>
+                            {#if trait.description}
+                                <span class="artifact-desc">{trait.description}</span>
+                            {/if}
+                        </span>
                     </label>
                 {/each}
             {/if}
@@ -105,10 +107,12 @@
                 {#each available_skills as skill (skill.name)}
                     <label class="artifact-check">
                         <input type="checkbox" checked={skill_links.some((sl) => sl.skill_name === skill.name)} onchange={() => toggle_skill(skill.name)} />
-                        <span class="artifact-name">{skill.name}</span>
-                        {#if skill.description}
-                            <span class="artifact-desc">{skill.description}</span>
-                        {/if}
+                        <span class="artifact-copy">
+                            <span class="artifact-name">{skill.name}</span>
+                            {#if skill.description}
+                                <span class="artifact-desc">{skill.description}</span>
+                            {/if}
+                        </span>
                     </label>
                 {/each}
             {/if}
@@ -126,6 +130,9 @@
     }
     .artifacts-section {
         margin-bottom: 0.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
     }
     .artifacts-section:last-child {
         margin-bottom: 0;
@@ -140,23 +147,35 @@
     }
     .artifact-check {
         display: flex;
-        align-items: baseline;
-        gap: 0.4rem;
+        align-items: flex-start;
+        gap: 0.65rem;
         font-size: 0.8rem;
         color: var(--fg);
-        padding: 0.2rem 0;
+        padding: 0.55rem 0.65rem;
         cursor: pointer;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: calc(var(--radius) - 2px);
     }
     .artifact-check input {
-        margin: 0;
+        margin: 0.1rem 0 0;
         flex-shrink: 0;
+    }
+    .artifact-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+        min-width: 0;
+        flex: 1;
     }
     .artifact-name {
         font-weight: 600;
+        color: var(--fg);
     }
     .artifact-desc {
         color: var(--fg-muted);
         font-size: 0.75rem;
+        line-height: 1.45;
     }
     .empty {
         color: var(--fg-muted);
