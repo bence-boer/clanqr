@@ -55,44 +55,54 @@
 </script>
 
 <div class="history-item">
-    <div class="history-item-header">
-        <div class="history-item-left">
-            <span class="icon run-status-icon {status_class(run.status)}">{status_icon(run.status)}</span>
-            <div>
-                {#if project_name || feature_title}
-                    <div class="run-breadcrumb">
-                        {#if project_id && project_name}
+    <div class="history-item-main">
+        <span class="icon run-status-icon {status_class(run.status)}">{status_icon(run.status)}</span>
+        <div class="history-item-copy">
+            {#if project_name || feature_title}
+                <div class="run-breadcrumb">
+                    {#if project_name}
+                        {#if project_id}
                             <a href={resolve(`/projects/${project_id}`)} class="crumb-link">{project_name}</a>
+                        {:else}
+                            <span class="crumb-text">{project_name}</span>
                         {/if}
-                        {#if feature_id && feature_title && project_id}
+                    {/if}
+
+                    {#if feature_title}
+                        {#if project_name}
                             <span class="crumb-sep">/</span>
-                            <a href={resolve(`/projects/${project_id}?feature=${feature_id}`)} class="crumb-link">{feature_title}</a>
                         {/if}
-                        <span class="crumb-sep">/</span>
-                        <span class="crumb-current">{get_run_label(run)}</span>
-                    </div>
-                {:else}
-                    <p class="run-ref">{get_run_label(run)}</p>
-                {/if}
-                <p class="run-meta">{format_date(run.created_at)} · {format_ms(run.duration_ms)}</p>
-                {#if run.summary}
-                    <p class="run-summary">{run.summary}</p>
-                {/if}
-            </div>
-        </div>
-        <div class="history-item-right">
-            <Badge variant={status_class(run.status) as 'success' | 'danger' | 'muted' | 'info'}>{run.status}</Badge>
-            {#if run.log}
-                <Button variant="ghost" size="icon" icon="terminal" onclick={() => on_toggle_log(run.id)} title="View log" />
+                        {#if feature_id && project_id}
+                            <a href={resolve(`/projects/${project_id}?feature=${feature_id}`)} class="crumb-link">{feature_title}</a>
+                        {:else}
+                            <span class="crumb-text">{feature_title}</span>
+                        {/if}
+                    {/if}
+                </div>
+            {/if}
+
+            <h4 class="run-title">{get_run_label(run)}</h4>
+            <p class="run-meta">{format_date(run.created_at)} · {format_ms(run.duration_ms)}</p>
+            {#if run.summary}
+                <p class="run-summary">{run.summary}</p>
+            {/if}
+            {#if run.error}
+                <p class="run-error">{run.error}</p>
             {/if}
         </div>
     </div>
 
+    <div class="history-item-footer">
+        <Badge variant={status_class(run.status) as 'success' | 'danger' | 'muted' | 'info'}>{run.status}</Badge>
+        {#if run.log}
+            <Button variant="ghost" size="sm" icon="terminal" onclick={() => on_toggle_log(run.id)}>
+                {expanded ? 'Hide Console' : 'View Console'}
+            </Button>
+        {/if}
+    </div>
+
     {#if expanded && run.log}
         <CodeBlock content={run.log} max_height="200px" />
-    {/if}
-    {#if run.error}
-        <p class="run-error">{run.error}</p>
     {/if}
 </div>
 
@@ -103,25 +113,28 @@
         border-radius: var(--radius);
         padding: 0.75rem 1rem;
     }
-    .history-item-header {
+    .history-item-main {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.65rem;
+    }
+
+    .history-item-copy {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .history-item-footer {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--border);
     }
-    .history-item-left {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.65rem;
-        min-width: 0;
-        flex: 1;
-    }
-    .history-item-right {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        flex-shrink: 0;
-    }
+
     .run-status-icon {
         font-size: 20px;
         flex-shrink: 0;
@@ -146,28 +159,34 @@
     .crumb-link:hover {
         text-decoration: underline;
     }
+
+    .crumb-text {
+        color: var(--fg-muted);
+    }
+
     .crumb-sep {
         color: var(--border);
         font-size: 0.75rem;
     }
-    .crumb-current {
+
+    .run-title {
+        font-size: 0.95rem;
         color: var(--fg);
         font-weight: 600;
+        line-height: 1.4;
+        margin-top: 0.2rem;
     }
-    .run-ref {
-        font-size: 0.875rem;
-        color: var(--fg);
-        font-family: monospace;
-    }
+
     .run-meta {
         font-size: 0.75rem;
         color: var(--fg-muted);
+        margin-top: 0.2rem;
     }
     .run-summary {
         font-size: 0.8rem;
         color: var(--fg-muted);
-        margin-top: 0.2rem;
-        line-height: 1.3;
+        margin-top: 0.45rem;
+        line-height: 1.45;
     }
     .run-error {
         font-size: 0.8rem;

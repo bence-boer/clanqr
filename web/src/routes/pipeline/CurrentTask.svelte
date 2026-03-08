@@ -35,10 +35,11 @@
 
     {#if pipeline?.current_task}
         {@const task = pipeline.current_task}
+        {@const task_title = task.title ?? task.description?.slice(0, 80) ?? 'Untitled task'}
         <div class="current-task-card">
-            <div class="current-task-header">
-                <div class="current-task-info">
-                    <div class="breadcrumb">
+            {#if task.project_name || task.feature_title}
+                <div class="breadcrumb">
+                    {#if task.project_name}
                         {#if task.project_id}
                             <a href={resolve(`/projects/${task.project_id}`)} class="breadcrumb-link">
                                 <span class="icon" style="font-size:14px">folder</span>
@@ -47,7 +48,12 @@
                         {:else}
                             <span class="breadcrumb-text">{task.project_name}</span>
                         {/if}
-                        <span class="breadcrumb-sep">/</span>
+                    {/if}
+
+                    {#if task.feature_title}
+                        {#if task.project_name}
+                            <span class="breadcrumb-sep">/</span>
+                        {/if}
                         {#if task.project_id && task.feature_id}
                             <a href={resolve(`/projects/${task.project_id}?feature=${task.feature_id}`)} class="breadcrumb-link">
                                 <span class="icon" style="font-size:14px">category</span>
@@ -56,23 +62,28 @@
                         {:else}
                             <span class="breadcrumb-text">{task.feature_title}</span>
                         {/if}
-                        <span class="breadcrumb-sep">/</span>
-                        <span class="breadcrumb-current">{task.title ?? task.description?.slice(0, 50)}</span>
-                    </div>
+                    {/if}
+                </div>
+            {/if}
+
+            <div class="current-task-body">
+                <div class="current-task-info">
+                    <h4 class="task-title">{task_title}</h4>
                     {#if task.title}
                         <p class="task-desc">{task.description}</p>
                     {/if}
                     <div class="task-meta">
                         <span class="icon spin-small" style="font-size:14px">sync</span>
-                        {format_duration(task.updated_at)}
+                        <span>Running for {format_duration(task.updated_at)}</span>
                     </div>
                 </div>
-                <div class="current-task-actions">
-                    <Button variant="secondary" size="sm" icon="terminal" onclick={ontoggle_log}>
-                        {log_visible ? 'Hide Log' : 'View Log'}
-                    </Button>
-                    <Button variant="danger" size="sm" icon="stop" onclick={onstop} disabled={action_busy}>Stop</Button>
-                </div>
+            </div>
+
+            <div class="current-task-actions">
+                <Button variant="secondary" size="sm" icon="terminal" onclick={ontoggle_log}>
+                    {log_visible ? 'Hide Log' : 'View Log'}
+                </Button>
+                <Button variant="danger" size="sm" icon="stop" onclick={onstop} disabled={action_busy}>Stop</Button>
             </div>
 
             {#if log_visible}
@@ -114,12 +125,8 @@
         padding: 1rem 1.25rem;
     }
 
-    .current-task-header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 1rem;
-        flex-wrap: wrap;
+    .current-task-body {
+        min-width: 0;
     }
 
     .breadcrumb {
@@ -153,15 +160,18 @@
         font-size: 0.8rem;
     }
 
-    .breadcrumb-current {
+    .task-title {
+        font-size: 1rem;
         color: var(--fg);
         font-weight: 600;
+        line-height: 1.4;
+        margin-bottom: 0.3rem;
     }
 
     .task-desc {
         font-size: 0.85rem;
         color: var(--fg-muted);
-        margin-bottom: 0.25rem;
+        margin-bottom: 0.45rem;
         line-height: 1.4;
     }
 
@@ -177,7 +187,8 @@
     .current-task-actions {
         display: flex;
         gap: 0.5rem;
-        flex-shrink: 0;
+        flex-wrap: wrap;
+        margin-top: 0.75rem;
     }
 
     .log-panel {

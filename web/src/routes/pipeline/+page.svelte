@@ -1,6 +1,6 @@
 <script lang="ts">
     import { api } from '$lib/api/client';
-    import { ErrorBanner, LoadingSpinner } from '$lib/components';
+    import { ErrorBanner, LoadingSpinner, Tabs } from '$lib/components';
     import { toast_store } from '$lib/stores/toast.svelte';
     import type { AgentRun, PipelineStatus, Task } from '$lib/types';
     import { use_polling } from '$lib/utils/polling.svelte';
@@ -16,6 +16,7 @@
     let history_page = $state(1);
     let history_total_pages = $state(1);
     let filter_status = $state('');
+    let active_tab = $state('queue');
 
     let loading = $state(true);
     let log_text = $state('');
@@ -23,6 +24,11 @@
     let log_loading = $state(false);
     let action_error = $state('');
     let action_busy = $state(false);
+
+    const pipeline_sections = [
+        { label: 'Queue', value: 'queue' },
+        { label: 'History', value: 'history' }
+    ];
 
     async function load_pipeline() {
         try {
@@ -156,22 +162,28 @@
             {format_duration}
         />
 
-        <TaskQueue {queue} />
+        <div class="pipeline-tabs">
+            <Tabs items={pipeline_sections} bind:value={active_tab} aria_label="Pipeline sections" />
+        </div>
 
-        <PipelineHistory
-            {history}
-            {history_total}
-            {history_page}
-            {history_total_pages}
-            {filter_status}
-            onfilter_change={(status) => {
-                filter_status = status;
-                history_page = 1;
-            }}
-            onpage_change={(page) => {
-                history_page = page;
-            }}
-        />
+        {#if active_tab === 'queue'}
+            <TaskQueue {queue} />
+        {:else}
+            <PipelineHistory
+                {history}
+                {history_total}
+                {history_page}
+                {history_total_pages}
+                {filter_status}
+                onfilter_change={(status) => {
+                    filter_status = status;
+                    history_page = 1;
+                }}
+                onpage_change={(page) => {
+                    history_page = page;
+                }}
+            />
+        {/if}
     {/if}
 </div>
 
@@ -180,5 +192,6 @@
     .page-header { margin-bottom: 1.5rem; }
     .page-header h2 { font-size: 1.5rem; color: var(--fg); }
     .subtitle { color: var(--fg-muted); font-size: 0.875rem; margin-top: 0.2rem; }
+    .pipeline-tabs { margin-bottom: 1rem; }
     @media (max-width: 768px) { .page { overflow-x: hidden; } }
 </style>

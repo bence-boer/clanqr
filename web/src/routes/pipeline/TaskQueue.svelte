@@ -21,25 +21,39 @@
     {:else}
         <div class="queue-list">
             {#each queue as task, i (task.id)}
+                {@const task_title = task.title ?? task.description?.slice(0, 80) ?? 'Untitled task'}
                 <div class="queue-item">
                     <span class="queue-number">{i + 1}</span>
                     <div class="queue-content">
-                        <div class="queue-breadcrumb">
-                            {#if task.features?.projects?.id}
-                                <a href={resolve(`/projects/${task.features.projects.id}`)} class="crumb-link">{task.features.projects.name}</a>
-                            {/if}
-                            {#if task.features?.id && task.features.projects?.id}
-                                <span class="crumb-sep">/</span>
-                                <a href={resolve(`/projects/${task.features.projects.id}?feature=${task.features.id}`)} class="crumb-link">{task.features.title}</a>
-                            {/if}
-                            <span class="crumb-sep">/</span>
-                            <span class="crumb-current">{task.title ?? task.description?.slice(0, 40)}</span>
+                        <div class="queue-header">
+                            <div class="queue-breadcrumb">
+                                {#if task.features?.projects?.name}
+                                    {#if task.features?.projects?.id}
+                                        <a href={resolve(`/projects/${task.features.projects.id}`)} class="crumb-link">{task.features.projects.name}</a>
+                                    {:else}
+                                        <span class="crumb-text">{task.features.projects.name}</span>
+                                    {/if}
+                                {/if}
+
+                                {#if task.features?.title}
+                                    {#if task.features?.projects?.name}
+                                        <span class="crumb-sep">/</span>
+                                    {/if}
+                                    {#if task.features?.id && task.features.projects?.id}
+                                        <a href={resolve(`/projects/${task.features.projects.id}?feature=${task.features.id}`)} class="crumb-link">{task.features.title}</a>
+                                    {:else}
+                                        <span class="crumb-text">{task.features.title}</span>
+                                    {/if}
+                                {/if}
+                            </div>
+
+                            <StatusBadge status={task.status} />
                         </div>
+                        <h4 class="queue-title">{task_title}</h4>
                         {#if task.title}
                             <p class="queue-desc">{task.description}</p>
                         {/if}
                     </div>
-                    <StatusBadge status={task.status} />
                 </div>
             {/each}
         </div>
@@ -93,6 +107,13 @@
         min-width: 0;
     }
 
+    .queue-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 0.75rem;
+    }
+
     .queue-breadcrumb {
         display: flex;
         align-items: center;
@@ -111,14 +132,21 @@
         text-decoration: underline;
     }
 
+    .crumb-text {
+        color: var(--fg-muted);
+    }
+
     .crumb-sep {
         color: var(--border);
         font-size: 0.75rem;
     }
 
-    .crumb-current {
+    .queue-title {
+        font-size: 0.9rem;
         color: var(--fg);
         font-weight: 600;
+        line-height: 1.4;
+        margin-top: 0.25rem;
     }
 
     .queue-desc {
@@ -135,6 +163,11 @@
             flex-direction: column;
             align-items: flex-start;
             gap: 0.5rem;
+        }
+
+        .queue-header {
+            flex-direction: column;
+            gap: 0.35rem;
         }
     }
 </style>
