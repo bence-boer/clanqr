@@ -108,8 +108,9 @@ export const agents_routes = new Hono<AppBindings>()
         return context.json(processes);
     })
 
-    .get('/log/:task_id', validate_uuid_params('task_id'), (context) => {
+    .get('/log/:task_id', (context) => {
         const task_id = context.req.param('task_id');
+        if (/[/\\]/.test(task_id)) return context.json({ error: 'Invalid task_id' }, 400);
         const log = agent_service.get_log(task_id);
         return context.json({ task_id, log });
     })

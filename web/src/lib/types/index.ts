@@ -101,5 +101,15 @@ export type ChatSession = ExtractSuccess<InferResponseType<Client['api']['chat']
 export type ChatMessage = NonNullable<ExtractSuccess<InferResponseType<Client['api']['chat']['sessions'][':id']['$get']>>['chat_messages']>[number];
 export type ChatSessionFull = { id: string, title: string | null, model: string, created_at: string, updated_at: string, messages: ChatMessage[] };
 
+// ── Task Artifacts ────────────────────────────────────────────────────────────
+export type TaskArtifact = {
+    id: string
+    task_id: string
+    filename: string
+    size_bytes: number
+    mime_type: string
+    created_at: string
+};
+
 // Re-export material symbols (not API-derived)
 export type { MaterialSymbol } from './material-symbols';

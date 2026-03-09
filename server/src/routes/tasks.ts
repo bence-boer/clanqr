@@ -6,6 +6,7 @@ import { validate_uuid_params } from '../middleware/validate_params';
 import { pipeline_service } from '../services/pipeline_service';
 import { event_bus } from '../services/event_bus';
 import { logger } from '../utils/logger';
+import { task_artifact_routes } from './task_artifacts';
 import type { Enums } from '../database.types';
 
 const update_task_schema = z.object({
@@ -89,6 +90,11 @@ export const tasks_routes = new Hono<AppBindings>()
             logger.error('Failed to update task', { route: 'PATCH /api/tasks/:id', id, error: String(error) });
             return context.json({ error: 'Failed to update task' }, 500);
         }
+
+        if (parsed.status === 'Approved') {
+            pipeline_service.process_next().catch((err) => logger.error('Pipeline process_next error', { error: String(err) }));
+        }
+
         return context.json(data);
     })
 
@@ -229,4 +235,7 @@ export const tasks_routes = new Hono<AppBindings>()
             return context.json({ error: 'Failed to delete task' }, 500);
         }
         return context.json({ success: true });
-    });
+    })
+
+    // Artifact routes (list files, download file)
+    .route('/', task_artifact_routes);

@@ -156,6 +156,7 @@ export type Database = {
           cli: string | null
           created_at: string
           description: string | null
+          execution_cli: string | null
           execution_model: string | null
           id: string
           last_error: string | null
@@ -173,6 +174,7 @@ export type Database = {
           cli?: string | null
           created_at?: string
           description?: string | null
+          execution_cli?: string | null
           execution_model?: string | null
           id?: string
           last_error?: string | null
@@ -190,6 +192,7 @@ export type Database = {
           cli?: string | null
           created_at?: string
           description?: string | null
+          execution_cli?: string | null
           execution_model?: string | null
           id?: string
           last_error?: string | null
@@ -448,6 +451,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "skill_links_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_artifacts: {
+        Row: {
+          created_at: string | null
+          filename: string
+          id: string
+          mime_type: string
+          size_bytes: number
+          task_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          filename: string
+          id?: string
+          mime_type?: string
+          size_bytes?: number
+          task_id: string
+        }
+        Update: {
+          created_at?: string | null
+          filename?: string
+          id?: string
+          mime_type?: string
+          size_bytes?: number
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_artifacts_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks"

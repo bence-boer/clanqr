@@ -1,7 +1,5 @@
-import { join } from 'path';
 import { create_supabase_client } from '../db';
 import type { TypedSupabaseClient } from '../db';
-import { WORKSPACE_DIR } from '../env';
 import { prompt_service } from './prompt_service';
 import { check_and_complete_feature } from './feature_utils';
 import { spawn_agent, read_progress } from './spawn_agent';
@@ -10,8 +8,7 @@ import { can_spawn_agent, increment_agent_count, decrement_agent_count, set_on_a
 import { agent_service } from './agent_service';
 import { event_bus } from './event_bus';
 import { handle_task_failure, type PipelineTask } from './pipeline_failure';
-
-const PIPELINE_WORKSPACE_DIR = WORKSPACE_DIR;
+import { container_service } from './container_service';
 
 type PipelineState = 'idle' | 'running' | 'paused';
 
@@ -142,7 +139,17 @@ class PipelineService {
 
         const task_id = task.id;
         const feature_id: string = task.feature_id;
-        const work_dir = join(PIPELINE_WORKSPACE_DIR, `ralph-${task_id}`);
+        const project_id: string | undefined = task.features?.projects?.id;
+        if (!project_id) {
+            logger.error('Task has no associated project, skipping', { service: 'pipeline', task_id });
+            await supabase.from('tasks').update({ status: 'Failed', output: 'No associated project found' }).eq('id', task_id);
+            event_bus.emit({ type: 'tasks:update', data: { task_id, feature_id, status: 'Failed' } });
+            setTimeout(() => this.process_next().catch((err) => logger.error('Pipeline error', { service: 'pipeline', error: String(err) })), 0);
+            return;
+        }
+        const agent_dir = `ralph-${task_id}`;
+        const work_dir = container_service.agent_workspace(project_id, agent_dir);
+        const container_work_dir = `/workspace/${agent_dir}`;
         const task_spec = {
             task_id, title: task.title, description: task.description,
             feature_title: task.features?.title ?? 'Unknown',
@@ -155,7 +162,7 @@ class PipelineService {
         event_bus.emit({ type: 'tasks:update', data: { task_id, feature_id, status: 'In_Progress' } });
 
         const prompt = await prompt_service.resolve_for_task(task_id, task_spec);
-        const cli = task.features?.cli || 'copilot';
+        const cli = task.features?.execution_cli || task.features?.cli || 'copilot';
         const model = task.model || task.features?.execution_model || (cli === 'gemini' ? 'gemini-2.5-flash' : 'gpt-4.1');
 
         this.active_run = { task_id, run_id: '', feature_id };
@@ -165,7 +172,8 @@ class PipelineService {
             const result = await spawn_agent({
                 agent_type: 'ralph', work_dir, spec_file: 'task-spec.json',
                 spec_data: task_spec, prompt, cli, model,
-                timeout_ms: (task.features?.task_timeout_minutes ?? 10) * 60 * 1000, task_id
+                timeout_ms: (task.features?.task_timeout_minutes ?? 10) * 60 * 1000, task_id,
+                project_id, container_work_dir
             }, supabase);
 
             this.active_run.run_id = result.run_id;
@@ -173,7 +181,7 @@ class PipelineService {
             if (result.exit_code === 0) {
                 const progress = read_progress(work_dir);
                 const output = progress?.summary ?? null;
-                await supabase.from('tasks').update({ status: 'Complete', output }).eq('id', task.id);
+                await supabase.from('tasks').update({ status: 'Complete', output, agent_log: result.log || null }).eq('id', task.id);
                 event_bus.emit({ type: 'tasks:update', data: { task_id, feature_id, status: 'Complete' } });
                 const done = await check_and_complete_feature(task.feature_id, supabase);
                 if (done) {
@@ -183,6 +191,7 @@ class PipelineService {
             }
             else {
                 const outcome = await handle_task_failure(task, supabase, result.run_id, result.exit_code === -1 ? 'Timeout' : undefined);
+                if (result.log) await supabase.from('tasks').update({ agent_log: result.log }).eq('id', task.id);
                 event_bus.emit({ type: 'tasks:update', data: { task_id, feature_id, status: 'Failed' } });
                 if (outcome === 'stop') {
                     this.state = 'paused';

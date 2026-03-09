@@ -27,6 +27,7 @@ import { agent_service } from './services/agent_service';
 import { pipeline_service } from './services/pipeline_service';
 import { prompt_service } from './services/prompt_service';
 import { watcher_service } from './services/watcher_service';
+import { container_service } from './services/container_service';
 import { logger } from './utils/logger';
 
 const allowed_origins = env.FRONTEND_URL.split(',').map((origin) => origin.trim());
@@ -162,6 +163,17 @@ async function boot() {
     // 3. Cleanup old workspaces (M-5.4) and expired data (M-5.5)
     agent_service.cleanup_old_workspaces(7);
     await cleanup_expired_data(supabase);
+
+    // 3b. Ensure agent Docker image is built and cleanup orphaned containers
+    try {
+        await container_service.ensure_image();
+        const { data: projects } = await supabase.from('projects').select('id');
+        const valid_ids = new Set((projects ?? []).map((p) => p.id));
+        await container_service.cleanup_orphaned(valid_ids);
+    }
+    catch (err) {
+        logger.warn('Container setup warning (agents will retry on first run)', { service: 'boot', error: String(err) });
+    }
 
     // Schedule daily cleanup
     setInterval(() => {

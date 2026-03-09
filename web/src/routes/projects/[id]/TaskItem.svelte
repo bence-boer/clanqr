@@ -5,11 +5,13 @@
     import type { TaskRow as Task } from '$lib/types';
     import { status_icon, status_class } from '$lib/utils/status';
     import TaskArtifacts from './TaskArtifacts.svelte';
+    import TaskFiles from './TaskFiles.svelte';
 
     interface Props {
         task: Task
         feature_cli: string
         editing: boolean
+        editing_title: string
         editing_desc: string
         editing_model: string | null
         saving: boolean
@@ -24,8 +26,8 @@
     }
 
     let {
-        task, feature_cli, editing, editing_desc = $bindable(), editing_model = $bindable(), saving,
-        on_approve, on_spawn, on_start_edit, on_save_edit,
+        task, feature_cli, editing, editing_title = $bindable(), editing_desc = $bindable(),
+        editing_model = $bindable(), saving, on_approve, on_spawn, on_start_edit, on_save_edit,
         on_cancel_edit, on_delete, on_toggle_artifacts, show_artifacts
     }: Props = $props();
 
@@ -64,12 +66,22 @@
             <Input
                 class="task-input"
                 type="text"
-                bind:value={editing_desc}
+                placeholder="Task title (optional)"
+                bind:value={editing_title}
                 onkeydown={(event) => {
                     if (event.key === 'Enter') on_save_edit();
                     if (event.key === 'Escape') on_cancel_edit();
                 }}
             />
+            <textarea
+                class="task-desc-input"
+                placeholder="Task description…"
+                bind:value={editing_desc}
+                rows="4"
+                onkeydown={(event) => {
+                    if (event.key === 'Escape') on_cancel_edit();
+                }}
+            ></textarea>
             <div class="task-model-field">
                 <Select id="task-model-{task.id}" label={`Model Override ${loading_models ? '(...)' : ''}`} bind:value={editing_model} class="input select" disabled={loading_models}>
                     <option value={null}>Feature default</option>
@@ -97,15 +109,6 @@
                 </Badge>
             </div>
         </div>
-        {#if task.output}
-            <div class="task-result">
-                <div class="task-section-label">Result summary</div>
-                <p class="task-output">
-                    <span class="icon" style="font-size:13px">output</span>
-                    <span>{task.output}</span>
-                </p>
-            </div>
-        {/if}
         <div class="task-actions">
             {#if task.status === 'Pending_Approval'}
                 <Button variant="primary" size="sm" icon="thumb_up" onclick={() => on_approve(task.id)}>Approve</Button>
@@ -131,6 +134,16 @@
                 </Accordion>
             </div>
         {/if}
+        {#if task.output}
+            <div class="task-accordion">
+                <Accordion label="Result summary">
+                    <div class="task-prompt">{task.output}</div>
+                </Accordion>
+            </div>
+        {/if}
+        {#if task.status === 'Complete' || task.status === 'Failed'}
+            <TaskFiles task_id={task.id} />
+        {/if}
         {#if show_artifacts}
             <TaskArtifacts task_id={task.id} />
         {/if}
@@ -151,23 +164,10 @@
     .task-info { flex: 1; min-width: 0; }
     .task-title { font-size: 0.9rem; font-weight: 600; color: var(--fg); display: block; line-height: 1.4; }
     .task-badges { display: flex; gap: 0.35rem; align-items: center; flex-shrink: 0; }
-    .task-result {
-        margin-top: 0.65rem;
-        padding: 0.75rem;
-        background: var(--bg-surface);
-        border: 1px solid var(--border);
-        border-radius: calc(var(--radius) - 2px);
-    }
-    .task-section-label {
-        font-size: 0.72rem;
-        font-weight: 700;
-        color: var(--fg-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-    .task-output {
-        font-size: 0.8rem; color: var(--fg-muted); margin-top: 0.35rem;
-        display: flex; align-items: flex-start; gap: 0.25rem; line-height: 1.3;
+    .task-desc-input {
+        width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: var(--radius);
+        background: var(--bg); color: var(--fg); font-size: 0.85rem; font-family: inherit;
+        resize: vertical; line-height: 1.5;
     }
     .task-actions {
         margin-top: 0.5rem; display: flex;
