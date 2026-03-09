@@ -12,6 +12,7 @@ const create_feature_schema = z.object({
     title: z.string().min(1).max(200),
     description: z.string().max(10_000).nullable().optional(),
     cli: z.string().default('copilot'),
+    execution_cli: z.string().default('copilot'),
     planning_model: z.string().min(1, 'Planning model is required'),
     execution_model: z.string().min(1, 'Execution model is required'),
     resources: z
@@ -24,6 +25,7 @@ const update_feature_schema = z.object({
     description: z.string().nullable().optional(),
     status: z.enum(['Draft', 'Submitted', 'In_Progress', 'Done']).optional(),
     cli: z.string().optional(),
+    execution_cli: z.string().optional(),
     planning_model: z.string().nullable().optional(),
     execution_model: z.string().nullable().optional()
 });

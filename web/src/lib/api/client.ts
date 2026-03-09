@@ -47,7 +47,7 @@ export const api = {
         unwrap(await (await client.api.tasks['approve-all'][':feature_id'].$post({ param: { feature_id } })).json()),
     create_task: async (data: { feature_id: string, description: string }): Promise<Types.TaskRow> =>
         unwrap(await (await client.api.tasks.$post({ json: data })).json()),
-    update_task: async (id: string, data: { description?: string, model?: string | null }): Promise<Types.TaskRow> =>
+    update_task: async (id: string, data: { description?: string, title?: string | null, model?: string | null }): Promise<Types.TaskRow> =>
         unwrap(await (await client.api.tasks[':id'].$patch({ param: { id }, json: data })).json()),
     delete_task: async (id: string): Promise<{ success: boolean }> =>
         unwrap(await (await client.api.tasks[':id'].$delete({ param: { id } })).json()),
@@ -182,6 +182,17 @@ export const api = {
         unwrap(await (await client.api.chat.sessions[':id'].cancel.$post({ param: { id: session_id } })).json()),
     chat_stream_url: (session_id: string): string =>
         `${API_URL}/api/chat/sessions/${encodeURIComponent(session_id)}/stream`,
+
+    // ── Task Artifacts ─────────────────────────────────────────────────────────
+    list_task_files: async (task_id: string): Promise<Types.TaskArtifact[]> => {
+        const response = await fetch(`${API_URL}/api/tasks/${encodeURIComponent(task_id)}/files`, {
+            credentials: 'include'
+        });
+        if (!response.ok) return [];
+        return response.json();
+    },
+    task_file_url: (task_id: string, filename: string): string =>
+        `${API_URL}/api/tasks/${encodeURIComponent(task_id)}/files/${encodeURIComponent(filename)}`,
 
     // ── Admin ─────────────────────────────────────────────────────────────────
     list_users: async (): Promise<Types.User[]> =>

@@ -6,6 +6,7 @@
     import { Textarea } from '$lib/components/primitives/textarea';
     import { toast_store } from '$lib/stores/toast.svelte';
     import type { FailureBehavior } from '$lib/types';
+    import type { CreateFeatureData } from './feature_actions';
 
     interface ModelOption {
         value: string
@@ -13,16 +14,7 @@
     }
 
     interface Props {
-        on_create: (data: {
-            title: string
-            description?: string
-            cli: string
-            planning_model: string | null
-            execution_model: string | null
-            on_task_failure: FailureBehavior
-            task_timeout_minutes: number
-            resources: { url: string, title?: string }[]
-        }) => Promise<void>
+        on_create: (data: CreateFeatureData) => Promise<void>
         on_cancel: () => void
     }
 
@@ -31,41 +23,53 @@
     let title = $state('');
     let description = $state('');
     let cli = $state('copilot');
+    let execution_cli = $state('copilot');
     let planning_model = $state('');
     let execution_model = $state('');
     let on_task_failure = $state<FailureBehavior>('stop');
     let task_timeout_minutes = $state(10);
-    let models = $state<ModelOption[]>([]);
+    let planning_models = $state<ModelOption[]>([]);
+    let execution_models = $state<ModelOption[]>([]);
     let resources = $state<{ url: string, title: string }[]>([]);
     let creating = $state(false);
-    let loading_models = $state(false);
+    let loading_planning = $state(false);
+    let loading_execution = $state(false);
+    let last_planning_cli = $state('');
+    let last_execution_cli = $state('');
+    const plan_lbl = $derived(`Planning Model ${loading_planning ? '(loading...)' : ''}`);
+    const exec_lbl = $derived(`Execution Model ${loading_execution ? '(loading...)' : ''}`);
 
-    let last_cli = $state('');
-
-    async function load_models(target_cli: string) {
-        if (target_cli === last_cli) return;
-        loading_models = true;
+    async function load_models_for(target_cli: string, kind: 'planning' | 'execution') {
+        const is_planning = kind === 'planning';
+        const last = is_planning ? last_planning_cli : last_execution_cli;
+        if (target_cli === last) return;
+        if (is_planning) loading_planning = true;
+        else loading_execution = true;
         try {
-            models = await api.list_models(target_cli);
-            last_cli = target_cli;
-            if (!models.find((m) => m.value === planning_model) && models.length > 0) {
-                planning_model = models[0].value;
+            const result = await api.list_models(target_cli);
+            if (is_planning) {
+                planning_models = result;
+                last_planning_cli = target_cli;
+                if (!result.find((m) => m.value === planning_model) && result.length > 0) planning_model = result[0].value;
             }
-            if (!models.find((m) => m.value === execution_model) && models.length > 0) {
-                execution_model = models[0].value;
+            else {
+                execution_models = result;
+                last_execution_cli = target_cli;
+                if (!result.find((m) => m.value === execution_model) && result.length > 0) execution_model = result[0].value;
             }
         }
-        catch (err) {
-            console.error('Failed to load models:', err);
-            toast_store.error('Failed to load models');
+        catch {
+            toast_store.error(`Failed to load ${kind} models`);
         }
         finally {
-            loading_models = false;
+            if (is_planning) loading_planning = false;
+            else loading_execution = false;
         }
     }
 
     $effect(() => {
-        load_models(cli);
+        load_models_for(cli, 'planning');
+        load_models_for(execution_cli, 'execution');
     });
 
     function add_resource_field() {
@@ -81,20 +85,16 @@
         creating = true;
         try {
             const clean_resources = resources.filter((r) => r.url.trim()).map((r) => ({ url: r.url.trim(), title: r.title.trim() || undefined }));
-
             await on_create({
-                title: title.trim(),
-                description: description.trim() || undefined,
-                cli,
-                planning_model: planning_model || null,
-                execution_model: execution_model || null,
-                on_task_failure,
-                task_timeout_minutes,
+                title: title.trim(), description: description.trim() || undefined,
+                cli, execution_cli, planning_model: planning_model || null,
+                execution_model: execution_model || null, on_task_failure, task_timeout_minutes,
                 resources: clean_resources
             });
             title = '';
             description = '';
             cli = 'copilot';
+            execution_cli = 'copilot';
             planning_model = '';
             execution_model = '';
             on_task_failure = 'stop';
@@ -119,9 +119,29 @@
 
     <div class="selection-grid">
         <div class="field">
-            <Select id="cli-select" label="CLI Engine" bind:value={cli} class="input select">
+            <Select id="cli-select" label="Planning CLI" bind:value={cli} class="input select">
                 <option value="copilot">Copilot CLI</option>
                 <option value="gemini">Gemini CLI</option>
+            </Select>
+        </div>
+        <div class="field">
+            <Select id="planning-model-select" label={plan_lbl} bind:value={planning_model} disabled={loading_planning}>
+                {#each planning_models as m (m.value)}
+                    <option value={m.value}>{m.label}</option>
+                {/each}
+            </Select>
+        </div>
+        <div class="field">
+            <Select id="execution-cli-select" label="Execution CLI" bind:value={execution_cli} class="input select">
+                <option value="copilot">Copilot CLI</option>
+                <option value="gemini">Gemini CLI</option>
+            </Select>
+        </div>
+        <div class="field">
+            <Select id="execution-model-select" label={exec_lbl} bind:value={execution_model} disabled={loading_execution}>
+                {#each execution_models as m (m.value)}
+                    <option value={m.value}>{m.label}</option>
+                {/each}
             </Select>
         </div>
         <div class="field">
@@ -129,20 +149,6 @@
                 <option value="stop">Stop</option>
                 <option value="retry">Retry</option>
                 <option value="skip">Skip</option>
-            </Select>
-        </div>
-        <div class="field">
-            <Select id="planning-model-select" label={`Planning Model ${loading_models ? '(loading...)' : ''}`} bind:value={planning_model} class="input select" disabled={loading_models}>
-                {#each models as m (m.value)}
-                    <option value={m.value}>{m.label}</option>
-                {/each}
-            </Select>
-        </div>
-        <div class="field">
-            <Select id="execution-model-select" label={`Execution Model ${loading_models ? '(loading...)' : ''}`} bind:value={execution_model} class="input select" disabled={loading_models}>
-                {#each models as m (m.value)}
-                    <option value={m.value}>{m.label}</option>
-                {/each}
             </Select>
         </div>
         <div class="field">

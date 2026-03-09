@@ -114,9 +114,9 @@ describe('agents routes', () => {
     });
 
     describe('GET /api/agents/log/:task_id', () => {
-        it('rejects invalid UUID', async () => {
+        it('rejects path traversal', async () => {
             const { app } = setup();
-            const res = await app.request(`/api/agents/log/${INVALID_UUID}`, {
+            const res = await app.request('/api/agents/log/..%2Fetc%2Fpasswd', {
                 headers: auth_headers()
             });
             expect(res.status).toBe(400);

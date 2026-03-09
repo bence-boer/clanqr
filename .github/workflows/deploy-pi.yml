@@ -64,6 +64,11 @@ jobs:
           sudo cp /tmp/ralph-api.env $ENV_FILE
           sudo chmod 600 $ENV_FILE
 
+      - name: Build agent base image
+        run: |
+          cd $APP_DIR
+          docker build -t ralph-agent-base:latest -f server/Dockerfile.agent server/
+
       - name: Apply database migrations
         run: |
           set -e

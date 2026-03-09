@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import type { TypedSupabaseClient } from '../db';
 import { logger } from '../utils/logger';
@@ -19,14 +19,99 @@ const manager_output_schema = z.array(z.union([task_output_schema, legacy_task_s
     .max(50, 'Maximum 50 tasks allowed');
 
 const MAX_OUTPUT_FILE_SIZE = 1024 * 1024; // 1MB
+const STRUCTURAL_CHARS = new Set([',', '}', ']', ':']);
+
+function repair_json(raw: string): string {
+    let result = '';
+    let in_string = false;
+    let escaped = false;
+    for (let i = 0; i < raw.length; i++) {
+        const ch = raw[i];
+        if (escaped) {
+            result += ch;
+            escaped = false;
+            continue;
+        }
+        if (ch === '\\' && in_string) {
+            result += ch;
+            escaped = true;
+            continue;
+        }
+        if (ch === '"') {
+            if (!in_string) {
+                in_string = true;
+                result += ch;
+                continue;
+            }
+            const rest = raw.substring(i + 1).trimStart();
+            if (rest.length === 0 || STRUCTURAL_CHARS.has(rest[0])) {
+                in_string = false;
+                result += ch;
+            }
+            else {
+                result += '\\"';
+            }
+            continue;
+        }
+        if (in_string && (ch === '\n' || ch === '\r')) {
+            result += ch === '\n' ? '\\n' : '\\r';
+            continue;
+        }
+        if (in_string && ch === '\t') {
+            result += '\\t';
+            continue;
+        }
+        result += ch;
+    }
+    return result;
+}
+
+function try_parse_json(content: string): unknown | null {
+    try {
+        return JSON.parse(content);
+    }
+    catch {
+        try {
+            return JSON.parse(repair_json(content));
+        }
+        catch {
+            return null;
+        }
+    }
+}
+
+function extract_json_from_log(log: string): string | null {
+    // Try markdown code block first: ```json [...] ```
+    const code_block_match = log.match(/```(?:json)?\s*(\[[\s\S]*?\])\s*```/);
+    if (code_block_match) return code_block_match[1].trim();
+    // Try raw JSON array (line starting with [)
+    const raw_match = log.match(/^\s*(\[[\s\S]*\])\s*$/m);
+    if (raw_match) return raw_match[1].trim();
+    return null;
+}
 
 export async function parse_manager_output(
     feature_id: string,
     work_dir: string,
     supabase: TypedSupabaseClient,
-    run_id?: string
+    run_id?: string,
+    agent_log?: string
 ) {
     const tasks_file = join(work_dir, 'tasks.json');
+
+    if (!existsSync(tasks_file) && agent_log) {
+        const extracted = extract_json_from_log(agent_log);
+        if (extracted) {
+            const parsed = try_parse_json(extracted);
+            if (parsed) {
+                writeFileSync(tasks_file, JSON.stringify(parsed, null, 2));
+                logger.info('Extracted tasks.json from agent stdout', { service: 'agent', feature_id });
+            }
+            if (!parsed) {
+                // Extracted content wasn't valid JSON — fall through to error
+            }
+        }
+    }
 
     if (!existsSync(tasks_file)) {
         logger.error('Manager exited 0 but no tasks.json', { service: 'agent', feature_id });
@@ -58,7 +143,8 @@ export async function parse_manager_output(
         }
 
         const content = readFileSync(tasks_file, 'utf-8');
-        const raw = JSON.parse(content);
+        const raw = try_parse_json(content);
+        if (raw === null) throw new Error('JSON Parse error after repair attempt');
         const result = manager_output_schema.safeParse(raw);
 
         if (!result.success) {

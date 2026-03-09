@@ -10,6 +10,7 @@ import { logger } from '../utils/logger';
 import { can_spawn_agent, increment_agent_count, decrement_agent_count } from './agent_concurrency';
 import { parse_manager_output } from './manager_output';
 import { event_bus } from './event_bus';
+import { container_service, PROJECTS_WORKSPACE_DIR } from './container_service';
 
 // Re-export concurrency utilities for consumers
 export { can_spawn_agent, increment_agent_count, decrement_agent_count, set_on_agent_freed, get_agent_concurrency } from './agent_concurrency';
@@ -28,15 +29,11 @@ interface AgentProcess {
     log: string
 }
 
-const AGENT_WORKSPACE_DIR = WORKSPACE_DIR;
-
 class AgentService {
     private processes: Map<string, AgentProcess> = new Map();
 
     constructor() {
-        if (!existsSync(AGENT_WORKSPACE_DIR)) {
-            mkdirSync(AGENT_WORKSPACE_DIR, { recursive: true });
-        }
+        if (!existsSync(WORKSPACE_DIR)) mkdirSync(WORKSPACE_DIR, { recursive: true });
     }
 
     get_all_processes() {
@@ -51,23 +48,33 @@ class AgentService {
 
     get_log(task_id: string): string {
         const proc = this.processes.get(task_id);
-        if (proc) {
-            return proc.log;
-        }
-
-        const log_path = join(AGENT_WORKSPACE_DIR, task_id, 'agent.log');
-        if (existsSync(log_path)) {
-            return readFileSync(log_path, 'utf-8');
+        if (proc) return proc.log;
+        const legacy_log_path = join(WORKSPACE_DIR, task_id, 'agent.log');
+        if (existsSync(legacy_log_path)) return readFileSync(legacy_log_path, 'utf-8');
+        if (existsSync(PROJECTS_WORKSPACE_DIR)) {
+            for (const project_dir of readdirSync(PROJECTS_WORKSPACE_DIR, { withFileTypes: true })) {
+                if (!project_dir.isDirectory()) continue;
+                const project_path = join(PROJECTS_WORKSPACE_DIR, project_dir.name);
+                for (const agent_dir of readdirSync(project_path, { withFileTypes: true })) {
+                    if (!agent_dir.isDirectory()) continue;
+                    if (agent_dir.name !== task_id && !agent_dir.name.endsWith(`-${task_id}`)) continue;
+                    const log_path = join(project_path, agent_dir.name, 'agent.log');
+                    if (existsSync(log_path)) return readFileSync(log_path, 'utf-8');
+                }
+            }
         }
         return '';
     }
 
     async spawn_manager(
-        feature: Tables<'features'> & { resources?: { url: string, title: string | null }[], projects?: { name: string } },
+        feature: Tables<'features'> & { resources?: { url: string, title: string | null }[], projects?: { name: string, id?: string } },
         supabase: TypedSupabaseClient
     ) {
         const feature_id = feature.id;
-        const work_dir = join(AGENT_WORKSPACE_DIR, `manager-${feature_id}`);
+        const project_id = feature.project_id;
+        const agent_dir = `manager-${feature_id}`;
+        const work_dir = container_service.agent_workspace(project_id, agent_dir);
+        const container_work_dir = `/workspace/${agent_dir}`;
         const process_id = `manager-${feature_id}`;
 
         const spec = {
@@ -111,7 +118,8 @@ class AgentService {
         try {
             const result = await spawn_agent({
                 agent_type: 'manager', work_dir, spec_file: 'feature-spec.json',
-                spec_data: spec, prompt, cli, model, feature_id, timeout_ms: MANAGER_TIMEOUT_MS
+                spec_data: spec, prompt, cli, model, feature_id, timeout_ms: MANAGER_TIMEOUT_MS,
+                project_id, container_work_dir
             }, supabase);
 
             agent_proc.run_id = result.run_id;
@@ -125,7 +133,7 @@ class AgentService {
             });
 
             if (result.exit_code === 0) {
-                await parse_manager_output(feature_id, work_dir, supabase, result.run_id);
+                await parse_manager_output(feature_id, work_dir, supabase, result.run_id, result.log);
                 const { error: reset_error } = await supabase.from('features').update({ manager_retry_count: 0 }).eq('id', feature_id);
                 if (reset_error) logger.error('Failed to reset manager retry count', { service: 'agent', feature_id, error: reset_error.message });
             }
@@ -167,8 +175,7 @@ class AgentService {
             proc.status = 'stopped';
             proc.finished_at = new Date().toISOString();
             if (supabase && proc.run_id) {
-                supabase.from('agent_runs').update({ status: 'stopped', finished_at: proc.finished_at }).eq('id', proc.run_id).then(() => {
-                });
+                void supabase.from('agent_runs').update({ status: 'stopped', finished_at: proc.finished_at }).eq('id', proc.run_id);
             }
         }
     }
@@ -180,34 +187,23 @@ class AgentService {
                 proc.status = 'stopped';
                 proc.finished_at = new Date().toISOString();
                 if (supabase && proc.run_id) {
-                    supabase.from('agent_runs').update({ status: 'stopped', finished_at: proc.finished_at }).eq('id', proc.run_id).then(() => {
-                    });
+                    void supabase.from('agent_runs').update({ status: 'stopped', finished_at: proc.finished_at }).eq('id', proc.run_id);
                 }
             }
         }
     }
 
-    /** Remove workspace directories older than max_age_days, skipping active ones */
     cleanup_old_workspaces(max_age_days: number = 7): number {
         const cutoff = Date.now() - (max_age_days * 24 * 60 * 60 * 1000);
         let cleaned = 0;
-
-        if (!existsSync(AGENT_WORKSPACE_DIR)) return 0;
-
-        const active_ids = new Set<string>();
-        for (const [id, proc] of this.processes) {
-            if (proc.status === 'running') active_ids.add(id);
-        }
-
-        for (const entry of readdirSync(AGENT_WORKSPACE_DIR, { withFileTypes: true })) {
+        if (!existsSync(WORKSPACE_DIR)) return 0;
+        const active_ids = new Set([...this.processes].filter(([, p]) => p.status === 'running').map(([id]) => id));
+        for (const entry of readdirSync(WORKSPACE_DIR, { withFileTypes: true })) {
             if (!entry.isDirectory()) continue;
-            const dir_name = entry.name;
-            const is_active = [...active_ids].some((id) => dir_name.includes(id));
-            if (is_active) continue;
-            const dir_path = join(AGENT_WORKSPACE_DIR, dir_name);
+            if ([...active_ids].some((id) => entry.name.includes(id))) continue;
+            const dir_path = join(WORKSPACE_DIR, entry.name);
             try {
-                const stat = statSync(dir_path);
-                if (stat.mtimeMs < cutoff) {
+                if (statSync(dir_path).mtimeMs < cutoff) {
                     rmSync(dir_path, { recursive: true, force: true });
                     cleaned++;
                 }
@@ -216,7 +212,6 @@ class AgentService {
                 // Skip directories we can't stat
             }
         }
-
         if (cleaned > 0) logger.info('Cleaned old workspaces', { service: 'agent', cleaned });
         return cleaned;
     }

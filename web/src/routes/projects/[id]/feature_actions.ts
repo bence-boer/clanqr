@@ -9,18 +9,21 @@ export interface FeatureActionDeps {
     clear_selection: (feature_id?: string) => void
 }
 
+export interface CreateFeatureData {
+    title: string
+    description?: string
+    cli: string
+    execution_cli: string
+    planning_model: string | null
+    execution_model: string | null
+    on_task_failure: FailureBehavior
+    task_timeout_minutes: number
+    resources: { url: string, title?: string }[]
+}
+
 export async function create_feature(
     deps: FeatureActionDeps,
-    data: {
-        title: string
-        description?: string
-        cli: string
-        planning_model: string | null
-        execution_model: string | null
-        on_task_failure: FailureBehavior
-        task_timeout_minutes: number
-        resources: { url: string, title?: string }[]
-    }
+    data: CreateFeatureData
 ) {
     type FeatureInput = Parameters<typeof api.create_feature>[0];
     try {
@@ -29,6 +32,7 @@ export async function create_feature(
             title: data.title,
             description: data.description,
             cli: data.cli,
+            execution_cli: data.execution_cli,
             planning_model: data.planning_model,
             execution_model: data.execution_model,
             on_task_failure: data.on_task_failure,
