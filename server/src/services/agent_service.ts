@@ -9,6 +9,7 @@ import { spawn_agent } from './spawn_agent';
 import { logger } from '../utils/logger';
 import { can_spawn_agent, increment_agent_count, decrement_agent_count } from './agent_concurrency';
 import { parse_manager_output } from './manager_output';
+import { event_bus } from './event_bus';
 
 // Re-export concurrency utilities for consumers
 export { can_spawn_agent, increment_agent_count, decrement_agent_count, set_on_agent_freed, get_agent_concurrency } from './agent_concurrency';
@@ -83,6 +84,8 @@ class AgentService {
             .eq('id', feature_id);
         if (status_error) logger.error('Failed to update feature status', { service: 'agent', feature_id, error: status_error.message });
 
+        event_bus.emit({ type: 'features:update', data: { feature_id, status: 'In_Progress', project_id: feature.project_id } });
+
         const prompt = await prompt_service.resolve_for_manager(spec, feature_id, feature.project_id);
         const cli = feature.cli || 'copilot';
         const model = feature.planning_model || (cli === 'gemini' ? 'gemini-2.5-flash' : 'gpt-4.1');
@@ -99,6 +102,11 @@ class AgentService {
         };
         this.processes.set(process_id, agent_proc);
 
+        event_bus.emit({
+            type: 'agents:update',
+            data: { process_id, status: 'running', agent_type: 'manager', started_at: agent_proc.started_at }
+        });
+
         increment_agent_count();
         try {
             const result = await spawn_agent({
@@ -110,6 +118,11 @@ class AgentService {
             agent_proc.log = result.log;
             agent_proc.status = result.exit_code === 0 ? 'completed' : 'failed';
             agent_proc.finished_at = new Date().toISOString();
+
+            event_bus.emit({
+                type: 'agents:update',
+                data: { process_id, status: agent_proc.status, agent_type: 'manager', started_at: agent_proc.started_at, finished_at: agent_proc.finished_at }
+            });
 
             if (result.exit_code === 0) {
                 await parse_manager_output(feature_id, work_dir, supabase, result.run_id);
@@ -131,6 +144,12 @@ class AgentService {
             agent_proc.finished_at = new Date().toISOString();
             const error_msg = error instanceof Error ? error.message : 'Unknown error';
             agent_proc.log += `\nERROR: ${error_msg}`;
+
+            event_bus.emit({
+                type: 'agents:update',
+                data: { process_id, status: 'failed', agent_type: 'manager', started_at: agent_proc.started_at, finished_at: agent_proc.finished_at }
+            });
+
             const { error: catch_error } = await supabase.from('features').update({
                 status: 'Submitted', last_error: error_msg, manager_retry_count: (feature.manager_retry_count ?? 0) + 1
             }).eq('id', feature_id);

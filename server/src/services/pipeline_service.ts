@@ -8,6 +8,7 @@ import { spawn_agent, read_progress } from './spawn_agent';
 import { logger } from '../utils/logger';
 import { can_spawn_agent, increment_agent_count, decrement_agent_count, set_on_agent_freed } from './agent_concurrency';
 import { agent_service } from './agent_service';
+import { event_bus } from './event_bus';
 import { handle_task_failure, type PipelineTask } from './pipeline_failure';
 
 const PIPELINE_WORKSPACE_DIR = WORKSPACE_DIR;
@@ -24,6 +25,18 @@ class PipelineService {
     private state: PipelineState = 'idle';
     private active_run: ActiveRun | null = null;
     private is_processing = false;
+
+    private emit_status() {
+        event_bus.emit({
+            type: 'pipeline:status',
+            data: {
+                state: this.state,
+                current_task_id: this.active_run?.task_id ?? null,
+                current_run_id: this.active_run?.run_id ?? null,
+                current_feature_id: this.active_run?.feature_id ?? null
+            }
+        });
+    }
 
     get_status() {
         return {
@@ -46,15 +59,18 @@ class PipelineService {
 
             if (!task) {
                 this.state = 'idle';
+                this.emit_status();
                 return;
             }
 
             this.state = 'running';
+            this.emit_status();
             await this.execute_task(task, supabase);
         }
         catch (error) {
             logger.error('Pipeline process_next error', { service: 'pipeline', error: String(error) });
             this.state = 'idle';
+            this.emit_status();
         }
         finally {
             this.is_processing = false;
@@ -65,6 +81,7 @@ class PipelineService {
         if (this.state === 'running') {
             this.state = 'paused';
             logger.info('Pipeline paused', { service: 'pipeline' });
+            this.emit_status();
         }
     }
 
@@ -72,6 +89,7 @@ class PipelineService {
         if (this.state === 'paused') {
             this.state = 'idle';
             logger.info('Pipeline resumed', { service: 'pipeline' });
+            this.emit_status();
             this.process_next().catch((err) => logger.error('Pipeline resume error', { service: 'pipeline', error: String(err) }));
         }
     }
@@ -93,6 +111,7 @@ class PipelineService {
         await supabase.from('tasks').update({ status: 'Approved' }).eq('id', task_id);
         this.active_run = null;
         this.state = 'idle';
+        this.emit_status();
     }
 
     get_log(): string {
@@ -133,6 +152,8 @@ class PipelineService {
         const { error: status_error } = await supabase.from('tasks').update({ status: 'In_Progress' }).eq('id', task_id);
         if (status_error) logger.error('Failed to update task status', { service: 'pipeline', task_id, error: status_error.message });
 
+        event_bus.emit({ type: 'tasks:update', data: { task_id, feature_id, status: 'In_Progress' } });
+
         const prompt = await prompt_service.resolve_for_task(task_id, task_spec);
         const cli = task.features?.cli || 'copilot';
         const model = task.model || task.features?.execution_model || (cli === 'gemini' ? 'gemini-2.5-flash' : 'gpt-4.1');
@@ -153,18 +174,30 @@ class PipelineService {
                 const progress = read_progress(work_dir);
                 const output = progress?.summary ?? null;
                 await supabase.from('tasks').update({ status: 'Complete', output }).eq('id', task.id);
+                event_bus.emit({ type: 'tasks:update', data: { task_id, feature_id, status: 'Complete' } });
                 const done = await check_and_complete_feature(task.feature_id, supabase);
-                if (done) logger.info('Feature complete', { service: 'pipeline', feature: task.features?.title, feature_id });
+                if (done) {
+                    logger.info('Feature complete', { service: 'pipeline', feature: task.features?.title, feature_id });
+                    event_bus.emit({ type: 'features:update', data: { feature_id, status: 'Done', project_id: task.features?.projects?.id } });
+                }
             }
             else {
                 const outcome = await handle_task_failure(task, supabase, result.run_id, result.exit_code === -1 ? 'Timeout' : undefined);
-                if (outcome === 'stop') this.state = 'paused';
+                event_bus.emit({ type: 'tasks:update', data: { task_id, feature_id, status: 'Failed' } });
+                if (outcome === 'stop') {
+                    this.state = 'paused';
+                    this.emit_status();
+                }
             }
         }
         catch (error) {
             const error_message = error instanceof Error ? error.message : 'Unknown error';
             const outcome = await handle_task_failure(task, supabase, this.active_run.run_id, error_message);
-            if (outcome === 'stop') this.state = 'paused';
+            event_bus.emit({ type: 'tasks:update', data: { task_id, feature_id, status: 'Failed' } });
+            if (outcome === 'stop') {
+                this.state = 'paused';
+                this.emit_status();
+            }
         }
         finally {
             decrement_agent_count();

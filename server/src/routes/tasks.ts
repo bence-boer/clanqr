@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { AppBindings } from '../middleware/supabase';
 import { validate_uuid_params } from '../middleware/validate_params';
 import { pipeline_service } from '../services/pipeline_service';
+import { event_bus } from '../services/event_bus';
 import { logger } from '../utils/logger';
 import type { Enums } from '../database.types';
 
@@ -129,6 +130,9 @@ export const tasks_routes = new Hono<AppBindings>()
             logger.error('Failed to approve task', { route: 'POST /api/tasks/:id/approve', id, error: String(error) });
             return context.json({ error: 'Failed to approve task' }, 500);
         }
+        if (data) {
+            event_bus.emit({ type: 'tasks:update', data: { task_id: id, feature_id: data.feature_id, status: 'Approved' } });
+        }
         pipeline_service.process_next().catch((err) => logger.error('Pipeline process_next error', { error: String(err) }));
         return context.json(data);
     })
@@ -154,6 +158,12 @@ export const tasks_routes = new Hono<AppBindings>()
         if (error) {
             logger.error('Failed to approve tasks', { route: 'POST /api/tasks/approve-all/:feature_id', feature_id, error: String(error) });
             return context.json({ error: 'Failed to approve tasks' }, 500);
+        }
+
+        if (data) {
+            for (const task of data) {
+                event_bus.emit({ type: 'tasks:update', data: { task_id: task.id, feature_id, status: 'Approved' } });
+            }
         }
 
         // Kick pipeline
@@ -187,6 +197,9 @@ export const tasks_routes = new Hono<AppBindings>()
         if (error) {
             logger.error('Failed to create task', { route: 'POST /api/tasks', error: String(error) });
             return context.json({ error: 'Failed to create task' }, 500);
+        }
+        if (data) {
+            event_bus.emit({ type: 'tasks:update', data: { task_id: data.id, feature_id: data.feature_id, status: data.status } });
         }
         return context.json(data, 201);
     })

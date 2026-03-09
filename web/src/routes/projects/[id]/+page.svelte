@@ -6,7 +6,8 @@
     import { Button } from '$lib/components/primitives/button';
     import { toast_store } from '$lib/stores/toast.svelte';
     import type { Feature, Project, FeatureAgentStatus, AbbreviatedAgentProcess } from '$lib/types';
-    import { use_polling } from '$lib/utils/polling.svelte';
+    import { use_event_stream } from '$lib/utils/event-stream.svelte';
+    import { onMount } from 'svelte';
     import { SvelteMap } from 'svelte/reactivity';
     import FeatureDetail from './FeatureDetail.svelte';
     import FeatureForm from './FeatureForm.svelte';
@@ -41,15 +42,15 @@
 
     function reconcile<ItemType extends { id: string }>(current: ItemType[], incoming: ItemType[]): ItemType[] {
         const map = new SvelteMap(incoming.map((item) => [item.id, item]));
-        const result: ItemType[] = [];
-        for (const item of current) {
+        const result: ItemType[] = current.filter((item) => {
             const updated = map.get(item.id);
             if (updated) {
                 Object.assign(item, updated);
-                result.push(item);
                 map.delete(item.id);
+                return true;
             }
-        }
+            return false;
+        });
         for (const item of map.values()) result.push(item);
         return result;
     }
@@ -90,19 +91,30 @@
         try {
             agent_info = await api.feature_agent_status(selected_feature.id);
             if (!agent_info) return;
-            const has_running = (agent_info?.processes?.some((p: AbbreviatedAgentProcess) => p.status === 'running') ?? false) || (agent_info.pipeline.is_active_feature && agent_info.pipeline.state === 'running');
+            const has_running = agent_info?.processes?.some(
+                (p: AbbreviatedAgentProcess) => p.status === 'running'
+            ) || (agent_info.pipeline.is_active_feature && agent_info.pipeline.state === 'running');
             if (has_running) load_data();
         }
         catch (err) {
             console.error('Failed to load feature agent status:', err);
-            toast_store.error('Failed to load feature agent status');
         }
     }
 
-    use_polling(() => {
+    function refresh_all() {
         load_data();
         if (selected_feature) load_agent_status();
-    }, 5000);
+    }
+
+    use_event_stream(
+        { features_update: refresh_all, tasks_update: refresh_all },
+        refresh_all,
+        15_000
+    );
+
+    onMount(() => {
+        load_data();
+    });
 
     function select_feature(feature: Feature) {
         selected_feature = feature;
@@ -166,28 +178,13 @@
 
 <style>
     .page { max-width: 1100px; }
-    .page-header {
-        display: flex; justify-content: space-between; align-items: flex-start;
-        margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.75rem;
-    }
-    .back-link {
-        color: var(--accent); text-decoration: none; font-size: 0.85rem;
-        display: inline-flex; align-items: center; gap: 0.25rem;
-    }
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.75rem; }
+    .back-link { color: var(--accent); text-decoration: none; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.25rem; }
     .page-header h2 { font-size: 1.5rem; color: var(--fg); margin-top: 0.25rem; }
     .project-desc { color: var(--fg-muted); font-size: 0.9rem; }
-    .content-grid {
-        display: grid; grid-template-columns: 280px 1fr;
-        gap: 1rem; min-height: 400px;
-    }
-    .detail-panel {
-        background: var(--bg-surface); border: 1px solid var(--border);
-        border-radius: var(--radius); padding: 1.25rem;
-    }
-    .empty-detail {
-        display: flex; flex-direction: column; align-items: center;
-        justify-content: center; height: 200px; color: var(--fg-muted); gap: 0.75rem;
-    }
+    .content-grid { display: grid; grid-template-columns: 280px 1fr; gap: 1rem; min-height: 400px; }
+    .detail-panel { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; }
+    .empty-detail { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: var(--fg-muted); gap: 0.75rem; }
     @media (max-width: 768px) {
         .content-grid { display: flex; flex-direction: column; }
         .content-grid > :first-child { display: block; }

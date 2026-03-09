@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { AppBindings } from '../middleware/supabase';
 import { validate_uuid_params } from '../middleware/validate_params';
 import { validate_resource_url } from '../utils/ssrf';
+import { event_bus } from '../services/event_bus';
 import { logger } from '../utils/logger';
 
 const create_feature_schema = z.object({
@@ -112,6 +113,10 @@ export const features_routes = new Hono<AppBindings>()
             .eq('id', feature.id)
             .single();
 
+        if (full_feature) {
+            event_bus.emit({ type: 'features:update', data: { feature_id: feature.id, status: full_feature.status, project_id: full_feature.project_id } });
+        }
+
         return context.json(full_feature, 201);
     })
 
@@ -131,6 +136,9 @@ export const features_routes = new Hono<AppBindings>()
         if (error) {
             logger.error('Failed to update feature', { route: 'PATCH /api/features/:id', id, error: String(error) });
             return context.json({ error: 'Failed to update feature' }, 500);
+        }
+        if (data) {
+            event_bus.emit({ type: 'features:update', data: { feature_id: id, status: data.status, project_id: data.project_id } });
         }
         return context.json(data);
     })
@@ -156,6 +164,9 @@ export const features_routes = new Hono<AppBindings>()
         if (error) {
             logger.error('Failed to submit feature', { route: 'POST /api/features/:id/submit', id, error: String(error) });
             return context.json({ error: 'Failed to submit feature' }, 500);
+        }
+        if (data) {
+            event_bus.emit({ type: 'features:update', data: { feature_id: id, status: 'Submitted', project_id: data.project_id } });
         }
         return context.json(data);
     })
