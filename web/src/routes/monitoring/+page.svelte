@@ -3,7 +3,8 @@
     import { EmptyState, ErrorBanner, LoadingSpinner, StatCard } from '$lib/components';
     import { Button } from '$lib/components/primitives';
     import { toast_store } from '$lib/stores/toast.svelte';
-    import { use_polling } from '$lib/utils/polling.svelte';
+    import { use_event_stream } from '$lib/utils/event-stream.svelte';
+    import { onMount } from 'svelte';
     import AgentGrid from './AgentGrid.svelte';
     import LogPanel from './LogPanel.svelte';
 
@@ -16,7 +17,6 @@
     async function load_status() {
         try {
             agent_status = await api.agent_status();
-            polling.mark_success();
         }
         catch (error) {
             console.error('Failed to load agent status:', error);
@@ -27,7 +27,19 @@
         }
     }
 
-    const polling = use_polling(load_status, 3000);
+    const stream = use_event_stream(
+        {
+            agents_update: () => {
+                load_status();
+            }
+        },
+        load_status,
+        15_000
+    );
+
+    onMount(() => {
+        load_status();
+    });
 
     async function view_log(task_id: string) {
         selected_log = task_id;
@@ -87,7 +99,7 @@
         {/if}
     </div>
 
-    {#if polling.is_stale}
+    {#if stream.is_stale}
         <ErrorBanner variant="stale" message="Data may be outdated — unable to reach server" />
     {/if}
 

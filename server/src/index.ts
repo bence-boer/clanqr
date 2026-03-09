@@ -14,6 +14,7 @@ import { admin_routes } from './routes/admin';
 import { agents_routes } from './routes/agents';
 import { auth_routes } from './routes/auth';
 import { chat_routes } from './routes/chat';
+import { events_routes } from './routes/events';
 import { features_routes } from './routes/features';
 import { projects_routes } from './routes/projects';
 import { prompts_routes } from './routes/prompts';
@@ -86,6 +87,7 @@ const app = new Hono<AppBindings>()
     .use('/api/*', auth_middleware())
     // Agent spawning rate limit (M-4.2): 5 req/min
     .use('/api/agents/spawn/*', rate_limit(5, 60_000))
+    .route('/api/events', events_routes)
     .route('/api/projects', projects_routes)
     .route('/api/features', features_routes)
     .route('/api/tasks', tasks_routes)

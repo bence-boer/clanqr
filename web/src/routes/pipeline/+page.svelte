@@ -3,7 +3,8 @@
     import { ErrorBanner, LoadingSpinner, Tabs } from '$lib/components';
     import { toast_store } from '$lib/stores/toast.svelte';
     import type { AgentRun, PipelineStatus, Task } from '$lib/types';
-    import { use_polling } from '$lib/utils/polling.svelte';
+    import { use_event_stream } from '$lib/utils/event-stream.svelte';
+    import { onMount } from 'svelte';
     import CurrentTask from './CurrentTask.svelte';
     import PipelineHistory from './PipelineHistory.svelte';
     import PipelineStatusBar from './PipelineStatusBar.svelte';
@@ -81,13 +82,30 @@
         }
     }
 
-    // Poll every 3s
-    const polling = use_polling(async () => {
+    async function load_all() {
         await Promise.all([load_pipeline(), load_queue()]);
         if (log_visible) refresh_log();
         loading = false;
-        polling.mark_success();
-    }, 3000);
+    }
+
+    const stream = use_event_stream(
+        {
+            pipeline_status: () => {
+                load_pipeline();
+                load_queue();
+                if (log_visible) refresh_log();
+            },
+            tasks_update: () => {
+                load_queue();
+            }
+        },
+        load_all,
+        15_000
+    );
+
+    onMount(() => {
+        load_all();
+    });
 
     // Reload history when filter or page changes
     $effect(() => {
@@ -141,7 +159,7 @@
         </div>
     </div>
 
-    {#if polling.is_stale}
+    {#if stream.is_stale}
         <ErrorBanner variant="stale" message="Data may be outdated — unable to reach server" />
     {/if}
 

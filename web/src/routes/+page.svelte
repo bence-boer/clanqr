@@ -3,7 +3,7 @@
     import { ErrorBanner, LoadingSpinner, StatCard } from '$lib/components';
     import { toast_store } from '$lib/stores/toast.svelte';
     import type { PipelineStatus, Project, SystemAlert, SystemStats } from '$lib/types';
-    import { use_polling } from '$lib/utils/polling.svelte';
+    import { use_event_stream, type PipelineStatusData, type SnapshotData } from '$lib/utils/event-stream.svelte';
     import { onDestroy, onMount } from 'svelte';
     import PipelineCard from './PipelineCard.svelte';
     import PipelineStat from './PipelineStat.svelte';
@@ -27,7 +27,6 @@
             projects = project_list;
             feature_count = feature_list.length;
             pipeline = pipeline_status;
-            polling.mark_success();
         }
         catch (error) {
             console.error('Failed to load dashboard:', error);
@@ -49,9 +48,34 @@
         }
     }
 
-    const polling = use_polling(load_data, 5000);
+    const stream = use_event_stream(
+        {
+            snapshot: (data: SnapshotData) => {
+                pipeline = {
+                    ...pipeline,
+                    state: data.pipeline.state,
+                    current_task: null,
+                    current_run_id: data.pipeline.current_run_id,
+                    queue_depth: pipeline?.queue_depth ?? 0
+                } as PipelineStatus;
+            },
+            pipeline_status: (data: PipelineStatusData) => {
+                if (pipeline) {
+                    pipeline = { ...pipeline, state: data.state as PipelineStatus['state'], current_run_id: data.current_run_id ?? null };
+                }
+                // Reload full data on pipeline state change for accurate queue depth / task details
+                load_data();
+            },
+            features_update: () => {
+                load_data();
+            }
+        },
+        load_data,
+        15_000
+    );
 
     onMount(() => {
+        load_data();
         load_system_stats();
     });
 
@@ -78,7 +102,7 @@
 <div class="dashboard" aria-busy={loading}>
     <h2>Dashboard</h2>
 
-    {#if polling.is_stale}
+    {#if stream.is_stale}
         <ErrorBanner variant="stale" message="Data may be outdated — unable to reach server" />
     {/if}
 

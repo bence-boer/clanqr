@@ -19,8 +19,8 @@ git diff --name-only | while IFS= read -r file; do
     fi
 done
 
-echo "[pre-commit] Syncing database types (if local DB is running)..."
-(cd "$ROOT" && bun run gen-types || true)
+echo "[pre-commit] Syncing database types (if Docker is available)..."
+(cd "$ROOT" && ./scripts/gen-types.sh || true)
 
 echo "[pre-commit] Type-checking server..."
 (cd "$ROOT/server" && bun run --bun tsc --noEmit)
