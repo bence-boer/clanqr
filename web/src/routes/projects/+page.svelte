@@ -1,15 +1,18 @@
 <script lang="ts">
     import { api } from '$lib/api/client';
-    import { EmptyState, LoadingSpinner } from '$lib/components';
-    import { Button } from '$lib/components/primitives';
+    import { ConfirmModal, EmptyState, LoadingSpinner } from '$lib/components';
+    import { Button, Input } from '$lib/components/primitives';
     import { toast_store } from '$lib/stores/toast.svelte';
-    import type { Project } from '$lib/types';
+    import type { Feature, Project, ProjectStatus } from '$lib/types';
     import { onMount } from 'svelte';
     import { SvelteSet } from 'svelte/reactivity';
     import ProjectCard from './ProjectCard.svelte';
     import ProjectCreateForm from './ProjectCreateForm.svelte';
 
+    type FilterStatus = 'All' | ProjectStatus;
+
     let projects = $state<Project[]>([]);
+    let features_by_project = $state<Record<string, Feature[]>>({});
     let loading = $state(true);
     let show_create = $state(false);
     let new_name = $state('');
@@ -21,8 +24,28 @@
     let saving_edit = $state(false);
     let selected_ids = $state<Set<string>>(new Set());
     let deleting_selected = $state(false);
+    let search_query = $state('');
+    let active_filter = $state<FilterStatus>('All');
 
-    let all_selected = $derived(projects.length > 0 && selected_ids.size === projects.length);
+    // Confirm modal state for destructive actions
+    let confirm_delete_id = $state<string | null>(null);
+    let confirm_bulk_delete = $state(false);
+
+    const filtered_projects = $derived.by(() => {
+        let result = projects;
+        if (active_filter !== 'All') {
+            result = result.filter((p) => p.status === active_filter);
+        }
+        if (search_query.trim()) {
+            const q = search_query.toLowerCase();
+            result = result.filter(
+                (p) => p.name.toLowerCase().includes(q) || (p.description ?? '').toLowerCase().includes(q)
+            );
+        }
+        return result;
+    });
+
+    let all_selected = $derived(filtered_projects.length > 0 && selected_ids.size === filtered_projects.length);
 
     function toggle_select(id: string) {
         const next = new SvelteSet(selected_ids);
@@ -32,12 +55,23 @@
     }
 
     function toggle_all() {
-        selected_ids = all_selected ? new Set() : new Set(projects.map((p) => p.id));
+        selected_ids = all_selected ? new Set() : new Set(filtered_projects.map((p) => p.id));
     }
 
     async function load_projects() {
         try {
-            projects = await api.list_projects();
+            const [proj, feats] = await Promise.all([
+                api.list_projects(),
+                api.list_features()
+            ]);
+            projects = proj;
+            const grouped: Record<string, Feature[]> = {};
+            for (const feat of feats) {
+                const pid = feat.project_id;
+                if (!grouped[pid]) grouped[pid] = [];
+                grouped[pid].push(feat);
+            }
+            features_by_project = grouped;
         }
         catch (error) {
             console.error('Failed to load projects:', error);
@@ -67,10 +101,14 @@
         }
     }
 
-    async function delete_selected() {
+    async function confirm_delete_selected() {
         if (selected_ids.size === 0) return;
-        if (!confirm(`Delete ${selected_ids.size} project(s) and all their features?`)) return;
+        confirm_bulk_delete = true;
+    }
+
+    async function delete_selected() {
         deleting_selected = true;
+        confirm_bulk_delete = false;
         try {
             await Promise.all([...selected_ids].map((id) => api.delete_project(id)));
             selected_ids = new Set();
@@ -86,7 +124,13 @@
     }
 
     async function delete_project(id: string) {
-        if (!confirm('Delete this project and all its features?')) return;
+        confirm_delete_id = id;
+    }
+
+    async function handle_confirm_delete() {
+        if (!confirm_delete_id) return;
+        const id = confirm_delete_id;
+        confirm_delete_id = null;
         try {
             await api.delete_project(id);
             await load_projects();
@@ -94,6 +138,30 @@
         catch (error) {
             console.error('Failed to delete project:', error);
             toast_store.error('Failed to delete project');
+        }
+    }
+
+    async function archive_project(id: string) {
+        try {
+            await api.update_project(id, { status: 'Archived' } as Record<string, unknown> as { name?: string, description?: string | null });
+            toast_store.success('Project archived');
+            await load_projects();
+        }
+        catch (error) {
+            console.error('Failed to archive project:', error);
+            toast_store.error('Failed to archive project');
+        }
+    }
+
+    async function unarchive_project(id: string) {
+        try {
+            await api.update_project(id, { status: 'Active' } as Record<string, unknown> as { name?: string, description?: string | null });
+            toast_store.success('Project restored');
+            await load_projects();
+        }
+        catch (error) {
+            console.error('Failed to restore project:', error);
+            toast_store.error('Failed to restore project');
         }
     }
 
@@ -130,6 +198,8 @@
         }
     }
 
+    const filter_options: FilterStatus[] = ['All', 'Active', 'Archived'];
+
     onMount(() => {
         load_projects();
     });
@@ -145,7 +215,7 @@
                 </label>
             {/if}
             {#if selected_ids.size > 0}
-                <Button variant="danger" icon="delete" onclick={delete_selected} disabled={deleting_selected}>
+                <Button variant="danger" icon="delete" onclick={confirm_delete_selected} disabled={deleting_selected}>
                     Delete {selected_ids.size}
                 </Button>
             {/if}
@@ -157,15 +227,39 @@
 
     <ProjectCreateForm show={show_create} bind:new_name bind:new_description {creating} on_create={create_project} />
 
+    {#if !loading && projects.length > 0}
+        <div class="search-filter-bar">
+            <div class="search-box">
+                <span class="icon search-icon">search</span>
+                <Input type="text" placeholder="Search projects…" bind:value={search_query} class="search-input" />
+            </div>
+            <div class="filter-pills">
+                {#each filter_options as filter (filter)}
+                    <button
+                        class="filter-pill"
+                        class:active={active_filter === filter}
+                        onclick={() => (active_filter = filter)}
+                    >
+                        {filter}
+                    </button>
+                {/each}
+            </div>
+        </div>
+        <p class="result-count">Showing {filtered_projects.length} of {projects.length} projects</p>
+    {/if}
+
     {#if loading}
         <LoadingSpinner label="Loading projects..." />
     {:else if projects.length === 0}
         <EmptyState icon="folder" message="No projects yet" detail="Create one to get started." />
+    {:else if filtered_projects.length === 0}
+        <EmptyState icon="search_off" message="No matching projects" detail="Try a different search or filter." />
     {:else}
         <div class="project-grid">
-            {#each projects as project (project.id)}
+            {#each filtered_projects as project (project.id)}
                 <ProjectCard
                     {project}
+                    features={features_by_project[project.id] ?? []}
                     editing={editing_id === project.id}
                     selected={selected_ids.has(project.id)}
                     bind:edit_name
@@ -175,12 +269,34 @@
                     on_cancel_edit={cancel_edit}
                     on_save_edit={save_edit}
                     on_delete={delete_project}
+                    on_archive={archive_project}
+                    on_unarchive={unarchive_project}
                     on_toggle_select={toggle_select}
                 />
             {/each}
         </div>
     {/if}
 </div>
+
+<ConfirmModal
+    title="Delete Project"
+    message="Delete this project and all its features? This cannot be undone."
+    confirm_label="Delete"
+    variant="danger"
+    open={confirm_delete_id !== null}
+    onconfirm={handle_confirm_delete}
+    oncancel={() => (confirm_delete_id = null)}
+/>
+
+<ConfirmModal
+    title="Delete Projects"
+    message={`Delete ${selected_ids.size} project(s) and all their features? This cannot be undone.`}
+    confirm_label="Delete All"
+    variant="danger"
+    open={confirm_bulk_delete}
+    onconfirm={delete_selected}
+    oncancel={() => (confirm_bulk_delete = false)}
+/>
 
 <style>
     .page { max-width: 900px; }
@@ -194,6 +310,31 @@
         font-size: 0.8rem; color: var(--fg-muted); cursor: pointer;
     }
     .page-header h2 { font-size: 1.5rem; color: var(--fg); }
+    .search-filter-bar {
+        display: flex; align-items: center; gap: 1rem;
+        margin-bottom: 0.75rem; flex-wrap: wrap;
+    }
+    .search-box {
+        position: relative; flex: 1; min-width: 200px;
+    }
+    .search-icon {
+        position: absolute; left: 0.6rem; top: 50%; transform: translateY(-50%);
+        font-size: 18px; color: var(--fg-muted); pointer-events: none;
+    }
+    :global(.search-input) { padding-left: 2.2rem !important; }
+    .filter-pills { display: flex; gap: 0.35rem; }
+    .filter-pill {
+        padding: 0.3rem 0.75rem; border-radius: 999px; border: 1px solid var(--border);
+        background: transparent; color: var(--fg-muted); font-size: 0.8rem;
+        cursor: pointer; transition: all 0.15s; font-family: var(--font);
+    }
+    .filter-pill:hover { border-color: var(--accent); color: var(--fg); }
+    .filter-pill.active {
+        background: var(--accent); color: var(--bg); border-color: var(--accent);
+    }
+    .result-count {
+        font-size: 0.75rem; color: var(--fg-muted); margin-bottom: 1rem;
+    }
     .project-grid {
         display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;
     }

@@ -22,9 +22,45 @@
         action_busy: boolean
         ontoggle_log: () => void
         onstop: () => void
-        onrefresh_log: () => void
+        onrefresh_log: () => Promise<boolean> | void
         format_duration: (started_at: string | null) => string
     } = $props();
+
+    // §4.1 — Live elapsed timer
+    let elapsed = $state('');
+
+    $effect(() => {
+        const task = pipeline?.current_task;
+        if (!task?.updated_at) { elapsed = ''; return; }
+        const update = () => {
+            const diff = Math.floor((Date.now() - new Date(task.updated_at).getTime()) / 1000);
+            const m = Math.floor(diff / 60);
+            const s = diff % 60;
+            elapsed = m > 0 ? `${m}m ${s}s` : `${s}s`;
+        };
+        update();
+        const id = setInterval(update, 1000);
+        return () => clearInterval(id);
+    });
+
+    // §4.2 — Auto-refresh log with §14.6 backoff
+    let log_refresh_interval = $state(3000);
+    const LOG_MIN_INTERVAL = 3000;
+    const LOG_MAX_INTERVAL = 30000;
+
+    $effect(() => {
+        if (!log_visible || !pipeline?.current_task) return;
+        const interval = log_refresh_interval;
+        const id = setInterval(async () => {
+            try {
+                await onrefresh_log();
+                log_refresh_interval = LOG_MIN_INTERVAL;
+            } catch {
+                log_refresh_interval = Math.min(log_refresh_interval * 2, LOG_MAX_INTERVAL);
+            }
+        }, interval);
+        return () => clearInterval(id);
+    });
 </script>
 
 <section class="section">
@@ -74,7 +110,7 @@
                     {/if}
                     <div class="task-meta">
                         <span class="icon spin-small" style="font-size:14px">sync</span>
-                        <span>Running for {format_duration(task.updated_at)}</span>
+                        <span>Running for {elapsed || format_duration(task.updated_at)}</span>
                     </div>
                 </div>
             </div>
@@ -89,8 +125,14 @@
             {#if log_visible}
                 <div class="log-panel">
                     <div class="log-toolbar">
-                        <span class="log-label">Live Output</span>
-                        <Button variant="ghost" size="icon" icon="refresh" onclick={onrefresh_log} disabled={log_loading} title="Refresh" />
+                        <span class="log-label">
+                            {#if pipeline?.current_task}
+                                <span class="live-dot"></span> Live
+                            {:else}
+                                Live Output
+                            {/if}
+                        </span>
+                        <Button variant="ghost" size="icon" icon="refresh" onclick={onrefresh_log} disabled={log_loading} title="Refresh" aria-label="Refresh log" />
                     </div>
                     <CodeBlock content={log_text} />
                 </div>
@@ -211,5 +253,22 @@
         font-size: 0.75rem;
         color: var(--fg-muted);
         font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    .live-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--success);
+        animation: pulse-dot 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
     }
 </style>

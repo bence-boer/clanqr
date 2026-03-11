@@ -31,8 +31,8 @@
             </Button>
         </div>
         <p class="invite-warning">
-            <span class="icon" style="font-size:14px;color:var(--warning, #f59e0b)">warning</span>
-            This link will not be shown again.
+            <span class="icon" style="font-size:16px;color:var(--danger)">warning</span>
+            <strong>Copy this link now!</strong> It will not be shown again after you dismiss this message.
         </p>
     </div>
 {/if}
@@ -71,11 +71,16 @@
         min-width: 0;
     }
     .invite-warning {
-        font-size: 0.8rem;
-        color: var(--fg-muted);
+        font-size: 0.82rem;
+        color: var(--danger);
         display: flex;
         align-items: center;
-        gap: 0.35rem;
+        gap: 0.4rem;
+        background: rgba(239, 68, 68, 0.08);
+        border: 1px solid rgba(239, 68, 68, 0.25);
+        border-radius: var(--radius);
+        padding: 0.5rem 0.75rem;
+        margin-top: 0.25rem;
     }
     @media (max-width: 768px) {
         .invite-url-row { flex-direction: column; align-items: flex-start; }

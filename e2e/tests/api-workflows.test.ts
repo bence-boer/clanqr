@@ -37,6 +37,8 @@ test.describe("feature lifecycle", () => {
                 project_id,
                 title: "E2E Feature",
                 description: "Test feature for E2E",
+                planning_model: "gpt-4.1",
+                execution_model: "gpt-4.1",
                 on_task_failure: "skip",
                 task_timeout_minutes: 15,
             },
@@ -77,7 +79,7 @@ test.describe("feature lifecycle", () => {
     });
 });
 
-test.describe("task management", () => {
+test.describe.serial("task management", () => {
     let project_id: string;
     let feature_id: string;
     let task_id: string;
@@ -91,12 +93,14 @@ test.describe("task management", () => {
 
         const feat = await request.post(`${API}/api/features`, {
             headers: AUTH,
-            data: { project_id, title: "Task Feature", description: "For task tests" },
+            data: { project_id, title: "Task Feature", description: "For task tests", planning_model: "gpt-4.1", execution_model: "gpt-4.1" },
         });
         feature_id = (await feat.json()).id;
     });
 
     test.afterAll(async ({ request }) => {
+        // Resume pipeline in case it was paused
+        await request.post(`${API}/api/agents/resume`, { headers: AUTH });
         if (project_id) {
             await request.delete(`${API}/api/projects/${project_id}`, { headers: AUTH });
         }
@@ -114,25 +118,40 @@ test.describe("task management", () => {
         expect(task.sort_order).toBeDefined();
     });
 
-    test("approve task", async ({ request }) => {
-        const res = await request.patch(`${API}/api/tasks/${task_id}`, {
-            headers: AUTH,
-            data: { status: "Approved" },
-        });
-        expect(res.ok()).toBeTruthy();
-        const task = await res.json();
-        expect(task.status).toBe("Approved");
-    });
-
-    test("delete task", async ({ request }) => {
+    test("delete pending task succeeds", async ({ request }) => {
+        // Delete a Pending_Approval task (always works, no pipeline race)
         const res = await request.delete(`${API}/api/tasks/${task_id}`, {
             headers: AUTH,
         });
         expect(res.ok()).toBeTruthy();
     });
+
+    test("approve task transitions status", async ({ request }) => {
+        // Create a new task to approve
+        const create_res = await request.post(`${API}/api/tasks`, {
+            headers: AUTH,
+            data: { feature_id, description: "E2E approval test task" },
+        });
+        const new_task = await create_res.json();
+        task_id = new_task.id;
+
+        // Pause pipeline to prevent it from picking up the task
+        await request.post(`${API}/api/agents/pause`, { headers: AUTH });
+
+        const res = await request.post(`${API}/api/tasks/${task_id}/approve`, {
+            headers: AUTH,
+        });
+        expect(res.ok()).toBeTruthy();
+        const task = await res.json();
+        expect(task.status).toBe("Approved");
+
+        // Clean up: delete the approved task, resume pipeline
+        await request.delete(`${API}/api/tasks/${task_id}`, { headers: AUTH });
+        await request.post(`${API}/api/agents/resume`, { headers: AUTH });
+    });
 });
 
-test.describe("chat workflow", () => {
+test.describe.serial("chat workflow", () => {
     let session_id: string;
 
     test("create chat session", async ({ request }) => {
@@ -172,7 +191,7 @@ test.describe("chat workflow", () => {
 
 test.describe("pipeline and usage", () => {
     test("pipeline status returns valid structure", async ({ request }) => {
-        const res = await request.get(`${API}/api/pipeline/status`, { headers: AUTH });
+        const res = await request.get(`${API}/api/agents/queue`, { headers: AUTH });
         expect(res.ok()).toBeTruthy();
         const status = await res.json();
         expect(status.state).toBeDefined();
@@ -180,7 +199,7 @@ test.describe("pipeline and usage", () => {
     });
 
     test("usage stats returns data", async ({ request }) => {
-        const res = await request.get(`${API}/api/usage/stats`, { headers: AUTH });
+        const res = await request.get(`${API}/api/usage/summary`, { headers: AUTH });
         expect(res.ok()).toBeTruthy();
         const stats = await res.json();
         expect(typeof stats.total_runs).toBe("number");
@@ -192,7 +211,7 @@ test.describe("pipeline and usage", () => {
         });
         expect(res.ok()).toBeTruthy();
         const body = await res.json();
-        expect(Array.isArray(body.data)).toBeTruthy();
+        expect(Array.isArray(body.runs)).toBeTruthy();
         expect(typeof body.total).toBe("number");
     });
 
@@ -217,7 +236,7 @@ test.describe("resource SSRF protection", () => {
 
         const feat = await request.post(`${API}/api/features`, {
             headers: AUTH,
-            data: { project_id, title: "SSRF Feature", description: "For SSRF tests" },
+            data: { project_id, title: "SSRF Feature", description: "For SSRF tests", planning_model: "gpt-4.1", execution_model: "gpt-4.1" },
         });
         feature_id = (await feat.json()).id;
     });
@@ -258,9 +277,9 @@ test.describe("auth protection", () => {
         const protected_routes = [
             { method: "GET", url: `${API}/api/projects` },
             { method: "GET", url: `${API}/api/features` },
-            { method: "GET", url: `${API}/api/pipeline/status` },
+            { method: "GET", url: `${API}/api/agents/queue` },
             { method: "GET", url: `${API}/api/chat/sessions` },
-            { method: "GET", url: `${API}/api/usage/stats` },
+            { method: "GET", url: `${API}/api/usage/summary` },
         ];
 
         for (const route of protected_routes) {

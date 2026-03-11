@@ -1,8 +1,11 @@
 <script lang="ts">
     import { page } from '$app/state';
     import { api } from '$lib/api/client';
+    import { API_URL } from '$lib/api/rpc';
     import { Toast } from '$lib/components';
+    import NotificationBell from '$lib/components/NotificationBell.svelte';
     import { auth_store } from '$lib/stores/auth.svelte';
+    import { notification_store } from '$lib/stores/notifications.svelte';
     import { toast_store } from '$lib/stores/toast.svelte';
     import '$lib/styles/global.css';
     import type { SystemAlert, SystemStats } from '$lib/types';
@@ -13,6 +16,7 @@
     let { children } = $props();
 
     let sidebar_open: boolean = $state(false);
+    let sidebar_collapsed: boolean = $state(false);
     let system_stats: SystemStats | null = $state(null);
     let critical_alerts: SystemAlert[] = $state([]);
     let current_path = $derived(page.url.pathname);
@@ -29,10 +33,18 @@
     }
 
     onMount(() => {
+        const saved = localStorage.getItem('sidebar_collapsed');
+        if (saved === 'true') sidebar_collapsed = true;
+
         if (!current_path.startsWith('/invite')) {
             do_auth_check();
         }
     });
+
+    function toggle_sidebar_collapse() {
+        sidebar_collapsed = !sidebar_collapsed;
+        localStorage.setItem('sidebar_collapsed', String(sidebar_collapsed));
+    }
 
     // Re-check auth when navigating away from invite pages
     $effect(() => {
@@ -67,6 +79,55 @@
     function close_sidebar() {
         sidebar_open = false;
     }
+
+    // ── Global SSE for notifications ─────────────────────────────────────────────
+    let notification_source: EventSource | null = null;
+
+    $effect(() => {
+        if (auth_store.state === 'authenticated' && !notification_source) {
+            const es = new EventSource(`${API_URL}/api/events/stream`, { withCredentials: true });
+
+            es.addEventListener('features:update', (e: MessageEvent) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    if (data.status === 'Complete') {
+                        notification_store.add({ type: 'success', message: `Feature completed`, link: `/projects?feature=${data.feature_id}` });
+                    }
+                    if (data.status === 'Failed') {
+                        notification_store.add({ type: 'danger', message: `Feature failed`, link: `/projects?feature=${data.feature_id}` });
+                    }
+                }
+                catch { /* ignore malformed */ }
+            });
+
+            es.addEventListener('tasks:update', (e: MessageEvent) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    if (data.status === 'Failed') {
+                        notification_store.add({ type: 'danger', message: `Task failed`, link: `/projects?feature=${data.feature_id}` });
+                    }
+                }
+                catch { /* ignore malformed */ }
+            });
+
+            es.addEventListener('pipeline:status', (e: MessageEvent) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    if (data.state === 'paused') {
+                        notification_store.add({ type: 'warning', message: 'Pipeline paused' });
+                    }
+                }
+                catch { /* ignore malformed */ }
+            });
+
+            notification_source = es;
+        }
+
+        return () => {
+            notification_source?.close();
+            notification_source = null;
+        };
+    });
 </script>
 
 <svelte:head>
@@ -78,7 +139,7 @@
 {:else if auth_store.state !== 'authenticated'}
     <AuthScreen auth_state={auth_store.state} error={auth_store.error} pending={auth_store.pending} onregister={handle_register} onlogin={handle_login} />
 {:else}
-    <div class="app" class:sidebar-open={sidebar_open}>
+    <div class="app" class:sidebar-open={sidebar_open} class:sidebar-collapsed={sidebar_collapsed}>
         <button class="mobile-toggle" onclick={() => (sidebar_open = !sidebar_open)}>
             <span class="icon">{sidebar_open ? 'close' : 'menu'}</span>
         </button>
@@ -87,7 +148,11 @@
             <button class="sidebar-overlay" onclick={close_sidebar} aria-label="Close sidebar"></button>
         {/if}
 
-        <Sidebar {current_path} role={auth_store.role} {system_stats} {sidebar_open} onclose={close_sidebar} onlogout={handle_logout} />
+        <Sidebar {current_path} role={auth_store.role} {system_stats} {sidebar_open} collapsed={sidebar_collapsed} onclose={close_sidebar} onlogout={handle_logout} ontoggle_collapse={toggle_sidebar_collapse}>
+            {#snippet notification_bell()}
+                <NotificationBell />
+            {/snippet}
+        </Sidebar>
         <main class="content">
             {#if critical_alerts.length > 0}
                 <div class="critical-banner" role="alert">
@@ -139,6 +204,11 @@
         padding: 2rem;
         max-width: 1200px;
         overflow: hidden;
+        transition: margin-left 0.2s ease;
+    }
+
+    .sidebar-collapsed .content {
+        margin-left: 48px;
     }
 
     .critical-banner {

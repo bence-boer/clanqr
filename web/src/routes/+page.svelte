@@ -1,32 +1,36 @@
 <script lang="ts">
     import { api } from '$lib/api/client';
-    import { ErrorBanner, LoadingSpinner, StatCard } from '$lib/components';
+    import { ErrorBanner, LoadingSpinner } from '$lib/components';
     import { toast_store } from '$lib/stores/toast.svelte';
-    import type { PipelineStatus, Project, SystemAlert, SystemStats } from '$lib/types';
+    import type { ActivityEvent, PipelineStatus, SystemAlert, SystemStats } from '$lib/types';
     import { use_event_stream, type PipelineStatusData, type SnapshotData } from '$lib/utils/event-stream.svelte';
     import { onDestroy, onMount } from 'svelte';
+    import ActivityFeed from './ActivityFeed.svelte';
+    import KpiBar from './KpiBar.svelte';
     import PipelineCard from './PipelineCard.svelte';
-    import PipelineStat from './PipelineStat.svelte';
-    import QuickActions from './QuickActions.svelte';
     import SystemStatsCard from './SystemStatsCard.svelte';
 
-    let projects = $state<Project[]>([]);
-    let feature_count = $state(0);
     let loading = $state(true);
     let pipeline = $state<PipelineStatus | null>(null);
     let system_stats = $state<SystemStats | null>(null);
     let system_alerts = $state<SystemAlert[]>([]);
     let stats_auto_refresh = $state(false);
     let stats_interval_id: ReturnType<typeof setInterval> | null = null;
+    let activity_events = $state<ActivityEvent[]>([]);
+    let health_expanded = $state(false);
+    let active_agents = $state(0);
+    let pending_approval_count = $state(0);
 
     async function load_data() {
         try {
-            const [project_list, feature_list, pipeline_status] = await Promise.all([
-                api.list_projects(), api.list_features(), api.pipeline_status().catch(() => null)
+            const [task_list, pipeline_status, agent_map] = await Promise.all([
+                api.list_tasks(),
+                api.pipeline_status().catch(() => null),
+                api.agent_status().catch(() => ({} as Record<string, unknown>))
             ]);
-            projects = project_list;
-            feature_count = feature_list.length;
             pipeline = pipeline_status;
+            pending_approval_count = task_list.filter((t) => t.status === 'Pending_Approval').length;
+            active_agents = Object.keys(agent_map).length;
         }
         catch (error) {
             console.error('Failed to load dashboard:', error);
@@ -34,6 +38,15 @@
         }
         finally {
             loading = false;
+        }
+    }
+
+    async function load_activity() {
+        try {
+            activity_events = await api.activity_feed(20);
+        }
+        catch {
+            // Silently fail — activity feed is supplementary
         }
     }
 
@@ -58,16 +71,18 @@
                     current_run_id: data.pipeline.current_run_id,
                     queue_depth: pipeline?.queue_depth ?? 0
                 } as PipelineStatus;
+                active_agents = Object.keys(data.agents).length;
             },
             pipeline_status: (data: PipelineStatusData) => {
                 if (pipeline) {
                     pipeline = { ...pipeline, state: data.state as PipelineStatus['state'], current_run_id: data.current_run_id ?? null };
                 }
-                // Reload full data on pipeline state change for accurate queue depth / task details
                 load_data();
+                load_activity();
             },
             features_update: () => {
                 load_data();
+                load_activity();
             }
         },
         load_data,
@@ -77,6 +92,7 @@
     onMount(() => {
         load_data();
         load_system_stats();
+        load_activity();
     });
 
     onDestroy(() => {
@@ -109,17 +125,15 @@
     {#if loading}
         <LoadingSpinner label="Loading..." />
     {:else}
-        <div class="stats">
-            <StatCard icon="folder" value={projects.length} label="Projects" href="/projects" />
-            <StatCard icon="category" value={feature_count} label="Features" href="/projects" />
-            <PipelineStat {pipeline} />
-        </div>
+        <KpiBar {pipeline} {active_agents} {pending_approval_count} {system_stats} onhealth_click={() => health_expanded = !health_expanded} />
 
-        <SystemStatsCard {system_stats} {system_alerts} {stats_auto_refresh} onrefresh={load_system_stats} ontoggle_auto_refresh={toggle_stats_refresh} />
+        {#if health_expanded}
+            <SystemStatsCard {system_stats} {system_alerts} {stats_auto_refresh} onrefresh={load_system_stats} ontoggle_auto_refresh={toggle_stats_refresh} />
+        {/if}
 
         <PipelineCard {pipeline} onpause={() => api.pipeline_pause().then(load_data)} onresume={() => api.pipeline_resume().then(load_data)} />
 
-        <QuickActions />
+        <ActivityFeed events={activity_events} />
     {/if}
 </div>
 
@@ -128,12 +142,5 @@
         font-size: 1.5rem;
         margin-bottom: 1.5rem;
         color: var(--fg);
-    }
-
-    .stats {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 1rem;
-        margin-bottom: 2rem;
     }
 </style>

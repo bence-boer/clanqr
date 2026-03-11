@@ -23,7 +23,8 @@
         ...rest_props
     }: SelectProperties = $props();
 
-    const select_id = $derived(id || `select-${Math.random().toString(36).slice(2, 9)}`);
+    const fallback_id = `select-${crypto.randomUUID().slice(0, 8)}`;
+    const select_id = $derived(id || fallback_id);
 </script>
 
 <div class="select">
@@ -71,8 +72,13 @@
         background-position: right 0.75rem center;
     }
 
-    .base-select:focus {
-        border-color: var(--accent, #0066cc);
+    .base-select:focus:not(:focus-visible) {
+        outline: none;
+    }
+
+    .base-select:focus-visible {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.25);
     }
 
     .base-select:disabled {

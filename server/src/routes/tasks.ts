@@ -21,6 +21,7 @@ const update_task_schema = z.object({
 
 const create_task_schema = z.object({
     feature_id: z.string().uuid(),
+    title: z.string().nullable().optional(),
     description: z.string().min(1),
     sort_order: z.number().int().optional(),
     model: z.string().nullable().optional()

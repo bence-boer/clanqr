@@ -30,7 +30,7 @@
         rows={3}
     />
     {#if is_streaming && onstop}
-        <Button variant="danger" size="icon" onclick={onstop} title="Stop generating" icon="stop" />
+        <Button variant="danger" size="icon" onclick={onstop} title="Stop generating" icon="stop" aria-label="Stop generation" />
     {:else}
         <Button
             variant="primary"
@@ -39,6 +39,7 @@
             disabled={!input_text.trim() || is_streaming}
             loading={is_streaming}
             icon={is_streaming ? undefined : 'send'}
+            aria-label="Send message"
         />
     {/if}
 </div>

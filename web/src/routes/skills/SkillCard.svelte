@@ -8,6 +8,7 @@
         content,
         files,
         content_loading,
+        task_count = 0,
         on_toggle
     }: {
         skill: SkillInfoListItem
@@ -15,6 +16,7 @@
         content: string | null
         files: { name: string, content: string }[]
         content_loading: boolean
+        task_count?: number
         on_toggle: () => void
     } = $props();
 </script>
@@ -27,7 +29,12 @@
             <span class="icon chevron">{expanded ? 'expand_less' : 'expand_more'}</span>
         </div>
         <p class="skill-description">{skill.description || 'No description available.'}</p>
-        <p class="skill-path">{skill.path}</p>
+        <div class="skill-footer">
+            <p class="skill-path">{skill.path}</p>
+            {#if task_count > 0}
+                <span class="skill-task-count">Linked to {task_count} task{task_count !== 1 ? 's' : ''}</span>
+            {/if}
+        </div>
     </button>
 
     {#if expanded}
@@ -128,6 +135,21 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+
+    .skill-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        margin: 0;
+    }
+
+    .skill-task-count {
+        font-size: 0.72rem;
+        color: var(--accent);
+        white-space: nowrap;
+        flex-shrink: 0;
     }
 
     .skill-detail {

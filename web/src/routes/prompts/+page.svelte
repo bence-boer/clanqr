@@ -1,6 +1,6 @@
 <script lang="ts">
     import { api } from '$lib/api/client';
-    import { ErrorBanner, LoadingSpinner } from '$lib/components';
+    import { ConfirmModal, ErrorBanner, LoadingSpinner } from '$lib/components';
     import { Button } from '$lib/components/primitives/button';
     import { toast_store } from '$lib/stores/toast.svelte';
     import type { PromptRecord, Trait } from '$lib/types';
@@ -16,6 +16,7 @@
     let prompts_loading = $state(true);
     let prompts_error = $state('');
     let syncing = $state(false);
+    let show_sync_confirm = $state(false);
 
     interface PromptEditState {
         editing: boolean
@@ -44,17 +45,30 @@
     }
 
     async function sync_from_repo() {
+        show_sync_confirm = false;
         syncing = true;
         try {
+            const before_versions: Record<string, number> = {};
+            for (const p of prompts) before_versions[p.role] = p.version;
+
             await api.sync_prompts();
-            toast_store.success('Synced successfully');
             await load_prompts();
+
+            const changed: string[] = [];
+            for (const p of prompts) {
+                if (before_versions[p.role] !== undefined && p.version !== before_versions[p.role]) {
+                    changed.push(`${p.role.charAt(0).toUpperCase() + p.role.slice(1)} prompt updated`);
+                }
+            }
+            const msg = changed.length > 0 ? `Synced. ${changed.join(', ')}.` : 'Synced. No changes detected.';
+            toast_store.success(msg);
+
             for (const prompt of prompts) {
                 edit_state[prompt.role] = { editing: false, content: prompt.content, saving: false };
             }
         }
         catch (err: unknown) {
-            toast_store.error(err instanceof Error ? err.message : (typeof err === 'string' ? err : 'Sync failed'));
+            toast_store.error(err instanceof Error ? err.message : (typeof err === 'string' ? err : 'Sync failed — could not reach the server'));
         }
         finally {
             syncing = false;
@@ -91,7 +105,7 @@
     <div class="page-header">
         <h2><span class="icon">tune</span> Prompts &amp; Traits</h2>
         {#if active_tab === 'prompts'}
-            <Button variant="secondary" onclick={sync_from_repo} disabled={syncing}>
+            <Button variant="secondary" onclick={() => (show_sync_confirm = true)} disabled={syncing}>
                 <span class="icon" class:spin={syncing}>
                     {syncing ? 'progress_activity' : 'sync'}
                 </span>
@@ -153,6 +167,17 @@
         {/if}
     {/if}
 </div>
+
+<ConfirmModal
+    bind:open={show_sync_confirm}
+    title="Sync Prompts from Repo"
+    message="This will overwrite local prompts with repo versions. Unsaved changes will be lost."
+    confirm_label="Sync"
+    variant="warning"
+    loading={syncing}
+    onconfirm={sync_from_repo}
+    oncancel={() => (show_sync_confirm = false)}
+/>
 
 <style>
     .page {

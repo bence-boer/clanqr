@@ -36,6 +36,14 @@
             const result = await api.create_invite({ role: invite_role, expires_at, label: invite_label.trim() || undefined });
             const base = typeof window !== 'undefined' ? window.location.origin : '';
             new_invite_url = `${base}/invite?token=${result.token}`;
+            // Auto-copy to clipboard
+            try {
+                await navigator.clipboard.writeText(new_invite_url);
+                copy_done = true;
+                setTimeout(() => { copy_done = false; }, 2000);
+            } catch {
+                // Clipboard not available — user can copy manually
+            }
             oninvite_created();
         }
         catch (err: unknown) {
