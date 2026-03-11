@@ -58,9 +58,10 @@
     async function load_data() {
         if (!project_id) return;
         try {
-            const [p, f] = await Promise.all([api.get_project(project_id), api.list_features(project_id)]);
+            const p = await api.get_project(project_id);
             project = p;
-            features = reconcile(features, f);
+            const incoming_features = (p as Record<string, unknown>).features as Feature[] ?? [];
+            features = reconcile(features, incoming_features);
             if (selected_feature) {
                 selected_feature = features.find((feat: Feature) => feat.id === (selected_feature as Feature).id) ?? null;
             }

@@ -2,7 +2,7 @@
     import { api } from '$lib/api/client';
     import { LoadingSpinner } from '$lib/components';
     import { toast_store } from '$lib/stores/toast.svelte';
-    import type { SkillLink, Trait } from '$lib/types';
+    import type { ResolvedTrait, SkillLink, Trait } from '$lib/types';
 
     interface Props {
         task_id: string
@@ -14,7 +14,16 @@
     let available_skills = $state<{ name: string, description: string }[]>([]);
     let trait_assignments = $state<{ id: string, trait_id: string }[]>([]);
     let skill_links = $state<SkillLink[]>([]);
+    let resolved_traits = $state<ResolvedTrait[]>([]);
     let loading = $state(true);
+    let resolved_loading = $state(false);
+
+    const scope_labels: Record<string, string> = {
+        global: 'Global',
+        project: 'From project',
+        feature: 'From feature',
+        task: 'Direct'
+    };
 
     async function load() {
         loading = true;
@@ -29,6 +38,7 @@
             available_skills = skills;
             trait_assignments = assignments;
             skill_links = links;
+            load_resolved();
         }
         catch (error) {
             console.error('Failed to load artifacts:', error);
@@ -36,6 +46,19 @@
         }
         finally {
             loading = false;
+        }
+    }
+
+    async function load_resolved() {
+        resolved_loading = true;
+        try {
+            resolved_traits = await api.resolve_task_traits(task_id);
+        }
+        catch {
+            resolved_traits = [];
+        }
+        finally {
+            resolved_loading = false;
         }
     }
 
@@ -49,6 +72,7 @@
                 await api.assign_trait({ trait_id: trait.id, scope: 'task', task_id });
             }
             trait_assignments = await api.list_trait_assignments({ scope: 'task', task_id });
+            load_resolved();
         }
         catch (error) {
             console.error('Failed to toggle trait:', error);
@@ -114,6 +138,21 @@
                             {/if}
                         </span>
                     </label>
+                {/each}
+            {/if}
+        </div>
+        <div class="artifacts-section">
+            <h5><span class="icon" style="font-size:14px">merge_type</span> Effective Traits</h5>
+            {#if resolved_loading}
+                <LoadingSpinner size="sm" label="Resolving..." />
+            {:else if resolved_traits.length === 0}
+                <p class="empty">No traits resolved for this task</p>
+            {:else}
+                {#each resolved_traits as rt (rt.id)}
+                    <div class="resolved-trait">
+                        <span class="artifact-name">{rt.name}</span>
+                        <span class="scope-badge {rt.scope_source}">{scope_labels[rt.scope_source] ?? rt.scope_source}</span>
+                    </div>
                 {/each}
             {/if}
         </div>
@@ -184,4 +223,28 @@
         align-items: center;
         gap: 0.5rem;
     }
+    .resolved-trait {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        padding: 0.45rem 0.65rem;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: calc(var(--radius) - 2px);
+        font-size: 0.8rem;
+    }
+    .scope-badge {
+        font-size: 0.65rem;
+        font-weight: 600;
+        padding: 0.15rem 0.45rem;
+        border-radius: 999px;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        white-space: nowrap;
+    }
+    .scope-badge.global { background: rgba(99,102,241,0.12); color: var(--accent, #6366f1); }
+    .scope-badge.project { background: rgba(34,197,94,0.12); color: #22c55e; }
+    .scope-badge.feature { background: rgba(232,154,46,0.12); color: var(--warning, #e89a2e); }
+    .scope-badge.task { background: rgba(201,84,74,0.12); color: var(--danger, #c9544a); }
 </style>
