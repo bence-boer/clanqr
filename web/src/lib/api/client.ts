@@ -168,6 +168,16 @@ export const api = {
         unwrap(await (await client.api.chat.sessions.$post({ json: data as never })).json()),
     delete_chat_session: async (id: string): Promise<{ success: boolean }> =>
         unwrap(await (await client.api.chat.sessions[':id'].$delete({ param: { id } })).json()),
+    rename_chat_session: async (id: string, title: string): Promise<Types.ChatSession> => {
+        const response = await fetch(`${API_URL}/api/chat/sessions/${encodeURIComponent(id)}`, {
+            method: 'PATCH',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title })
+        });
+        if (!response.ok) throw new Error('Failed to rename session');
+        return response.json();
+    },
     send_chat_message: async (session_id: string, content: string, model?: string): Promise<Response> => {
         const response = await fetch(`${API_URL}/api/chat/sessions/${encodeURIComponent(session_id)}/send`, {
             method: 'POST',

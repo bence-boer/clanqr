@@ -36,6 +36,7 @@
     let loading_sessions = $state(true);
     let loading_messages = $state(false);
     let error_msg = $state('');
+    let mobile_sessions_open = $state(false);
 
     onMount(() => {
         load_sessions().then(() => {
@@ -65,6 +66,7 @@
         sessionStorage.setItem('active_chat_session', session.id);
         loading_messages = true;
         messages = [];
+        mobile_sessions_open = false;
         try {
             const { chat_messages, ...rest } = await api.get_chat_session(session.id);
             const full_session: ChatSessionFull = {
@@ -113,6 +115,19 @@
         }
     }
 
+    async function rename_session(session_id: string, title: string) {
+        try {
+            const updated = await api.rename_chat_session(session_id, title);
+            sessions = sessions.map((s) => s.id === session_id ? { ...s, title: updated.title } : s);
+            if (active_session?.id === session_id) {
+                active_session = { ...active_session, title: updated.title };
+            }
+        }
+        catch {
+            toast_store.error('Failed to rename session');
+        }
+    }
+
     async function send_message() {
         if (!input_text.trim() || !active_session || is_streaming) return;
         const message_content = input_text.trim();
@@ -146,9 +161,19 @@
             load_sessions();
         }
         catch {
+            // Preserve partial streaming content as an assistant message (§14.1)
+            if (streaming_content) {
+                messages = [...messages, {
+                    id: generate_id(), session_id: active_session!.id,
+                    role: 'assistant', content: streaming_content + '\n\n*(response interrupted)*',
+                    created_at: new Date().toISOString()
+                }];
+                streaming_content = '';
+            } else {
+                messages = messages.filter((m) => m.id !== user_message.id);
+            }
             error_msg = 'Failed to send message';
             is_streaming = false;
-            messages = messages.filter((m) => m.id !== user_message.id);
         }
     }
 
@@ -174,14 +199,23 @@
         streaming_content = '';
         is_streaming = false;
     }
+
+    function toggle_mobile_sessions() {
+        mobile_sessions_open = !mobile_sessions_open;
+    }
 </script>
 
 <div class="chat-page">
-    <SessionList {sessions} {active_session} {loading_sessions} onselect={select_session} ondelete={delete_session} oncreate={create_session} />
+    <button class="mobile-sessions-toggle" onclick={toggle_mobile_sessions} aria-label="Toggle sessions">
+        <span class="icon" style="font-size: 20px">{mobile_sessions_open ? 'close' : 'menu'}</span>
+    </button>
+    <div class="sessions-container" class:mobile-open={mobile_sessions_open}>
+        <SessionList {sessions} {active_session} {loading_sessions} onselect={select_session} ondelete={delete_session} oncreate={create_session} />
+    </div>
     <ChatActions
         session={active_session} {messages} {loading_messages} {is_streaming} {streaming_content}
         bind:input_text bind:selected_model {error_msg} {models}
-        {format_session_title} on_send={send_message} on_stop={stop_generating} on_create={create_session}
+        {format_session_title} on_send={send_message} on_stop={stop_generating} on_create={create_session} on_rename={rename_session}
     />
 </div>
 
@@ -191,13 +225,46 @@
         height: 100%;
         gap: 0;
         background: var(--bg);
+        position: relative;
+    }
+
+    .sessions-container {
+        display: contents;
+    }
+
+    .mobile-sessions-toggle {
+        display: none;
+        position: absolute;
+        top: 0.65rem;
+        left: 0.65rem;
+        z-index: 20;
+        background: var(--bg-elevated);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        color: var(--fg);
+        padding: 0.3rem;
+        cursor: pointer;
+        line-height: 1;
     }
 
     @media (max-width: 768px) {
         .chat-page {
             flex-direction: column;
-            gap: 1rem;
             min-height: 0;
+        }
+
+        .mobile-sessions-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .sessions-container {
+            display: none;
+        }
+
+        .sessions-container.mobile-open {
+            display: contents;
         }
     }
 </style>
