@@ -75,6 +75,16 @@ export const api = {
         unwrap(await (await client.api.agents.resume.$post()).json()),
     pipeline_stop_current: async (): Promise<{ success: boolean }> =>
         unwrap(await (await client.api.agents['stop-current'].$post()).json()),
+    pipeline_reorder: async (task_ids: string[]): Promise<{ success: boolean }> => {
+        const response = await fetch(`${API_URL}/api/agents/queue/reorder`, {
+            method: 'PATCH',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ task_ids })
+        });
+        if (!response.ok) throw new Error('Failed to reorder queue');
+        return response.json();
+    },
 
     // ── Prompts ───────────────────────────────────────────────────────────────
     list_prompts: async (): Promise<Types.PromptRecord[]> =>

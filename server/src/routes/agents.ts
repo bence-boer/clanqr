@@ -65,6 +65,25 @@ export const agents_routes = new Hono<AppBindings>()
         return context.json({ log });
     })
 
+    // Reorder queued tasks
+    .patch('/queue/reorder', async (context) => {
+        const supabase = context.get('supabase');
+        const body = await context.req.json();
+        const task_ids: string[] = body.task_ids;
+        if (!Array.isArray(task_ids) || task_ids.length === 0) {
+            return context.json({ error: 'task_ids must be a non-empty array' }, 400);
+        }
+
+        for (let i = 0; i < task_ids.length; i++) {
+            const { error } = await supabase.from('tasks')
+                .update({ sort_order: i })
+                .eq('id', task_ids[i])
+                .eq('status', 'Approved');
+            if (error) return context.json({ error: error.message }, 500);
+        }
+        return context.json({ success: true });
+    })
+
     // Get agent status for a specific feature
     .get('/feature/:feature_id', validate_uuid_params('feature_id'), (context) => {
         const feature_id = context.req.param('feature_id');
