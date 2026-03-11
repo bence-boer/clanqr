@@ -1,7 +1,7 @@
 <script lang="ts">
     import { Button, Badge } from '$lib/components/primitives';
     import { EmptyState } from '$lib/components';
-    import type { Feature } from '$lib/types';
+    import type { Feature, TaskRow } from '$lib/types';
     import { status_icon, status_class } from '$lib/utils/status';
     import { SvelteSet } from 'svelte/reactivity';
 
@@ -47,6 +47,10 @@
             deleting = false;
         }
     }
+
+    function get_pending_approval_count(feature: Feature): number {
+        return feature.tasks?.filter((t: TaskRow) => t.status === 'Pending_Approval').length ?? 0;
+    }
 </script>
 
 <section class="features-panel" aria-label="Features">
@@ -71,11 +75,15 @@
         <EmptyState icon="category" message="No features yet." />
     {:else}
         {#each features as feature (feature.id)}
+            {@const pending_count = get_pending_approval_count(feature)}
             <button class="feature-item" class:selected={selected_feature?.id === feature.id} onclick={() => on_select(feature)}>
                 <div class="feature-item-header">
                     <div class="feature-name-row">
                         <input type="checkbox" checked={selected_ids.has(feature.id)} onclick={(e: MouseEvent) => toggle_select(feature.id, e)} />
                         <span class="feature-name">{feature.title}</span>
+                        {#if pending_count > 0}
+                            <span class="approval-badge" title="{pending_count} task{pending_count > 1 ? 's' : ''} pending approval">{pending_count}</span>
+                        {/if}
                     </div>
                     <Badge variant={status_class(feature.status)}>
                         <span class="icon" style="font-size:12px">{status_icon(feature.status)}</span>
@@ -137,6 +145,12 @@
         display: flex;
         align-items: center;
         gap: 0.4rem;
+    }
+    .approval-badge {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-width: 18px; height: 18px; padding: 0 4px;
+        border-radius: 999px; font-size: 0.65rem; font-weight: 700;
+        background: var(--warning, #e89a2e); color: var(--bg, #000);
     }
     .feature-item {
         display: block;

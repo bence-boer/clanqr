@@ -120,6 +120,24 @@
         selected_feature = feature;
         show_mobile_detail = true;
     }
+
+    async function handle_duplicate() {
+        if (!selected_feature) return;
+        await actions.duplicate_feature(get_deps(), selected_feature);
+    }
+
+    async function handle_delete_feature(id: string) {
+        const deps = get_deps();
+        deps.clear_selection(id);
+        try {
+            await api.delete_feature(id);
+            await deps.load_data();
+        }
+        catch (error) {
+            console.error('Failed to delete feature:', error);
+            toast_store.error('Failed to delete feature');
+        }
+    }
 </script>
 
 <div class="page">
@@ -149,19 +167,22 @@
         {/if}
 
         <div class="content-grid" class:show-detail={show_mobile_detail}>
-            <FeatureList
-                {features} {selected_feature}
-                on_select={select_feature}
-                on_delete_selected={(ids) => actions.delete_selected_features(get_deps(), ids)}
-            />
+            <div class="list-panel" class:slide-out={show_mobile_detail}>
+                <FeatureList
+                    {features} {selected_feature}
+                    on_select={select_feature}
+                    on_delete_selected={(ids) => actions.delete_selected_features(get_deps(), ids)}
+                />
+            </div>
 
-            <div class="detail-panel">
+            <div class="detail-panel" class:slide-in={show_mobile_detail}>
                 {#if selected_feature}
                     <FeatureDetail
                         feature={selected_feature}
                         {agent_info}
                         on_submit={(id) => actions.submit_feature(get_deps(), id)}
-                        on_delete={(id) => actions.delete_feature(get_deps(), id)}
+                        on_delete={handle_delete_feature}
+                        on_duplicate={handle_duplicate}
                         on_update={load_data}
                         on_back={() => (show_mobile_detail = false)}
                     />
@@ -186,10 +207,20 @@
     .detail-panel { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; }
     .empty-detail { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: var(--fg-muted); gap: 0.75rem; }
     @media (max-width: 768px) {
-        .content-grid { display: flex; flex-direction: column; }
-        .content-grid > :first-child { display: block; }
-        .content-grid .detail-panel { display: none; }
-        .content-grid.show-detail > :first-child { display: none; }
-        .content-grid.show-detail .detail-panel { display: block; }
+        .content-grid {
+            display: flex; flex-direction: row; overflow: hidden;
+            position: relative; min-height: 300px;
+        }
+        .list-panel, .detail-panel {
+            flex: 0 0 100%; width: 100%;
+            transition: transform 200ms ease;
+        }
+        .list-panel { transform: translateX(0); }
+        .list-panel.slide-out { transform: translateX(-100%); }
+        .detail-panel {
+            position: absolute; top: 0; left: 0; right: 0;
+            transform: translateX(100%);
+        }
+        .detail-panel.slide-in { transform: translateX(0); }
     }
 </style>

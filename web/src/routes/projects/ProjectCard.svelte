@@ -1,10 +1,11 @@
 <script lang="ts">
     import { resolve } from '$app/paths';
     import { Badge, Button, Input, Textarea } from '$lib/components/primitives';
-    import type { Project } from '$lib/types';
+    import type { Feature, Project } from '$lib/types';
 
     interface Props {
         project: Project
+        features: Feature[]
         editing: boolean
         selected: boolean
         edit_name: string
@@ -14,15 +15,38 @@
         on_cancel_edit: (event: MouseEvent) => void
         on_save_edit: (event: MouseEvent) => void
         on_delete: (id: string) => void
+        on_archive: (id: string) => void
+        on_unarchive: (id: string) => void
         on_toggle_select: (id: string) => void
     }
 
     let {
-        project, editing, selected,
+        project, features, editing, selected,
         edit_name = $bindable(), edit_description = $bindable(),
         saving_edit, on_start_edit, on_cancel_edit, on_save_edit,
-        on_delete, on_toggle_select
+        on_delete, on_archive, on_unarchive, on_toggle_select
     }: Props = $props();
+
+    const feature_count = $derived(features.length);
+    const completed_count = $derived(features.filter((f) => f.status === 'Done').length);
+    const last_updated = $derived.by(() => {
+        if (features.length === 0) return null;
+        const dates = features.map((f) => new Date(f.updated_at ?? f.created_at).getTime());
+        return new Date(Math.max(...dates));
+    });
+
+    function format_relative(date: Date): string {
+        const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+        if (seconds < 60) return 'just now';
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return `${minutes}m ago`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours}h ago`;
+        const days = Math.floor(hours / 24);
+        return `${days}d ago`;
+    }
+
+    const is_archived = $derived(project.status === 'Archived');
 </script>
 
 {#if editing}
@@ -60,6 +84,24 @@
             >
         </div>
         <p class="project-desc">{project.description ?? 'No description'}</p>
+        <div class="card-summary">
+            <span class="summary-item">
+                <span class="icon" style="font-size:14px">category</span>
+                {feature_count} feature{feature_count !== 1 ? 's' : ''}
+            </span>
+            {#if feature_count > 0}
+                <span class="summary-item">
+                    <span class="icon" style="font-size:14px">check_circle</span>
+                    {completed_count}/{feature_count} done
+                </span>
+            {/if}
+            {#if last_updated}
+                <span class="summary-item">
+                    <span class="icon" style="font-size:14px">schedule</span>
+                    Updated {format_relative(last_updated)}
+                </span>
+            {/if}
+        </div>
         <div class="project-footer">
             <span class="date">
                 <span class="icon" style="font-size:14px">calendar_today</span>
@@ -67,6 +109,19 @@
             </span>
             <div class="project-card-actions">
                 <Button variant="secondary" size="sm" icon="edit" onclick={(event: Event) => on_start_edit(project, event as MouseEvent)} />
+                {#if is_archived}
+                    <Button variant="secondary" size="sm" icon="unarchive" onclick={(event: Event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        on_unarchive(project.id);
+                    }} />
+                {:else}
+                    <Button variant="secondary" size="sm" icon="archive" onclick={(event: Event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        on_archive(project.id);
+                    }} />
+                {/if}
                 <Button
                     variant="danger"
                     size="sm"
@@ -102,7 +157,14 @@
     .project-header-left { display: flex; align-items: center; gap: 0.5rem; }
     .selected-card { border-color: var(--accent); }
     .project-header h3 { font-size: 1.05rem; color: var(--fg); }
-    .project-desc { font-size: 0.85rem; color: var(--fg-muted); margin-bottom: 0.75rem; }
+    .project-desc { font-size: 0.85rem; color: var(--fg-muted); margin-bottom: 0.5rem; }
+    .card-summary {
+        display: flex; gap: 0.75rem; flex-wrap: wrap;
+        margin-bottom: 0.75rem; font-size: 0.75rem; color: var(--fg-muted);
+    }
+    .summary-item {
+        display: inline-flex; align-items: center; gap: 0.2rem;
+    }
     .project-footer {
         display: flex; justify-content: space-between; align-items: center;
         flex-wrap: wrap; gap: 0.5rem;
