@@ -74,7 +74,7 @@ const app = new Hono<AppBindings>()
         }
         await next();
     })
-    .use('*', rate_limit(100, 60_000))
+    .use('*', rate_limit(env.NODE_ENV === 'development' ? 500 : 100, 60_000))
     .use('*', supabase_middleware())
     // Health check (no auth)
     .get('/health', (context) => {

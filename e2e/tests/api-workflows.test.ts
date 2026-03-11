@@ -37,6 +37,8 @@ test.describe("feature lifecycle", () => {
                 project_id,
                 title: "E2E Feature",
                 description: "Test feature for E2E",
+                planning_model: "gpt-4.1",
+                execution_model: "gpt-4.1",
                 on_task_failure: "skip",
                 task_timeout_minutes: 15,
             },
@@ -91,7 +93,7 @@ test.describe("task management", () => {
 
         const feat = await request.post(`${API}/api/features`, {
             headers: AUTH,
-            data: { project_id, title: "Task Feature", description: "For task tests" },
+            data: { project_id, title: "Task Feature", description: "For task tests", planning_model: "gpt-4.1", execution_model: "gpt-4.1" },
         });
         feature_id = (await feat.json()).id;
     });
@@ -172,7 +174,7 @@ test.describe("chat workflow", () => {
 
 test.describe("pipeline and usage", () => {
     test("pipeline status returns valid structure", async ({ request }) => {
-        const res = await request.get(`${API}/api/pipeline/status`, { headers: AUTH });
+        const res = await request.get(`${API}/api/agents/queue`, { headers: AUTH });
         expect(res.ok()).toBeTruthy();
         const status = await res.json();
         expect(status.state).toBeDefined();
@@ -180,7 +182,7 @@ test.describe("pipeline and usage", () => {
     });
 
     test("usage stats returns data", async ({ request }) => {
-        const res = await request.get(`${API}/api/usage/stats`, { headers: AUTH });
+        const res = await request.get(`${API}/api/usage/summary`, { headers: AUTH });
         expect(res.ok()).toBeTruthy();
         const stats = await res.json();
         expect(typeof stats.total_runs).toBe("number");
@@ -192,7 +194,7 @@ test.describe("pipeline and usage", () => {
         });
         expect(res.ok()).toBeTruthy();
         const body = await res.json();
-        expect(Array.isArray(body.data)).toBeTruthy();
+        expect(Array.isArray(body.runs)).toBeTruthy();
         expect(typeof body.total).toBe("number");
     });
 
@@ -217,7 +219,7 @@ test.describe("resource SSRF protection", () => {
 
         const feat = await request.post(`${API}/api/features`, {
             headers: AUTH,
-            data: { project_id, title: "SSRF Feature", description: "For SSRF tests" },
+            data: { project_id, title: "SSRF Feature", description: "For SSRF tests", planning_model: "gpt-4.1", execution_model: "gpt-4.1" },
         });
         feature_id = (await feat.json()).id;
     });
@@ -258,9 +260,9 @@ test.describe("auth protection", () => {
         const protected_routes = [
             { method: "GET", url: `${API}/api/projects` },
             { method: "GET", url: `${API}/api/features` },
-            { method: "GET", url: `${API}/api/pipeline/status` },
+            { method: "GET", url: `${API}/api/agents/queue` },
             { method: "GET", url: `${API}/api/chat/sessions` },
-            { method: "GET", url: `${API}/api/usage/stats` },
+            { method: "GET", url: `${API}/api/usage/summary` },
         ];
 
         for (const route of protected_routes) {

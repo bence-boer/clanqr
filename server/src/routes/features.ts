@@ -15,6 +15,9 @@ const create_feature_schema = z.object({
     execution_cli: z.string().default('copilot'),
     planning_model: z.string().min(1, 'Planning model is required'),
     execution_model: z.string().min(1, 'Execution model is required'),
+    on_task_failure: z.enum(['stop', 'retry', 'skip']).optional(),
+    auto_approve: z.boolean().optional(),
+    task_timeout_minutes: z.number().int().min(1).max(120).optional(),
     resources: z
         .array(z.object({ url: z.string().url(), title: z.string().optional() }))
         .optional()
@@ -27,7 +30,10 @@ const update_feature_schema = z.object({
     cli: z.string().optional(),
     execution_cli: z.string().optional(),
     planning_model: z.string().nullable().optional(),
-    execution_model: z.string().nullable().optional()
+    execution_model: z.string().nullable().optional(),
+    on_task_failure: z.enum(['stop', 'retry', 'skip']).optional(),
+    auto_approve: z.boolean().optional(),
+    task_timeout_minutes: z.number().int().min(1).max(120).optional()
 });
 
 export const features_routes = new Hono<AppBindings>()
