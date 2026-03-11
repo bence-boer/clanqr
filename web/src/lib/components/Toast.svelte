@@ -31,7 +31,7 @@
         display: flex;
         flex-direction: column;
         gap: 0.5rem;
-        max-width: 400px;
+        max-width: min(400px, calc(100vw - 2rem));
     }
 
     .toast {

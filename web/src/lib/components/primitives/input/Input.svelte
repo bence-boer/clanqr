@@ -60,8 +60,13 @@
         transition: border-color 0.15s;
     }
 
-    .base-input:focus {
-        border-color: var(--accent, #0066cc);
+    .base-input:focus:not(:focus-visible) {
+        outline: none;
+    }
+
+    .base-input:focus-visible {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.25);
     }
 
     .base-input:disabled {

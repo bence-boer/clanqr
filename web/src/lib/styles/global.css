@@ -5,12 +5,12 @@
     --bg-surface: #231f1c;
     --bg-elevated: #2c2724;
     --fg: #e6e1d6;
-    --fg-muted: #9e978a;
+    --fg-muted: #b0a99b;
     --border: #3d3630;
     --accent: #d4af37;
     --accent-dim: rgba(212, 175, 55, 0.15);
-    --danger: #c9544a;
-    --success: #4a9e6e;
+    --danger: #d4605a;
+    --success: #5ab87a;
     --radius: 8px;
     --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
@@ -170,7 +170,7 @@ body {
 .badge-idle,
 .badge-pending_approval {
     background: rgba(158, 151, 138, 0.15);
-    color: var(--fg-muted);
+    color: var(--fg);
 }
 
 .badge-submitted,
@@ -289,4 +289,53 @@ body {
 .mono {
     font-variant-numeric: tabular-nums;
     font-size: 0.82rem;
+}
+
+/* ── Icon Sizes ──────────────────────────────────────────────────────────── */
+
+:root {
+    --icon-sm: 16px;
+    --icon-md: 20px;
+    --icon-lg: 32px;
+    --icon-xl: 48px;
+}
+
+/* ── Transitions ─────────────────────────────────────────────────────────── */
+
+.transition-fade {
+    transition: opacity 150ms ease;
+}
+
+.transition-slide {
+    transition: transform 200ms ease, opacity 200ms ease;
+}
+
+.transition-scale {
+    transition: transform 200ms ease, opacity 200ms ease;
+}
+
+/* ── Text Overflow ───────────────────────────────────────────────────────── */
+
+.truncate-single {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+.truncate-multi {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+/* ── Reduced Motion ──────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }

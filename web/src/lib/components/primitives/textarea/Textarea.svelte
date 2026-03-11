@@ -62,8 +62,13 @@
         min-height: 60px;
     }
 
-    .base-textarea:focus {
-        border-color: var(--accent, #0066cc);
+    .base-textarea:focus:not(:focus-visible) {
+        outline: none;
+    }
+
+    .base-textarea:focus-visible {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.25);
     }
 
     .base-textarea:disabled {
