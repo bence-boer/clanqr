@@ -4,11 +4,13 @@
     import { Badge, Button } from '$lib/components/primitives';
     import type { AgentRun } from '$lib/types';
     import { status_icon, status_class } from '$lib/utils/status';
+    import { onMount } from 'svelte';
 
     let {
         run,
         expanded,
-        on_toggle_log
+        on_toggle_log,
+        onretry
     }: {
         run: AgentRun & {
             tasks?: {
@@ -25,7 +27,23 @@
         }
         expanded: boolean
         on_toggle_log: (id: string) => void
+        onretry?: (task_id: string) => void
     } = $props();
+
+    // §15.12 — Flash animation for newly completed items
+    let is_new = $state(false);
+
+    onMount(() => {
+        if (run.status === 'completed' && run.finished_at) {
+            const finished = new Date(run.finished_at).getTime();
+            const age = Date.now() - finished;
+            if (age < 10000) {
+                is_new = true;
+                const timeout = setTimeout(() => { is_new = false; }, 2000);
+                return () => clearTimeout(timeout);
+            }
+        }
+    });
 
     function get_run_label(r: typeof run): string {
         if (r.tasks?.title) return r.tasks.title;
@@ -48,13 +66,22 @@
         return new Date(iso).toLocaleString();
     }
 
+    function format_tokens(prompt: number | null, completion: number | null): string | null {
+        if (prompt === null && completion === null) return null;
+        const parts: string[] = [];
+        if (prompt !== null) parts.push(`${prompt.toLocaleString()} in`);
+        if (completion !== null) parts.push(`${completion.toLocaleString()} out`);
+        return parts.join(' / ');
+    }
+
     const project_id = $derived(run.tasks?.features?.project_id ?? run.tasks?.features?.projects?.id);
     const project_name = $derived(run.tasks?.features?.projects?.name);
     const feature_id = $derived(run.tasks?.feature_id ?? run.tasks?.features?.id);
     const feature_title = $derived(run.tasks?.features?.title);
+    const token_info = $derived(format_tokens(run.prompt_tokens, run.completion_tokens));
 </script>
 
-<div class="history-item">
+<div class="history-item" class:flash-success={is_new}>
     <div class="history-item-main">
         <span class="icon run-status-icon {status_class(run.status)}">{status_icon(run.status)}</span>
         <div class="history-item-copy">
@@ -82,23 +109,36 @@
             {/if}
 
             <h4 class="run-title">{get_run_label(run)}</h4>
-            <p class="run-meta">{format_date(run.created_at)} · {format_ms(run.duration_ms)}</p>
+            <p class="run-meta">
+                {format_date(run.created_at)} · {format_ms(run.duration_ms)}
+                {#if run.model}
+                    <span class="model-badge">{run.model}</span>
+                {/if}
+                {#if token_info}
+                    <span class="token-info">{token_info}</span>
+                {/if}
+            </p>
             {#if run.summary}
                 <p class="run-summary">{run.summary}</p>
             {/if}
             {#if run.error}
-                <p class="run-error">{run.error}</p>
+                <p class="run-error">{run.error.length > 120 ? run.error.slice(0, 120) + '…' : run.error}</p>
             {/if}
         </div>
     </div>
 
     <div class="history-item-footer">
         <Badge variant={status_class(run.status) as 'success' | 'danger' | 'muted' | 'info'}>{run.status}</Badge>
-        {#if run.log}
-            <Button variant="ghost" size="sm" icon="terminal" onclick={() => on_toggle_log(run.id)}>
-                {expanded ? 'Hide Console' : 'View Console'}
-            </Button>
-        {/if}
+        <div class="footer-actions">
+            {#if run.status === 'failed' && run.task_id && onretry}
+                <Button variant="secondary" size="sm" icon="replay" onclick={() => onretry(run.task_id!)}>Retry</Button>
+            {/if}
+            {#if run.log}
+                <Button variant="ghost" size="sm" icon="terminal" onclick={() => on_toggle_log(run.id)}>
+                    {expanded ? 'Hide Console' : 'View Console'}
+                </Button>
+            {/if}
+        </div>
     </div>
 
     {#if expanded && run.log}
@@ -113,6 +153,16 @@
         border-radius: var(--radius);
         padding: 0.75rem 1rem;
     }
+
+    .history-item.flash-success {
+        animation: flash-success 2s ease-out;
+    }
+
+    @keyframes flash-success {
+        from { background: rgba(var(--success-rgb, 74, 222, 128), 0.15); }
+        to { background: var(--bg-surface); }
+    }
+
     .history-item-main {
         display: flex;
         align-items: flex-start;
@@ -133,6 +183,12 @@
         margin-top: 0.75rem;
         padding-top: 0.75rem;
         border-top: 1px solid var(--border);
+    }
+
+    .footer-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
 
     .run-status-icon {
@@ -181,7 +237,28 @@
         font-size: 0.75rem;
         color: var(--fg-muted);
         margin-top: 0.2rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
     }
+
+    .model-badge {
+        font-size: 0.7rem;
+        padding: 0.05rem 0.4rem;
+        border-radius: var(--radius);
+        background: var(--bg-elevated);
+        border: 1px solid var(--border);
+        color: var(--fg-muted);
+        font-family: var(--font-mono, monospace);
+    }
+
+    .token-info {
+        font-size: 0.7rem;
+        color: var(--fg-muted);
+        opacity: 0.8;
+    }
+
     .run-summary {
         font-size: 0.8rem;
         color: var(--fg-muted);
@@ -192,5 +269,8 @@
         font-size: 0.8rem;
         color: var(--danger);
         margin-top: 0.4rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 </style>

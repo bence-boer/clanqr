@@ -11,7 +11,8 @@
         history_total_pages,
         filter_status,
         onfilter_change,
-        onpage_change
+        onpage_change,
+        onretry
     }: {
         history: AgentRun[]
         history_total: number
@@ -20,6 +21,7 @@
         filter_status: string
         onfilter_change: (status: string) => void
         onpage_change: (page: number) => void
+        onretry?: (task_id: string) => void
     } = $props();
 
     let expanded_run = $state<string | null>(null);
@@ -60,7 +62,7 @@
     {:else}
         <div class="history-list">
             {#each history as run (run.id)}
-                <HistoryItem {run} expanded={expanded_run === run.id} on_toggle_log={toggle_run_log} />
+                <HistoryItem {run} expanded={expanded_run === run.id} on_toggle_log={toggle_run_log} {onretry} />
             {/each}
         </div>
 

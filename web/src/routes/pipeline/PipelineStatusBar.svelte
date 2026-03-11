@@ -18,6 +18,19 @@
         onstop: () => void
     } = $props();
 
+    // §14.5 — Debounce action buttons (1s cooldown)
+    let debounced = $state(false);
+
+    function with_debounce(action: () => void) {
+        return () => {
+            action();
+            debounced = true;
+            setTimeout(() => { debounced = false; }, 1000);
+        };
+    }
+
+    const buttons_disabled = $derived(action_busy || debounced);
+
     function state_icon(state: string) {
         if (state === 'running') return 'play_circle';
         if (state === 'paused') return 'pause_circle';
@@ -52,12 +65,12 @@
             <span class="action-error">{action_error}</span>
         {/if}
         {#if pipeline?.state === 'running'}
-            <Button variant="secondary" size="sm" icon="pause" onclick={onpause} disabled={action_busy}>Pause</Button>
-            <Button variant="danger" size="sm" icon="stop" onclick={onstop} disabled={action_busy}>Stop Task</Button>
+            <Button variant="secondary" size="sm" icon="pause" onclick={with_debounce(onpause)} disabled={buttons_disabled}>Pause</Button>
+            <Button variant="danger" size="sm" icon="stop" onclick={with_debounce(onstop)} disabled={buttons_disabled}>Stop Task</Button>
         {:else if pipeline?.state === 'paused'}
-            <Button variant="primary" size="sm" icon="play_arrow" onclick={onresume} disabled={action_busy}>Resume</Button>
+            <Button variant="primary" size="sm" icon="play_arrow" onclick={with_debounce(onresume)} disabled={buttons_disabled}>Resume</Button>
         {:else}
-            <Button variant="primary" size="sm" icon="play_arrow" onclick={onresume} disabled={action_busy}>Start Pipeline</Button>
+            <Button variant="primary" size="sm" icon="play_arrow" onclick={with_debounce(onresume)} disabled={buttons_disabled}>Start Pipeline</Button>
         {/if}
     </div>
 </div>
