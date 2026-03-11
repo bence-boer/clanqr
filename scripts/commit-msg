@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# Read the commit message
+commit_msg_file=$1
+commit_msg=$(cat "$1")
+
+# Get the first line
+first_line=$(head -n 1 "$1")
+
+# Check if the commit message has multiple lines (excluding comments and empty lines)
+non_comment_lines=$(grep -v '^#' "$1" | grep -v '^[[:space:]]*$')
+line_count=$(echo "$non_comment_lines" | wc -l)
+
+if [ "$line_count" -gt 1 ]; then
+  echo "Error: Multi-line commit messages are forbidden."
+  exit 1
+fi
+
+# Check if it starts with a capital letter
+if [[ ! "$first_line" =~ ^[A-Z] ]]; then
+  echo "Error: Commit message must start with a capital letter."
+  exit 1
+fi
+
+# Check if it contains a colon separated prefix like 'feat:', 'fix:'
+if [[ "$first_line" =~ ^[a-z]+: ]]; then
+  echo "Error: Commit messages like 'feat: ...' or 'fix: ...' are forbidden."
+  exit 1
+fi
+
+# Check if it ends with a period
+if [[ "$first_line" =~ \.$ ]]; then
+  echo "Error: Commit message should not end with a period."
+  exit 1
+fi
+
+# Check for Copilot/Co-authored watermarks
+if echo "$commit_msg" | grep -qi "Co-authored-by:"; then
+  echo "Error: Watermarks like 'Co-authored-by:' are forbidden."
+  exit 1
+fi
+
+exit 0
