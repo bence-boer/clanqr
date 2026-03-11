@@ -23,7 +23,8 @@
         ...rest_props
     }: SelectProperties = $props();
 
-    const select_id = $derived(id || `select-${Math.random().toString(36).slice(2, 9)}`);
+    const fallback_id = `select-${crypto.randomUUID().slice(0, 8)}`;
+    const select_id = $derived(id || fallback_id);
 </script>
 
 <div class="select">

@@ -19,7 +19,8 @@
         ...rest_props
     }: InputProperties = $props();
 
-    const input_id = $derived(id || `input-${Math.random().toString(36).slice(2, 9)}`);
+    const fallback_id = `input-${crypto.randomUUID().slice(0, 8)}`;
+    const input_id = $derived(id || fallback_id);
 </script>
 
 <div class="input">

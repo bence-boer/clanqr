@@ -20,7 +20,8 @@
         ...rest_props
     }: TextareaProperties = $props();
 
-    const textarea_id = $derived(id || `textarea-${Math.random().toString(36).slice(2, 9)}`);
+    const fallback_id = `textarea-${crypto.randomUUID().slice(0, 8)}`;
+    const textarea_id = $derived(id || fallback_id);
 </script>
 
 <div class="textarea">
