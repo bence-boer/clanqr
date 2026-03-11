@@ -49,7 +49,7 @@
     }
 </script>
 
-<div class="features-panel">
+<section class="features-panel" aria-label="Features">
     <div class="features-panel-header">
         <h3><span class="icon" style="font-size:18px">category</span> Features ({features.length})</h3>
         <div class="features-panel-actions">
@@ -95,7 +95,7 @@
             </button>
         {/each}
     {/if}
-</div>
+</section>
 
 <style>
     .features-panel {

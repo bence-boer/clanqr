@@ -27,7 +27,7 @@
 <aside class="sessions-panel">
     <div class="sessions-header">
         <span class="sessions-title">Sessions</span>
-        <Button variant="secondary" size="icon" onclick={oncreate} title="New chat" icon="add" style="border-radius: 50%" />
+        <Button variant="secondary" size="icon" onclick={oncreate} title="New chat" icon="add" style="border-radius: 50%" aria-label="New chat session" />
     </div>
 
     {#if loading_sessions}
@@ -63,6 +63,7 @@
                             onclick={(event: MouseEvent) => ondelete(session.id, event)}
                             title="Delete session"
                             icon="close"
+                            aria-label="Delete session"
                         />
                     </div>
                 </li>

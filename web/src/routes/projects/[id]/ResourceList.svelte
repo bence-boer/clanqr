@@ -45,6 +45,7 @@
                                 size="icon"
                                 onclick={() => on_remove_resource(resource.id)}
                                 title="Remove resource"
+                                aria-label="Remove resource"
                             >
                                 <span class="icon" style="font-size:14px">close</span>
                             </Button>

@@ -37,7 +37,7 @@
     }
 </script>
 
-<div class="status-bar" class:running={pipeline?.state === 'running'} class:paused={pipeline?.state === 'paused'}>
+<div class="status-bar" class:running={pipeline?.state === 'running'} class:paused={pipeline?.state === 'paused'} role="status" aria-live="polite">
     <div class="status-left">
         <span class="icon state-icon">{state_icon(pipeline?.state ?? 'idle')}</span>
         <span class="state-label {state_class(pipeline?.state ?? 'idle')}">
