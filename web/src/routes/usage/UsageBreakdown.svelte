@@ -1,8 +1,13 @@
 <script lang="ts">
   import type { UsageBreakdown } from '$lib/types';
 
+  type BreakdownWithTokens = UsageBreakdown & {
+      total_prompt_tokens?: number
+      total_completion_tokens?: number
+  };
+
   let { breakdown, loading }: {
-      breakdown: UsageBreakdown | null
+      breakdown: BreakdownWithTokens | null
       loading: boolean
   } = $props();
 
@@ -61,6 +66,25 @@
       </div>
     </div>
   </div>
+  {#if breakdown.total_prompt_tokens !== undefined || breakdown.total_completion_tokens !== undefined}
+    <div class="tokens-summary">
+      <h3 class="panel-title">Total Tokens</h3>
+      <div class="tokens-grid">
+        <div class="token-stat">
+          <span class="token-value">{(breakdown.total_prompt_tokens ?? 0).toLocaleString()}</span>
+          <span class="token-label">Prompt</span>
+        </div>
+        <div class="token-stat">
+          <span class="token-value">{(breakdown.total_completion_tokens ?? 0).toLocaleString()}</span>
+          <span class="token-label">Completion</span>
+        </div>
+        <div class="token-stat token-total">
+          <span class="token-value">{((breakdown.total_prompt_tokens ?? 0) + (breakdown.total_completion_tokens ?? 0)).toLocaleString()}</span>
+          <span class="token-label">Total</span>
+        </div>
+      </div>
+    </div>
+  {/if}
 {/if}
 
 <style>
@@ -140,6 +164,49 @@
     text-align: center;
     padding: 1rem 0;
     margin: 0;
+  }
+
+  .tokens-summary {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    margin-bottom: 2rem;
+  }
+
+  .tokens-grid {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+  }
+
+  .token-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .token-stat.token-total {
+    margin-left: auto;
+  }
+
+  .token-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--fg);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .token-total .token-value {
+    color: var(--accent);
+  }
+
+  .token-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--fg-muted);
+    font-weight: 600;
   }
 
   @media (max-width: 768px) {

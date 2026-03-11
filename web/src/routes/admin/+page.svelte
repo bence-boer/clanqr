@@ -120,7 +120,7 @@
         </div>
 
         {#if active_tab === 'users'}
-            <UserTable {users} {users_loading} {users_error} {self_id} {admin_count} ontoggle_role={toggle_role} ondelete_user={delete_user} />
+            <UserTable {users} {users_loading} {users_error} {self_id} {admin_count} ontoggle_role={toggle_role} ondelete_user={(user_id) => delete_user(user_id)} />
         {/if}
 
         {#if active_tab === 'invites'}
