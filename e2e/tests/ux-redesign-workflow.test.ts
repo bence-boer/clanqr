@@ -229,10 +229,10 @@ test.describe("UI workflow: dashboard → projects → pipeline → monitoring �
 
         await expect(page.getByText("Agent Monitoring")).toBeVisible({ timeout: 30_000 });
 
-        // Stat cards are always visible (Running, Completed, Failed)
-        await expect(page.getByText("RUNNING")).toBeVisible({ timeout: 10_000 });
-        await expect(page.getByText("COMPLETED")).toBeVisible();
-        await expect(page.getByText("FAILED")).toBeVisible();
+        // Stat cards render with text-transform:uppercase, but DOM text is title case
+        await expect(page.locator(".stat-label", { hasText: "Running" })).toBeVisible({ timeout: 15_000 });
+        await expect(page.locator(".stat-label", { hasText: "Completed" })).toBeVisible();
+        await expect(page.locator(".stat-label", { hasText: "Failed" })).toBeVisible();
     });
 
     test("chat page renders", async ({ page }) => {

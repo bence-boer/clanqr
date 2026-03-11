@@ -44,8 +44,12 @@ class PipelineService {
         };
     }
 
+    private is_paused(): boolean {
+        return this.state === 'paused';
+    }
+
     async process_next(): Promise<void> {
-        if (this.state === 'paused') return;
+        if (this.is_paused()) return;
         if (this.is_processing || this.active_run) return;
 
         this.is_processing = true;
@@ -55,8 +59,10 @@ class PipelineService {
             const task = await this.get_next_task(supabase);
 
             if (!task) {
-                this.state = 'idle';
-                this.emit_status();
+                if (!this.is_paused()) {
+                    this.state = 'idle';
+                    this.emit_status();
+                }
                 return;
             }
 
@@ -66,8 +72,10 @@ class PipelineService {
         }
         catch (error) {
             logger.error('Pipeline process_next error', { service: 'pipeline', error: String(error) });
-            this.state = 'idle';
-            this.emit_status();
+            if (!this.is_paused()) {
+                this.state = 'idle';
+                this.emit_status();
+            }
         }
         finally {
             this.is_processing = false;
@@ -75,7 +83,7 @@ class PipelineService {
     }
 
     pause() {
-        if (this.state === 'running') {
+        if (this.state !== 'paused') {
             this.state = 'paused';
             logger.info('Pipeline paused', { service: 'pipeline' });
             this.emit_status();
@@ -107,7 +115,9 @@ class PipelineService {
 
         await supabase.from('tasks').update({ status: 'Approved' }).eq('id', task_id);
         this.active_run = null;
-        this.state = 'idle';
+        if (this.state !== 'paused') {
+            this.state = 'idle';
+        }
         this.emit_status();
     }
 
@@ -173,7 +183,7 @@ class PipelineService {
                 agent_type: 'ralph', work_dir, spec_file: 'task-spec.json',
                 spec_data: task_spec, prompt, cli, model,
                 timeout_ms: (task.features?.task_timeout_minutes ?? 10) * 60 * 1000, task_id,
-                project_id, container_work_dir
+                feature_id, project_id, container_work_dir
             }, supabase);
 
             this.active_run.run_id = result.run_id;

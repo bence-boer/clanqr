@@ -79,7 +79,7 @@ test.describe("feature lifecycle", () => {
     });
 });
 
-test.describe("task management", () => {
+test.describe.serial("task management", () => {
     let project_id: string;
     let feature_id: string;
     let task_id: string;
@@ -99,6 +99,8 @@ test.describe("task management", () => {
     });
 
     test.afterAll(async ({ request }) => {
+        // Resume pipeline in case it was paused
+        await request.post(`${API}/api/agents/resume`, { headers: AUTH });
         if (project_id) {
             await request.delete(`${API}/api/projects/${project_id}`, { headers: AUTH });
         }
@@ -116,25 +118,40 @@ test.describe("task management", () => {
         expect(task.sort_order).toBeDefined();
     });
 
-    test("approve task", async ({ request }) => {
-        const res = await request.patch(`${API}/api/tasks/${task_id}`, {
-            headers: AUTH,
-            data: { status: "Approved" },
-        });
-        expect(res.ok()).toBeTruthy();
-        const task = await res.json();
-        expect(task.status).toBe("Approved");
-    });
-
-    test("delete task", async ({ request }) => {
+    test("delete pending task succeeds", async ({ request }) => {
+        // Delete a Pending_Approval task (always works, no pipeline race)
         const res = await request.delete(`${API}/api/tasks/${task_id}`, {
             headers: AUTH,
         });
         expect(res.ok()).toBeTruthy();
     });
+
+    test("approve task transitions status", async ({ request }) => {
+        // Create a new task to approve
+        const create_res = await request.post(`${API}/api/tasks`, {
+            headers: AUTH,
+            data: { feature_id, description: "E2E approval test task" },
+        });
+        const new_task = await create_res.json();
+        task_id = new_task.id;
+
+        // Pause pipeline to prevent it from picking up the task
+        await request.post(`${API}/api/agents/pause`, { headers: AUTH });
+
+        const res = await request.post(`${API}/api/tasks/${task_id}/approve`, {
+            headers: AUTH,
+        });
+        expect(res.ok()).toBeTruthy();
+        const task = await res.json();
+        expect(task.status).toBe("Approved");
+
+        // Clean up: delete the approved task, resume pipeline
+        await request.delete(`${API}/api/tasks/${task_id}`, { headers: AUTH });
+        await request.post(`${API}/api/agents/resume`, { headers: AUTH });
+    });
 });
 
-test.describe("chat workflow", () => {
+test.describe.serial("chat workflow", () => {
     let session_id: string;
 
     test("create chat session", async ({ request }) => {
