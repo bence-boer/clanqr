@@ -3,6 +3,10 @@
     import { Badge, Pagination, Select } from '$lib/components/primitives';
     import type { AgentRun } from '$lib/types';
 
+    type DateRange = 'today' | '7d' | '30d' | 'all';
+    type SortField = 'type' | 'model' | 'status' | 'duration' | 'tokens' | 'date';
+    type SortDir = 'asc' | 'desc';
+
     let {
         runs,
         total_pages,
@@ -11,9 +15,11 @@
         filter_type,
         filter_status,
         current_page,
+        date_range = 'all',
         onfilter_type_change,
         onfilter_status_change,
-        onpage_change
+        onpage_change,
+        ondate_range_change
     }: {
         runs: AgentRun[]
         total_pages: number
@@ -22,10 +28,51 @@
         filter_type: string
         filter_status: string
         current_page: number
+        date_range?: DateRange
         onfilter_type_change: (value: string) => void
         onfilter_status_change: (value: string) => void
         onpage_change: (page: number) => void
+        ondate_range_change?: (value: DateRange) => void
     } = $props();
+
+    let sort_field = $state<SortField>('date');
+    let sort_dir = $state<SortDir>('desc');
+    let expanded_row = $state<string | null>(null);
+
+    function toggle_sort(field: SortField) {
+        if (sort_field === field) {
+            sort_dir = sort_dir === 'asc' ? 'desc' : 'asc';
+        } else {
+            sort_field = field;
+            sort_dir = 'desc';
+        }
+    }
+
+    function sort_indicator(field: SortField): string {
+        if (sort_field !== field) return '';
+        return sort_dir === 'asc' ? ' ▲' : ' ▼';
+    }
+
+    function get_tokens(run: AgentRun): number {
+        return (run.prompt_tokens ?? 0) + (run.completion_tokens ?? 0);
+    }
+
+    let sorted_runs = $derived.by(() => {
+        const arr = [...runs];
+        const dir = sort_dir === 'asc' ? 1 : -1;
+        arr.sort((a, b) => {
+            switch (sort_field) {
+                case 'type': return dir * (a.type ?? '').localeCompare(b.type ?? '');
+                case 'model': return dir * (a.model ?? '').localeCompare(b.model ?? '');
+                case 'status': return dir * (a.status ?? '').localeCompare(b.status ?? '');
+                case 'duration': return dir * ((a.duration_ms ?? 0) - (b.duration_ms ?? 0));
+                case 'tokens': return dir * (get_tokens(a) - get_tokens(b));
+                case 'date': return dir * (new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+                default: return 0;
+            }
+        });
+        return arr;
+    });
 
     function format_duration(ms: number | null): string {
         if (ms === null) return '-';
@@ -52,6 +99,13 @@
         return ((prompt ?? 0) + (completion ?? 0)).toLocaleString();
     }
 
+    function format_datetime(date_str: string | null): string {
+        if (!date_str) return '-';
+        return new Date(date_str).toLocaleString(undefined, {
+            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+    }
+
     function on_type_change(event: Event) {
         onfilter_type_change((event.currentTarget as HTMLSelectElement).value);
     }
@@ -59,6 +113,13 @@
     function on_status_change(event: Event) {
         onfilter_status_change((event.currentTarget as HTMLSelectElement).value);
     }
+
+    const date_range_options: { value: DateRange, label: string }[] = [
+        { value: 'today', label: 'Today' },
+        { value: '7d', label: 'Last 7 days' },
+        { value: '30d', label: 'Last 30 days' },
+        { value: 'all', label: 'All time' }
+    ];
 </script>
 
 <div class="history-section">
@@ -67,6 +128,15 @@
             Recent Runs {#if total_count > 0}<Badge variant="muted">{total_count}</Badge>{/if}
         </h3>
         <div class="filters">
+            <div class="date-pills">
+                {#each date_range_options as opt (opt.value)}
+                    <button
+                        class="date-pill"
+                        class:active={date_range === opt.value}
+                        onclick={() => ondate_range_change?.(opt.value)}
+                    >{opt.label}</button>
+                {/each}
+            </div>
             <Select class="select" onchange={on_type_change} value={filter_type}>
                 <option value="">All types</option>
                 <option value="manager">manager</option>
@@ -88,24 +158,28 @@
         <div class="loading-row">
             <LoadingSpinner label="Loading runs..." />
         </div>
-    {:else if runs.length === 0}
+    {:else if sorted_runs.length === 0}
         <EmptyState icon="analytics" message="No runs found" detail="Try adjusting your filters." />
     {:else}
         <div class="table-wrap">
             <table class="runs-table">
                 <thead>
                     <tr>
-                        <th>Type</th>
-                        <th>Model</th>
-                        <th>Status</th>
-                        <th>Duration</th>
-                        <th>Tokens</th>
-                        <th>Date</th>
+                        <th class="sortable" onclick={() => toggle_sort('type')}>Type{sort_indicator('type')}</th>
+                        <th class="sortable" onclick={() => toggle_sort('model')}>Model{sort_indicator('model')}</th>
+                        <th class="sortable" onclick={() => toggle_sort('status')}>Status{sort_indicator('status')}</th>
+                        <th class="sortable" onclick={() => toggle_sort('duration')}>Duration{sort_indicator('duration')}</th>
+                        <th class="sortable" onclick={() => toggle_sort('tokens')}>Tokens{sort_indicator('tokens')}</th>
+                        <th class="sortable" onclick={() => toggle_sort('date')}>Date{sort_indicator('date')}</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {#each runs as run (run.id)}
-                        <tr>
+                    {#each sorted_runs as run (run.id)}
+                        <tr
+                            class="clickable-row"
+                            class:expanded={expanded_row === run.id}
+                            onclick={() => expanded_row = expanded_row === run.id ? null : run.id}
+                        >
                             <td><Badge variant={run.type === 'manager' ? 'info' : run.type === 'chat' ? 'success' : 'warning'}>{run.type}</Badge></td>
                             <td class="model-col">{run.model ?? 'default'}</td>
                             <td><StatusBadge status={run.status} /></td>
@@ -113,6 +187,50 @@
                             <td class="mono">{format_tokens(run.prompt_tokens, run.completion_tokens)}</td>
                             <td class="date-col">{format_relative(run.created_at)}</td>
                         </tr>
+                        {#if expanded_row === run.id}
+                            <tr class="detail-row">
+                                <td colspan="6">
+                                    <div class="detail-grid">
+                                        <div class="detail-item">
+                                            <span class="detail-label">Model</span>
+                                            <span class="detail-value">{run.model ?? 'default'}</span>
+                                        </div>
+                                        <div class="detail-item">
+                                            <span class="detail-label">Prompt Tokens</span>
+                                            <span class="detail-value">{(run.prompt_tokens ?? 0).toLocaleString()}</span>
+                                        </div>
+                                        <div class="detail-item">
+                                            <span class="detail-label">Completion Tokens</span>
+                                            <span class="detail-value">{(run.completion_tokens ?? 0).toLocaleString()}</span>
+                                        </div>
+                                        <div class="detail-item">
+                                            <span class="detail-label">Total Tokens</span>
+                                            <span class="detail-value">{get_tokens(run).toLocaleString()}</span>
+                                        </div>
+                                        <div class="detail-item">
+                                            <span class="detail-label">Started</span>
+                                            <span class="detail-value">{format_datetime(run.created_at)}</span>
+                                        </div>
+                                        <div class="detail-item">
+                                            <span class="detail-label">Duration</span>
+                                            <span class="detail-value">{format_duration(run.duration_ms)}</span>
+                                        </div>
+                                        {#if run.error}
+                                            <div class="detail-item detail-error">
+                                                <span class="detail-label">Error</span>
+                                                <span class="detail-value error-text">{run.error}</span>
+                                            </div>
+                                        {/if}
+                                        {#if run.task_id}
+                                            <div class="detail-item">
+                                                <span class="detail-label">Task</span>
+                                                <a href="/projects" class="detail-link">{run.task_id}</a>
+                                            </div>
+                                        {/if}
+                                    </div>
+                                </td>
+                            </tr>
+                        {/if}
                     {/each}
                 </tbody>
             </table>
@@ -148,6 +266,35 @@
         gap: 0.5rem;
         min-width: 0;
     }
+    .filters {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .date-pills {
+        display: flex;
+        gap: 0.25rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+    }
+    .date-pill {
+        background: transparent;
+        border: none;
+        color: var(--fg-muted);
+        font-size: 0.75rem;
+        padding: 0.35rem 0.65rem;
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+        white-space: nowrap;
+    }
+    .date-pill:hover { background: var(--bg-elevated); }
+    .date-pill.active {
+        background: var(--accent);
+        color: var(--bg);
+        font-weight: 600;
+    }
     .table-wrap { overflow-x: auto; }
     .runs-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
     .runs-table thead tr { border-bottom: 1px solid var(--border); }
@@ -161,6 +308,12 @@
         font-weight: 600;
         white-space: nowrap;
     }
+    .runs-table th.sortable {
+        cursor: pointer;
+        user-select: none;
+        transition: color 0.15s;
+    }
+    .runs-table th.sortable:hover { color: var(--fg); }
     .runs-table td {
         padding: 0.65rem 1.25rem;
         color: var(--fg);
@@ -168,7 +321,9 @@
         vertical-align: middle;
     }
     .runs-table tbody tr:last-child td { border-bottom: none; }
-    .runs-table tbody tr:hover { background: var(--bg-elevated); }
+    .runs-table tbody tr.clickable-row { cursor: pointer; }
+    .runs-table tbody tr.clickable-row:hover { background: var(--bg-elevated); }
+    .runs-table tbody tr.expanded { background: rgba(212, 175, 55, 0.04); }
     .mono { font-variant-numeric: tabular-nums; font-size: 0.82rem; }
     .runs-table td.date-col { color: var(--fg-muted); font-size: 0.8rem; }
     .runs-table td.model-col {
@@ -179,11 +334,59 @@
         text-overflow: ellipsis;
         white-space: nowrap;
     }
+    .detail-row td {
+        padding: 0 !important;
+        border-bottom: 1px solid var(--border);
+    }
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 0.75rem;
+        padding: 1rem 1.25rem;
+        background: var(--bg);
+        border-top: 1px solid var(--border);
+    }
+    .detail-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+    }
+    .detail-item.detail-error {
+        grid-column: 1 / -1;
+    }
+    .detail-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--fg-muted);
+        font-weight: 600;
+    }
+    .detail-value {
+        font-size: 0.82rem;
+        color: var(--fg);
+        font-variant-numeric: tabular-nums;
+    }
+    .error-text {
+        color: var(--danger);
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        font-size: 0.78rem;
+        word-break: break-word;
+    }
+    .detail-link {
+        font-size: 0.82rem;
+        color: var(--accent);
+        text-decoration: none;
+        font-family: 'SF Mono', 'Fira Code', monospace;
+    }
+    .detail-link:hover { text-decoration: underline; }
     .pagination-border { border-top: 1px solid var(--border); padding: 0.75rem 1.25rem; }
     .loading-row { padding: 2rem 1.25rem; display: flex; justify-content: center; }
     @media (max-width: 768px) { .filters { flex-wrap: wrap; } }
     @media (max-width: 640px) {
         .history-header { flex-direction: column; align-items: flex-start; }
         .filters { flex-direction: column; width: 100%; }
+        .date-pills { width: 100%; }
+        .date-pill { flex: 1; text-align: center; }
+        .detail-grid { grid-template-columns: 1fr 1fr; }
     }
 </style>
