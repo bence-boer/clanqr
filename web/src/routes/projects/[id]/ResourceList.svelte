@@ -1,7 +1,6 @@
 <script lang="ts">
     import { Button, Input } from '$lib/components/primitives';
-    import { status_icon, status_class } from '$lib/utils/status';
-    import type { Feature } from '$lib/types';
+    import type { Feature, Resource } from '$lib/types';
 
     interface Props {
         feature: Feature
@@ -13,6 +12,16 @@
 
     let new_resource_url = $state('');
     let new_resource_title = $state('');
+
+    const is_draft = $derived(feature.status === 'Draft');
+
+    function get_status_display(status: string): { label: string, icon: string, class_name: string } {
+        const s = status.toLowerCase();
+        if (s === 'pending') return { label: 'Fetching…', icon: 'progress_activity', class_name: 'badge-pending' };
+        if (s === 'fetched') return { label: 'Ready', icon: 'check_circle', class_name: 'badge-ready' };
+        if (s === 'error') return { label: 'Failed to fetch', icon: 'cancel', class_name: 'badge-error' };
+        return { label: status, icon: 'help', class_name: 'badge-muted' };
+    }
 
     async function add_resource() {
         if (!new_resource_url.trim()) return;
@@ -27,19 +36,20 @@
         <h4><span class="icon" style="font-size:16px">link</span> Resources</h4>
         <ul class="resource-list">
             {#each feature.resources as resource (resource.id)}
+                {@const status_display = get_status_display(resource.status)}
                 <li>
                     <a href={resource.url} target="_blank" rel="external noopener">
                         <span class="icon" style="font-size:14px">open_in_new</span>
                         {resource.title ?? resource.url}
                     </a>
                     <div class="resource-actions">
-                        <span class="badge badge-{status_class(resource.status)}">
-                            <span class="icon" style="font-size:11px">
-                                {status_icon(resource.status)}
+                        <span class="badge {status_display.class_name}">
+                            <span class="icon {status_display.class_name === 'badge-pending' ? 'spin' : ''}" style="font-size:11px">
+                                {status_display.icon}
                             </span>
-                            {resource.status}
+                            {status_display.label}
                         </span>
-                        {#if feature.status === 'Draft'}
+                        {#if is_draft}
                             <Button
                                 variant="danger"
                                 size="icon"
@@ -57,18 +67,19 @@
     </div>
 {/if}
 
-{#if feature.status === 'Draft'}
-    <div class="detail-section">
-        <h4><span class="icon" style="font-size:16px">add_link</span> Add Resource</h4>
-        <div class="add-resource-row">
-            <Input type="url" placeholder="https://..." bind:value={new_resource_url} />
-            <Input type="text" placeholder="Title" bind:value={new_resource_title} class="input-title" />
-            <Button variant="primary" size="sm" onclick={add_resource} disabled={!new_resource_url.trim()}>
-                <span class="icon" style="font-size:14px">add</span> Add
-            </Button>
-        </div>
+<div class="detail-section">
+    <h4><span class="icon" style="font-size:16px">add_link</span> Add Resource</h4>
+    {#if !is_draft}
+        <p class="resource-note">This resource will be available for future tasks.</p>
+    {/if}
+    <div class="add-resource-row">
+        <Input type="url" placeholder="https://..." bind:value={new_resource_url} />
+        <Input type="text" placeholder="Title" bind:value={new_resource_title} class="input-title" />
+        <Button variant="primary" size="sm" onclick={add_resource} disabled={!new_resource_url.trim()}>
+            <span class="icon" style="font-size:14px">add</span> Add
+        </Button>
     </div>
-{/if}
+</div>
 
 <style>
     .detail-section { margin-bottom: 1.25rem; }
@@ -87,6 +98,18 @@
         display: inline-flex; align-items: center; gap: 0.3rem;
     }
     .resource-actions { display: flex; align-items: center; gap: 0.35rem; }
+    .badge {
+        display: inline-flex; align-items: center; gap: 0.2rem;
+        padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.7rem; font-weight: 500;
+    }
+    .badge-pending { background: rgba(107, 114, 128, 0.15); color: var(--fg-muted); }
+    .badge-ready { background: rgba(34, 197, 94, 0.12); color: #22c55e; }
+    .badge-error { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+    .badge-muted { background: rgba(107, 114, 128, 0.15); color: var(--fg-muted); }
+    .resource-note {
+        font-size: 0.75rem; color: var(--fg-muted); font-style: italic;
+        margin-bottom: 0.5rem;
+    }
     .add-resource-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
     :global(.input-title) { max-width: 180px; }
     @media (max-width: 768px) {

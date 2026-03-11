@@ -109,6 +109,12 @@
                 </Badge>
             </div>
         </div>
+        {#if task.status === 'Failed' && task.output}
+            <div class="task-failure-reason">
+                <span class="icon" style="font-size:12px">error</span>
+                {task.output.length > 120 ? `${task.output.slice(0, 120)}…` : task.output}
+            </div>
+        {/if}
         <div class="task-actions">
             {#if task.status === 'Pending_Approval'}
                 <Button variant="primary" size="sm" icon="thumb_up" onclick={() => on_approve(task.id)}>Approve</Button>
@@ -187,4 +193,10 @@
     }
     .task-model-field { max-width: 300px; }
     .task-edit-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+    .task-failure-reason {
+        display: flex; align-items: flex-start; gap: 0.3rem;
+        margin-top: 0.35rem; padding: 0.3rem 0.5rem;
+        border-radius: var(--radius); background: rgba(239, 68, 68, 0.08);
+        color: #ef4444; font-size: 0.75rem; line-height: 1.4;
+    }
 </style>
