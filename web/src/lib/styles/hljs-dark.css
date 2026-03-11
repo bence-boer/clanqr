@@ -1,0 +1,24 @@
+/* highlight.js dark theme matching app CSS variables */
+.hljs {
+    color: var(--fg);
+    background: var(--bg);
+}
+.hljs-keyword,
+.hljs-selector-tag { color: #c678dd; }
+.hljs-string,
+.hljs-addition { color: #98c379; }
+.hljs-number,
+.hljs-literal { color: #d19a66; }
+.hljs-comment,
+.hljs-quote { color: var(--fg-muted); font-style: italic; }
+.hljs-title,
+.hljs-section { color: #e5c07b; }
+.hljs-name,
+.hljs-selector-class { color: #e06c75; }
+.hljs-attr { color: #d19a66; }
+.hljs-built_in { color: #56b6c2; }
+.hljs-type { color: #e5c07b; }
+.hljs-params { color: var(--fg); }
+.hljs-deletion { color: #e06c75; }
+.hljs-meta { color: var(--fg-muted); }
+.hljs-regexp { color: #56b6c2; }
