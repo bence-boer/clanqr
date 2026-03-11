@@ -96,6 +96,9 @@ export type ModelOption = {
 export type UsageSummary = ExtractSuccess<InferResponseType<Client['api']['usage']['summary']['$get']>>;
 export type UsageBreakdown = ExtractSuccess<InferResponseType<Client['api']['usage']['breakdown']['$get']>>;
 
+// ── Activity ──────────────────────────────────────────────────────────────────
+export type ActivityEvent = ExtractSuccess<InferResponseType<Client['api']['activity']['feed']['$get']>>[number];
+
 // ── Chat ──────────────────────────────────────────────────────────────────────
 export type ChatSession = ExtractSuccess<InferResponseType<Client['api']['chat']['sessions']['$get']>>[number];
 export type ChatMessage = NonNullable<ExtractSuccess<InferResponseType<Client['api']['chat']['sessions'][':id']['$get']>>['chat_messages']>[number];
