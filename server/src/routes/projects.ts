@@ -41,7 +41,7 @@ export const projects_routes = new Hono<AppBindings>()
 
         const { data, error } = await supabase
             .from('projects')
-            .select('*, features(*)')
+            .select('*, features(*, tasks(*), resources(*))')
             .eq('id', id)
             .single();
 

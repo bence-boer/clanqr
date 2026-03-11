@@ -3,6 +3,8 @@
     import type { SystemStats } from '$lib/types';
     import SidebarNav from './SidebarNav.svelte';
 
+    import type { Snippet } from 'svelte';
+
     interface SidebarBadges {
         pending_approval_count?: number
         failed_agent_count?: number
@@ -16,6 +18,7 @@
         system_stats = null,
         collapsed = false,
         badges = {},
+        notification_bell,
         onclose,
         onlogout,
         ontoggle_collapse
@@ -26,6 +29,7 @@
         sidebar_open: boolean
         collapsed?: boolean
         badges?: SidebarBadges
+        notification_bell?: Snippet
         onclose: () => void
         onlogout: () => void
         ontoggle_collapse?: () => void
@@ -39,6 +43,11 @@
             <h1>Ralph</h1>
             <span class="subtitle">Agent Workspace</span>
         </div>
+        {#if notification_bell}
+            <div class="bell-slot">
+                {@render notification_bell()}
+            </div>
+        {/if}
     </div>
 
     <SidebarNav {current_path} {role} {badges} {onclose} />
@@ -125,6 +134,10 @@
         color: var(--fg-muted);
         text-transform: uppercase;
         letter-spacing: 0.08em;
+    }
+
+    .bell-slot {
+        margin-left: auto;
     }
 
     .sidebar-footer {
