@@ -145,6 +145,10 @@ export const api = {
     usage_breakdown: async (): Promise<Types.UsageBreakdown> =>
         unwrap(await (await client.api.usage.breakdown.$get()).json()),
 
+    // ── Activity ──────────────────────────────────────────────────────────────
+    activity_feed: async (limit = 20): Promise<Types.ActivityEvent[]> =>
+        unwrap(await (await client.api.activity.feed.$get({ query: { limit: String(limit) } })).json()),
+
     // ── Chat ──────────────────────────────────────────────────────────────────
     list_chat_sessions: async (): Promise<Types.ChatSession[]> =>
         unwrap(await (await client.api.chat.sessions.$get()).json()),
