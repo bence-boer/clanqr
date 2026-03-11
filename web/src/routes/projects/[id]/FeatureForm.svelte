@@ -169,7 +169,7 @@
                 <div class="title-field">
                     <Input type="text" placeholder="Title" bind:value={resource.title} class="input" />
                 </div>
-                <Button type="button" variant="danger" size="icon" onclick={() => remove_resource(index)}>
+                <Button type="button" variant="danger" size="icon" onclick={() => remove_resource(index)} aria-label="Remove resource">
                     <span class="icon" style="font-size:16px">close</span>
                 </Button>
             </div>

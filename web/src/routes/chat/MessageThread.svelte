@@ -51,7 +51,7 @@
     {/each}
 
     {#if is_streaming}
-      <div class="message assistant">
+      <div class="message assistant" role="status" aria-live="polite">
         <div class="message-bubble streaming">
           <p class="message-content">{streaming_content || '...'}</p>
           <span class="cursor">▋</span>

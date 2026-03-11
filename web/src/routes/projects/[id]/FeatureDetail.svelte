@@ -107,6 +107,7 @@
     }
 </script>
 
+<section aria-label="Feature detail">
 <div class="detail-top-bar">
     <Button variant="ghost" size="sm" onclick={on_back}><span class="icon">arrow_back</span></Button>
 </div>
@@ -114,7 +115,7 @@
     <div style="display:flex; flex-direction:column; gap:0.25rem">
         <h3>{feature.title}</h3>
         {#if is_agent_active}
-            <div class="agent-running-indicator">
+            <div class="agent-running-indicator" role="status" aria-live="polite">
                 <span class="icon spin" style="font-size:12px; color:var(--accent)">progress_activity</span>
                 <span style="font-size:0.65rem; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:0.05em">{agent_label}</span>
             </div>
@@ -125,7 +126,7 @@
             <Button variant="secondary" size="sm" onclick={start_editing}><span class="icon" style="font-size:14px">edit</span> Edit</Button>
             <Button variant="primary" size="sm" onclick={() => on_submit(feature.id)}><span class="icon" style="font-size:14px">send</span> Submit</Button>
         {/if}
-        <Button variant="danger" size="sm" onclick={() => on_delete(feature.id)}><span class="icon" style="font-size:14px">delete</span></Button>
+        <Button variant="danger" size="sm" onclick={() => on_delete(feature.id)} aria-label="Delete feature"><span class="icon" style="font-size:14px">delete</span></Button>
     </div>
 </div>
 {#if feature.last_error}
@@ -181,6 +182,7 @@
     />
     {/if}
 </div>
+</section>
 
 <style>
     .detail-top-bar { display: none; }

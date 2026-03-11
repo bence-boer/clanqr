@@ -90,7 +90,7 @@
                 <div class="log-panel">
                     <div class="log-toolbar">
                         <span class="log-label">Live Output</span>
-                        <Button variant="ghost" size="icon" icon="refresh" onclick={onrefresh_log} disabled={log_loading} title="Refresh" />
+                        <Button variant="ghost" size="icon" icon="refresh" onclick={onrefresh_log} disabled={log_loading} title="Refresh" aria-label="Refresh log" />
                     </div>
                     <CodeBlock content={log_text} />
                 </div>

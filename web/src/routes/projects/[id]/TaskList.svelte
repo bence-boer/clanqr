@@ -69,7 +69,7 @@
     }
 </script>
 
-<div class="detail-section">
+<section class="detail-section" aria-label="Tasks">
     <div class="tasks-header">
         <h4><span class="icon" style="font-size:16px">task</span> Tasks ({feature.tasks?.length ?? 0})</h4>
         <div class="tasks-actions">
@@ -130,7 +130,7 @@
             {/each}
         </div>
     {/if}
-</div>
+</section>
 
 <style>
     .detail-section { margin-bottom: 1.25rem; }

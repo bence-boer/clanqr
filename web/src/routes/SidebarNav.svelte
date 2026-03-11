@@ -1,13 +1,22 @@
 <script lang="ts">
     import { resolve } from '$app/paths';
 
+    interface SidebarBadges {
+        pending_approval_count?: number
+        failed_agent_count?: number
+        pipeline_paused?: boolean
+        active_invite_count?: number
+    }
+
     let {
         current_path,
         role = null,
+        badges = {},
         onclose
     }: {
         current_path: string
         role?: string | null
+        badges?: SidebarBadges
         onclose: () => void
     } = $props();
 
@@ -23,61 +32,70 @@
         <li>
             <a href={resolve('/')} onclick={onclose} class:active={is_active('/') && current_path === '/'}>
                 <span class="icon">dashboard</span>
-                Dashboard
+                <span>Dashboard</span>
             </a>
         </li>
         <li>
             <a href={resolve('/projects')} onclick={onclose} class:active={is_active('/projects')}>
                 <span class="icon">folder</span>
-                Projects
+                <span>Projects</span>
+                {#if badges.pending_approval_count && badges.pending_approval_count > 0}
+                    <span class="nav-badge warning">{badges.pending_approval_count}</span>
+                {/if}
             </a>
         </li>
         <li>
             <a href={resolve('/pipeline')} onclick={onclose} class:active={is_active('/pipeline')}>
                 <span class="icon">account_tree</span>
-                Pipeline
+                <span>Pipeline</span>
+                {#if badges.pipeline_paused}
+                    <span class="nav-badge muted">Paused</span>
+                {/if}
             </a>
         </li>
         <li>
             <a href={resolve('/monitoring')} onclick={onclose} class:active={is_active('/monitoring')}>
                 <span class="icon">monitoring</span>
-                Monitoring
+                <span>Monitoring</span>
+                {#if badges.failed_agent_count && badges.failed_agent_count > 0}
+                    <span class="nav-badge">{badges.failed_agent_count}</span>
+                {/if}
             </a>
         </li>
     </ul>
 </div>
 
 <div class="nav-section">
-    <span class="nav-section-label">AI</span>
+    <span class="nav-section-label">Intelligence</span>
     <ul class="nav-links">
         <li>
             <a href={resolve('/chat')} onclick={onclose} class:active={is_active('/chat')}>
                 <span class="icon">chat</span>
-                Chat
+                <span>Chat</span>
             </a>
         </li>
-        <li>
-            <a href={resolve('/usage')} onclick={onclose} class:active={is_active('/usage')}>
-                <span class="icon">analytics</span>
-                Usage
-            </a>
-        </li>
-    </ul>
-</div>
-
-<div class="nav-section">
-    <span class="nav-section-label">Configure</span>
-    <ul class="nav-links">
         <li>
             <a href={resolve('/prompts')} onclick={onclose} class:active={is_active('/prompts')}>
                 <span class="icon">tune</span>
-                Prompts &amp; Traits
+                <span>Prompts &amp; Traits</span>
             </a>
         </li>
         <li>
             <a href={resolve('/skills')} onclick={onclose} class:active={is_active('/skills')}>
                 <span class="icon">extension</span>
-                Skills
+                <span>Skills</span>
+            </a>
+        </li>
+    </ul>
+</div>
+
+<div class="nav-section">
+    <span class="nav-section-label">Insights</span>
+    <ul class="nav-links">
+        <li>
+            <a href={resolve('/usage')} onclick={onclose} class:active={is_active('/usage')}>
+                <span class="icon">analytics</span>
+                <span>Usage</span>
             </a>
         </li>
     </ul>
@@ -90,7 +108,10 @@
             <li>
                 <a href={resolve('/admin')} onclick={onclose} class:active={is_active('/admin')}>
                     <span class="icon">admin_panel_settings</span>
-                    Admin
+                    <span>Admin</span>
+                    {#if badges.active_invite_count && badges.active_invite_count > 0}
+                        <span class="nav-badge">{badges.active_invite_count}</span>
+                    {/if}
                 </a>
             </li>
         </ul>
@@ -137,5 +158,27 @@
         letter-spacing: 0.1em;
         padding: 0 0.75rem;
         margin-bottom: 0.25rem;
+    }
+    .nav-badge {
+        margin-left: auto;
+        background: var(--danger);
+        color: var(--fg);
+        font-size: 0.65rem;
+        font-weight: 700;
+        min-width: 18px;
+        height: 18px;
+        border-radius: 9px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 4px;
+    }
+    .nav-badge.warning {
+        background: var(--accent);
+        color: var(--bg);
+    }
+    .nav-badge.muted {
+        background: var(--bg-elevated);
+        color: var(--fg-muted);
     }
 </style>
