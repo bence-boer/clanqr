@@ -1,6 +1,7 @@
 <script lang="ts">
     import { Button, Input } from '$lib/components/primitives';
     import { EmptyState } from '$lib/components';
+    import { toast_store } from '$lib/stores/toast.svelte';
     import type { Feature, TaskRow } from '$lib/types';
     import TaskItem from './TaskItem.svelte';
 
@@ -25,7 +26,9 @@
     let editing_task_model = $state<string | null>(null);
     let saving_task = $state(false);
     let managing_task_id: string | null = $state(null);
-    let auto_approve = $state(false);
+    const auto_approve = $derived(feature.auto_approve ?? false);
+
+    const pending_tasks = $derived(feature.tasks?.filter((t: TaskRow) => t.status === 'Pending_Approval') ?? []);
 
     async function handle_add() {
         if (!new_task_desc.trim()) return;
@@ -64,8 +67,23 @@
     }
 
     async function handle_auto_approve_change() {
-        auto_approve = !auto_approve;
-        await on_toggle_auto_approve(auto_approve);
+        await on_toggle_auto_approve(!auto_approve);
+    }
+
+    async function handle_approve_and_run_all() {
+        const count = pending_tasks.length;
+        if (count === 0) return;
+        await on_approve_all(feature.id);
+        toast_store.success(`${count} task${count > 1 ? 's' : ''} approved. The pipeline will run them automatically.`);
+    }
+
+    async function handle_guarded_approve(task_id: string) {
+        const task = feature.tasks?.find((t: TaskRow) => t.id === task_id);
+        if (task && task.status !== 'Pending_Approval') {
+            toast_store.warning('Task status has changed — please refresh before approving.');
+            return;
+        }
+        await on_approve(task_id);
     }
 </script>
 
@@ -76,8 +94,8 @@
             <label class="toggle-label">
                 <input type="checkbox" checked={auto_approve} onchange={handle_auto_approve_change} /> Auto-Approve
             </label>
-            {#if feature.tasks?.some((t: TaskRow) => t.status === 'Pending_Approval')}
-                <Button variant="secondary" size="sm" icon="done_all" onclick={() => on_approve_all(feature.id)}>Approve All</Button>
+            {#if pending_tasks.length > 0}
+                <Button variant="primary" size="sm" icon="done_all" onclick={handle_approve_and_run_all}>Approve &amp; Run All</Button>
             {/if}
             <Button variant="secondary" size="sm" icon="add" onclick={() => {
                 adding_task = true;
@@ -85,6 +103,13 @@
             }}>Add Task</Button>
         </div>
     </div>
+
+    {#if auto_approve}
+        <div class="auto-approve-banner" role="status">
+            <span class="icon" style="font-size:14px">bolt</span>
+            Tasks are auto-approved. New tasks will run automatically.
+        </div>
+    {/if}
 
     {#if adding_task}
         <div class="task-add-form">
@@ -112,13 +137,14 @@
             {#each feature.tasks as task (task.id)}
                 <TaskItem
                     {task}
+                    {auto_approve}
                     feature_cli={feature.execution_cli || feature.cli || 'copilot'}
                     editing={editing_task_id === task.id}
                     bind:editing_title={editing_task_title}
                     bind:editing_desc={editing_task_desc}
                     bind:editing_model={editing_task_model}
                     saving={saving_task}
-                    {on_approve}
+                    on_approve={handle_guarded_approve}
                     {on_spawn}
                     on_start_edit={start_edit}
                     on_save_edit={save_edit}
@@ -149,6 +175,12 @@
         font-size: 0.8rem; color: var(--fg-muted); cursor: pointer;
     }
     .task-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .auto-approve-banner {
+        display: flex; align-items: center; gap: 0.4rem;
+        padding: 0.5rem 0.75rem; margin-bottom: 0.75rem;
+        background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.2);
+        border-radius: var(--radius); font-size: 0.8rem; color: #22c55e;
+    }
     .task-add-form {
         display: flex; flex-direction: column; gap: 0.5rem;
         background: var(--bg); border: 1px solid var(--accent);

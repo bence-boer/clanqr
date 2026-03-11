@@ -40,6 +40,7 @@
     let show_details = $state(false);
     let show_submit_confirm = $state(false);
     let show_delete_confirm = $state(false);
+    let edit_started_at = $state<string | null>(null);
 
     const procs = $derived(agent_info?.processes ?? []);
     const is_agent_active = $derived(
@@ -106,12 +107,16 @@
         edit_execution_model = feature.execution_model ?? '';
         last_plan_cli = '';
         last_exec_cli = '';
+        edit_started_at = feature.updated_at;
         editing = true;
     }
 
     async function save_edit(e?: Event) {
         e?.preventDefault();
         if (!edit_title.trim()) return;
+        if (edit_started_at && feature.updated_at !== edit_started_at) {
+            if (!confirm('This feature was modified elsewhere. Save anyway?')) return;
+        }
         saving_edit = true;
         try {
             await handlers.save_edit({
@@ -128,11 +133,19 @@
 
     async function handle_submit() {
         show_submit_confirm = false;
+        if (feature.status !== 'Draft') {
+            toast_store.warning(`Cannot submit — feature status is now "${feature.status.replace(/_/g, ' ')}".`);
+            return;
+        }
         await on_submit(feature.id);
     }
 
     async function handle_delete() {
         show_delete_confirm = false;
+        if (feature.status === 'In_Progress') {
+            toast_store.warning('Cannot delete — feature is currently in progress.');
+            return;
+        }
         await on_delete(feature.id);
     }
 </script>

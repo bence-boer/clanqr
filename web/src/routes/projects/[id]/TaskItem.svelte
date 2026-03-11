@@ -2,6 +2,7 @@
     import { api } from '$lib/api/client';
     import { Accordion, CodeBlock } from '$lib/components';
     import { Badge, Button, Input, Select } from '$lib/components/primitives';
+    import { toast_store } from '$lib/stores/toast.svelte';
     import type { TaskRow as Task } from '$lib/types';
     import { status_icon, status_class } from '$lib/utils/status';
     import TaskArtifacts from './TaskArtifacts.svelte';
@@ -9,6 +10,7 @@
 
     interface Props {
         task: Task
+        auto_approve: boolean
         feature_cli: string
         editing: boolean
         editing_title: string
@@ -26,10 +28,13 @@
     }
 
     let {
-        task, feature_cli, editing, editing_title = $bindable(), editing_desc = $bindable(),
+        task, auto_approve, feature_cli, editing, editing_title = $bindable(), editing_desc = $bindable(),
         editing_model = $bindable(), saving, on_approve, on_spawn, on_start_edit, on_save_edit,
         on_cancel_edit, on_delete, on_toggle_artifacts, show_artifacts
     }: Props = $props();
+
+    let optimistic_status = $state<string | null>(null);
+    const display_status = $derived(optimistic_status ?? task.status);
 
     let model_options = $state<{ value: string, label: string }[]>([]);
     let loading_models = $state(false);
@@ -53,6 +58,22 @@
     $effect(() => {
         if (editing) load_models();
     });
+
+    async function handle_approve() {
+        const prev_status = task.status;
+        optimistic_status = 'Approved';
+        try {
+            await on_approve(task.id);
+            toast_store.info('Task approved. It will run when the pipeline reaches it.');
+        }
+        catch {
+            optimistic_status = prev_status;
+            toast_store.error('Failed to approve task.');
+        }
+        finally {
+            optimistic_status = null;
+        }
+    }
 
     function get_task_title(task: Task): string {
         if (task.title) return task.title;
@@ -104,8 +125,8 @@
                 {#if task.model}
                     <Badge variant="info" style="transform: scale(0.85)">{task.model}</Badge>
                 {/if}
-                <Badge variant={status_class(task.status) as 'success' | 'danger' | 'muted' | 'info' | 'warning'} icon={status_icon(task.status)}>
-                    {task.status.replace(/_/g, ' ')}
+                <Badge variant={status_class(display_status) as 'success' | 'danger' | 'muted' | 'info' | 'warning'} icon={status_icon(display_status)}>
+                    {display_status.replace(/_/g, ' ')}
                 </Badge>
             </div>
         </div>
@@ -116,8 +137,8 @@
             </div>
         {/if}
         <div class="task-actions">
-            {#if task.status === 'Pending_Approval'}
-                <Button variant="primary" size="sm" icon="thumb_up" onclick={() => on_approve(task.id)}>Approve</Button>
+            {#if task.status === 'Pending_Approval' && !auto_approve}
+                <Button variant="primary" size="sm" icon="thumb_up" onclick={handle_approve}>Approve</Button>
             {/if}
             {#if task.status === 'Approved'}
                 <Button variant="secondary" size="sm" icon="play_arrow" onclick={() => on_spawn(task.id)}>Run Ralph</Button>
