@@ -71,8 +71,13 @@
         background-position: right 0.75rem center;
     }
 
-    .base-select:focus {
-        border-color: var(--accent, #0066cc);
+    .base-select:focus:not(:focus-visible) {
+        outline: none;
+    }
+
+    .base-select:focus-visible {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.25);
     }
 
     .base-select:disabled {
