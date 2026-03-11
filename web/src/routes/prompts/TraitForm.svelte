@@ -47,7 +47,8 @@
         </div>
 
         <div class="form-field">
-            <Textarea id="trait-content" bind:value={form.content} rows={6} placeholder="The prompt text injected by this trait…" label="Content" required />
+            <Textarea id="trait-content" bind:value={form.content} rows={6} placeholder="Write instructions that will be injected into the agent's system prompt." label="Content" required />
+            <span class="char-count">{form.content.length} characters</span>
         </div>
 
         <div class="form-toggle-row">
@@ -180,6 +181,12 @@
         gap: 0.4rem;
         font-size: 0.82rem;
         color: var(--danger);
+    }
+    .char-count {
+        font-size: 0.75rem;
+        color: var(--fg-muted);
+        text-align: right;
+        margin-top: 0.15rem;
     }
     .form-actions {
         display: flex;

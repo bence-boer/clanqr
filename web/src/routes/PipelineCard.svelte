@@ -33,7 +33,7 @@
             <a href={resolve('/pipeline')} class="btn-link">View details →</a>
         </div>
         <div class="pipeline-card">
-            <div class="pipeline-state" style="color: {pipeline_state_color(pipeline.state)}">
+            <div class="pipeline-state" style="color: {pipeline_state_color(pipeline.state)}" role="status" aria-live="polite">
                 <span class="icon"
                     >{pipeline.state === 'running' ? 'play_circle' : pipeline.state === 'paused' ? 'pause_circle' : 'radio_button_unchecked'}</span
                 >

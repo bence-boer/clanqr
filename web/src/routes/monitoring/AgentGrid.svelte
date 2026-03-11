@@ -1,30 +1,60 @@
 <script lang="ts">
+    import type { AgentProcess } from '$lib/types';
     import { Badge, Button } from '$lib/components/primitives';
-
-    interface AgentEntry {
-        status: string
-        type: string
-        started_at: string | null
-        finished_at?: string | null
-    }
 
     let {
         entries,
         on_view_log,
         on_stop_agent
     }: {
-        entries: [string, AgentEntry][]
+        entries: [string, AgentProcess][]
         on_view_log: (id: string) => void
         on_stop_agent: (id: string) => void
     } = $props();
+
+    let now = $state(Date.now());
+
+    $effect(() => {
+        const has_running = entries.some(([, agent]) => agent.status === 'running');
+        if (!has_running) return;
+
+        const interval = setInterval(() => { now = Date.now(); }, 1000);
+        return () => clearInterval(interval);
+    });
+
+    function format_duration(ms: number): string {
+        const total_seconds = Math.floor(ms / 1000);
+        const minutes = Math.floor(total_seconds / 60);
+        const seconds = total_seconds % 60;
+        if (minutes === 0) return `${seconds}s`;
+        return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
+    }
+
+    function elapsed_ms(started_at: string): number {
+        return Math.max(0, now - new Date(started_at).getTime());
+    }
+
+    function duration_class(ms: number): string {
+        const minutes = ms / 60_000;
+        if (minutes > 15) return 'duration-danger';
+        if (minutes >= 5) return 'duration-warning';
+        return 'duration-muted';
+    }
+
+    function extract_feature_id(id: string): string | null {
+        if (id.startsWith('manager-')) return id.slice('manager-'.length);
+        return null;
+    }
 </script>
 
 <div class="agent-grid">
     {#each entries as [id, agent] (id)}
+        {@const feature_id = extract_feature_id(id)}
+        {@const is_manager = agent.type === 'manager'}
         <div class="agent-card" class:running={agent.status === 'running'} class:failed={agent.status === 'failed'}>
             <div class="agent-header">
                 <div class="agent-info">
-                    <span class="icon agent-icon">{agent.type === 'manager' ? 'assignment' : 'build'}</span>
+                    <span class="icon agent-icon">{is_manager ? 'assignment' : 'build'}</span>
                     <div>
                         <span class="agent-type">{agent.type}</span>
                         <span class="agent-id">{id}</span>
@@ -41,9 +71,34 @@
                 >
             </div>
 
+            {#if is_manager && feature_id}
+                <nav class="breadcrumb" aria-label="Agent context">
+                    <a href="/projects" class="breadcrumb-link">
+                        <span class="icon" style="font-size:14px">folder</span> Projects
+                    </a>
+                    <span class="breadcrumb-sep">/</span>
+                    <span class="breadcrumb-item" title={feature_id}>Feature {feature_id.slice(0, 8)}</span>
+                </nav>
+            {:else if !is_manager}
+                <nav class="breadcrumb" aria-label="Agent context">
+                    <a href="/projects" class="breadcrumb-link">
+                        <span class="icon" style="font-size:14px">folder</span> Projects
+                    </a>
+                    <span class="breadcrumb-sep">/</span>
+                    <span class="breadcrumb-item">Feature</span>
+                    <span class="breadcrumb-sep">/</span>
+                    <span class="breadcrumb-item" title={agent.task_id}>Task {agent.task_id.slice(0, 8)}</span>
+                </nav>
+            {/if}
+
             <div class="agent-times">
                 <span><span class="icon" style="font-size:14px">schedule</span> Started: {new Date(agent.started_at ?? '').toLocaleTimeString()}</span>
-                {#if agent.finished_at}
+                {#if agent.status === 'running' && agent.started_at}
+                    {@const ms = elapsed_ms(agent.started_at)}
+                    <span class={duration_class(ms)}>
+                        <span class="icon" style="font-size:14px">timer</span> Running for {format_duration(ms)}
+                    </span>
+                {:else if agent.finished_at}
                     <span><span class="icon" style="font-size:14px">flag</span> Finished: {new Date(agent.finished_at).toLocaleTimeString()}</span>
                 {/if}
             </div>
@@ -113,6 +168,32 @@
         font-family: monospace;
     }
 
+    .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.75rem;
+        color: var(--fg-muted);
+        margin-bottom: 0.5rem;
+    }
+    .breadcrumb-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.2rem;
+        color: var(--accent);
+        text-decoration: none;
+    }
+    .breadcrumb-link:hover {
+        text-decoration: underline;
+    }
+    .breadcrumb-sep {
+        color: var(--fg-muted);
+        opacity: 0.5;
+    }
+    .breadcrumb-item {
+        font-family: monospace;
+    }
+
     .agent-times {
         font-size: 0.8rem;
         color: var(--fg-muted);
@@ -126,6 +207,19 @@
         align-items: center;
         gap: 0.25rem;
     }
+
+    .duration-muted {
+        color: var(--fg-muted);
+    }
+    .duration-warning {
+        color: #e6a23c;
+        font-weight: 600;
+    }
+    .duration-danger {
+        color: var(--danger);
+        font-weight: 700;
+    }
+
     .agent-actions {
         display: flex;
         gap: 0.5rem;

@@ -36,8 +36,20 @@
     let loading_execution = $state(false);
     let last_planning_cli = $state('');
     let last_execution_cli = $state('');
+    let show_advanced = $state(false);
+    let form_error = $state<string | null>(null);
+
     const plan_lbl = $derived(`Planning Model ${loading_planning ? '(loading...)' : ''}`);
     const exec_lbl = $derived(`Execution Model ${loading_execution ? '(loading...)' : ''}`);
+
+    const is_default_planning = $derived.by(() => {
+        if (!planning_models.length || !planning_model) return false;
+        return planning_model === planning_models[0].value;
+    });
+    const is_default_execution = $derived.by(() => {
+        if (!execution_models.length || !execution_model) return false;
+        return execution_model === execution_models[0].value;
+    });
 
     async function load_models_for(target_cli: string, kind: 'planning' | 'execution') {
         const is_planning = kind === 'planning';
@@ -83,6 +95,7 @@
     async function handle_submit() {
         if (!title.trim()) return;
         creating = true;
+        form_error = null;
         try {
             const clean_resources = resources.filter((r) => r.url.trim()).map((r) => ({ url: r.url.trim(), title: r.title.trim() || undefined }));
             await on_create({
@@ -100,6 +113,10 @@
             on_task_failure = 'stop';
             task_timeout_minutes = 10;
             resources = [];
+            form_error = null;
+        }
+        catch (error) {
+            form_error = error instanceof Error ? error.message : 'Failed to create feature. Please try again.';
         }
         finally {
             creating = false;
@@ -114,47 +131,9 @@
         handle_submit();
     }}
 >
+    <!-- Stage 1: Always visible -->
     <Input type="text" placeholder="Feature title" bind:value={title} required />
     <Textarea placeholder="Description" bind:value={description} rows={4} />
-
-    <div class="selection-grid">
-        <div class="field">
-            <Select id="cli-select" label="Planning CLI" bind:value={cli} class="input select">
-                <option value="copilot">Copilot CLI</option>
-                <option value="gemini">Gemini CLI</option>
-            </Select>
-        </div>
-        <div class="field">
-            <Select id="planning-model-select" label={plan_lbl} bind:value={planning_model} disabled={loading_planning}>
-                {#each planning_models as m (m.value)}
-                    <option value={m.value}>{m.label}</option>
-                {/each}
-            </Select>
-        </div>
-        <div class="field">
-            <Select id="execution-cli-select" label="Execution CLI" bind:value={execution_cli} class="input select">
-                <option value="copilot">Copilot CLI</option>
-                <option value="gemini">Gemini CLI</option>
-            </Select>
-        </div>
-        <div class="field">
-            <Select id="execution-model-select" label={exec_lbl} bind:value={execution_model} disabled={loading_execution}>
-                {#each execution_models as m (m.value)}
-                    <option value={m.value}>{m.label}</option>
-                {/each}
-            </Select>
-        </div>
-        <div class="field">
-            <Select id="failure-select" label="On Task Failure" bind:value={on_task_failure} class="input select">
-                <option value="stop">Stop</option>
-                <option value="retry">Retry</option>
-                <option value="skip">Skip</option>
-            </Select>
-        </div>
-        <div class="field">
-            <Input id="timeout-input" type="number" bind:value={task_timeout_minutes} class="input" label="Task Timeout (min)" min="1" max="60" />
-        </div>
-    </div>
 
     <div class="resources-section">
         <div class="resources-header">
@@ -169,12 +148,71 @@
                 <div class="title-field">
                     <Input type="text" placeholder="Title" bind:value={resource.title} class="input" />
                 </div>
-                <Button type="button" variant="danger" size="icon" onclick={() => remove_resource(index)}>
+                <Button type="button" variant="danger" size="icon" onclick={() => remove_resource(index)} aria-label="Remove resource">
                     <span class="icon" style="font-size:16px">close</span>
                 </Button>
             </div>
         {/each}
     </div>
+
+    <!-- Stage 2: Advanced Settings (collapsed by default) -->
+    <button type="button" class="advanced-toggle" onclick={() => (show_advanced = !show_advanced)}>
+        <span class="icon" style="font-size:16px">{show_advanced ? 'expand_less' : 'expand_more'}</span>
+        Advanced Settings
+    </button>
+
+    {#if show_advanced}
+        <div class="advanced-section">
+            <div class="selection-grid">
+                <div class="field">
+                    <Select id="cli-select" label="Planning CLI" bind:value={cli} class="input select">
+                        <option value="copilot">Copilot CLI</option>
+                        <option value="gemini">Gemini CLI</option>
+                    </Select>
+                </div>
+                <div class="field">
+                    <Select id="planning-model-select" label={plan_lbl} bind:value={planning_model} disabled={loading_planning}>
+                        {#each planning_models as m (m.value)}
+                            <option value={m.value}>{m.label}{is_default_planning && m.value === planning_models[0]?.value ? ' (Recommended)' : ''}</option>
+                        {/each}
+                    </Select>
+                    <span class="help-text">The AI model that breaks your feature into tasks</span>
+                </div>
+                <div class="field">
+                    <Select id="execution-cli-select" label="Execution CLI" bind:value={execution_cli} class="input select">
+                        <option value="copilot">Copilot CLI</option>
+                        <option value="gemini">Gemini CLI</option>
+                    </Select>
+                </div>
+                <div class="field">
+                    <Select id="execution-model-select" label={exec_lbl} bind:value={execution_model} disabled={loading_execution}>
+                        {#each execution_models as m (m.value)}
+                            <option value={m.value}>{m.label}{is_default_execution && m.value === execution_models[0]?.value ? ' (Recommended)' : ''}</option>
+                        {/each}
+                    </Select>
+                    <span class="help-text">The AI model that implements each task</span>
+                </div>
+                <div class="field">
+                    <Select id="failure-select" label="On Task Failure" bind:value={on_task_failure} class="input select">
+                        <option value="stop">Stop</option>
+                        <option value="retry">Retry</option>
+                        <option value="skip">Skip</option>
+                    </Select>
+                </div>
+                <div class="field">
+                    <Input id="timeout-input" type="number" bind:value={task_timeout_minutes} class="input" label="Task Timeout (min)" min="1" max="60" />
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    {#if form_error}
+        <div class="form-error">
+            <span class="icon" style="font-size:14px">error</span>
+            {form_error}
+        </div>
+    {/if}
+
     <div class="form-actions">
         <Button type="button" variant="secondary" onclick={on_cancel}>Cancel</Button>
         <Button type="submit" variant="primary" disabled={creating || !title.trim() || !planning_model || !execution_model}>
@@ -203,6 +241,26 @@
     .form-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
     .selection-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
     .field { display: flex; flex-direction: column; gap: 0.35rem; }
+    .help-text { font-size: 0.7rem; color: var(--fg-muted); font-style: italic; }
+    .advanced-toggle {
+        display: flex; align-items: center; gap: 0.3rem;
+        background: transparent; border: 1px solid var(--border); border-radius: var(--radius);
+        padding: 0.5rem 0.75rem; color: var(--fg-muted); font-size: 0.85rem;
+        cursor: pointer; transition: all 0.15s; width: 100%;
+        font-family: var(--font);
+    }
+    .advanced-toggle:hover { border-color: var(--accent); color: var(--fg); }
+    .advanced-section { animation: slide-down 200ms ease; }
+    @keyframes slide-down {
+        from { opacity: 0; transform: translateY(-8px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .form-error {
+        display: flex; align-items: center; gap: 0.4rem;
+        padding: 0.5rem 0.75rem; border-radius: var(--radius);
+        background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #ef4444; font-size: 0.8rem;
+    }
     @media (max-width: 768px) {
         .resource-row { flex-direction: column; }
         .title-field { max-width: 100%; }

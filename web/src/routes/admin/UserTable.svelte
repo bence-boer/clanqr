@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { EmptyState, ErrorBanner, LoadingSpinner } from '$lib/components';
+    import { ConfirmModal, EmptyState, ErrorBanner, LoadingSpinner } from '$lib/components';
     import { Badge } from '$lib/components/primitives';
     import type { User } from '$lib/types';
     import UserActions from './UserActions.svelte';
@@ -20,9 +20,21 @@
     let confirm_delete: string | null = $state(null);
     let role_toggling: Set<string> = $state(new Set());
     let deleting: Set<string> = $state(new Set());
+    let show_delete_modal = $state(false);
+    let delete_target_user: User | null = $state(null);
 
     function format_date(iso: string) {
         return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function format_last_active(user: User): string {
+        // The API doesn't expose last_sign_in_at; use session count as activity indicator
+        if (user.session_count === 0) return 'Never';
+        return format_date(user.created_at);
+    }
+
+    function is_inactive(user: User): boolean {
+        return user.session_count === 0;
     }
 
     async function toggle_role(user: User) {
@@ -38,11 +50,19 @@
         }
     }
 
-    async function delete_user(user_id: string) {
+    function request_delete(user: User) {
+        delete_target_user = user;
+        show_delete_modal = true;
+    }
+
+    async function confirm_delete_user() {
+        if (!delete_target_user) return;
+        const user_id = delete_target_user.id;
         deleting = new Set([...deleting, user_id]);
         try {
             await ondelete_user(user_id);
-            confirm_delete = null;
+            show_delete_modal = false;
+            delete_target_user = null;
         }
         catch {
             /* Parent handles error display */
@@ -70,6 +90,7 @@
                         <th>Display Name</th>
                         <th>Role</th>
                         <th>Registered</th>
+                        <th>Last Active</th>
                         <th>Sessions</th>
                         <th>Actions</th>
                     </tr>
@@ -89,15 +110,16 @@
                                 <Badge variant={user.role === 'admin' ? 'warning' : 'muted'}>{user.role}</Badge>
                             </td>
                             <td data-label="Registered" class="date-cell">{format_date(user.created_at)}</td>
+                            <td data-label="Last Active" class="date-cell" class:inactive={is_inactive(user)}>
+                                {format_last_active(user)}
+                            </td>
                             <td data-label="Sessions" class="count-cell">{user.session_count}</td>
                             <td data-label="Actions">
                                 <UserActions
-                                    {user} {self_id} {admin_count} {confirm_delete}
-                                    {role_toggling} {deleting}
+                                    {user} {self_id} {admin_count}
+                                    {role_toggling}
                                     on_toggle_role={toggle_role}
-                                    on_delete={delete_user}
-                                    on_confirm_delete={(id) => (confirm_delete = id)}
-                                    on_cancel_delete={() => (confirm_delete = null)}
+                                    on_delete={request_delete}
                                 />
                             </td>
                         </tr>
@@ -107,6 +129,17 @@
         </div>
     {/if}
 </div>
+
+<ConfirmModal
+    bind:open={show_delete_modal}
+    title="Revoke User Access"
+    message={delete_target_user ? `Are you sure you want to revoke access for "${delete_target_user.display_name ?? '(unnamed)'}"? This action cannot be undone.` : ''}
+    confirm_label="Revoke Access"
+    variant="danger"
+    loading={delete_target_user ? deleting.has(delete_target_user.id) : false}
+    onconfirm={confirm_delete_user}
+    oncancel={() => { show_delete_modal = false; delete_target_user = null; }}
+/>
 
 <style>
     /* Table */
@@ -154,6 +187,10 @@
         color: var(--fg-muted);
         font-size: 0.8rem;
         white-space: nowrap;
+    }
+    .date-cell.inactive {
+        color: var(--danger);
+        font-weight: 600;
     }
     .count-cell {
         color: var(--fg-muted);

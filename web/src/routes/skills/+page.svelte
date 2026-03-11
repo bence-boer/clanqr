@@ -4,7 +4,7 @@
     import { api } from '$lib/api/client';
     import { toast_store } from '$lib/stores/toast.svelte';
     import { EmptyState, ErrorBanner, LoadingSpinner } from '$lib/components';
-    import type { SkillInfoListItem } from '$lib/types';
+    import type { SkillInfoListItem, SkillLink } from '$lib/types';
     import SkillCard from './SkillCard.svelte';
 
     let skills = $state<SkillInfoListItem[]>([]);
@@ -16,6 +16,19 @@
     let skill_content = $state<string | null>(null);
     let skill_files = $state<{ name: string, content: string }[]>([]);
     let content_loading = $state(false);
+    let search_query = $state('');
+
+    // ── Skill usage counts (linked tasks) ───────────────────────────────────
+    let skill_task_counts = $state<Record<string, number>>({});
+
+    let filtered_skills = $derived.by(() => {
+        if (!search_query.trim()) return skills;
+        const q = search_query.trim().toLowerCase();
+        return skills.filter((s) =>
+            s.name.toLowerCase().includes(q) ||
+            (s.description ?? '').toLowerCase().includes(q)
+        );
+    });
 
     async function load_skills() {
         try {
@@ -101,18 +114,34 @@
     {:else if skills.length === 0}
         <EmptyState icon="extension" message="No skills found." detail="Add skill directories to ~/.copilot/skills/" />
     {:else}
-        <div class="skills-grid">
-            {#each skills as skill (skill.name)}
-                <SkillCard
-                    {skill}
-                    expanded={expanded_skill === skill.name}
-                    content={skill_content}
-                    files={skill_files}
-                    {content_loading}
-                    on_toggle={() => toggle_skill(skill.name)}
-                />
-            {/each}
+        <div class="search-bar">
+            <span class="icon search-icon">search</span>
+            <input
+                type="text"
+                class="search-input"
+                placeholder="Search skills by name or description…"
+                bind:value={search_query}
+            />
+            <span class="search-count">{filtered_skills.length} of {skills.length} skill{skills.length !== 1 ? 's' : ''}</span>
         </div>
+
+        {#if filtered_skills.length === 0}
+            <EmptyState icon="search_off" message="No skills match your search." detail="Try a different keyword." />
+        {:else}
+            <div class="skills-grid">
+                {#each filtered_skills as skill (skill.name)}
+                    <SkillCard
+                        {skill}
+                        expanded={expanded_skill === skill.name}
+                        content={skill_content}
+                        files={skill_files}
+                        {content_loading}
+                        task_count={skill_task_counts[skill.name] ?? 0}
+                        on_toggle={() => toggle_skill(skill.name)}
+                    />
+                {/each}
+            </div>
+        {/if}
     {/if}
 </div>
 
@@ -171,6 +200,35 @@
         grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
         gap: 1rem;
         align-items: start;
+    }
+
+    .search-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1.25rem;
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 0.5rem 0.75rem;
+        transition: border-color 0.15s;
+    }
+    .search-bar:focus-within { border-color: var(--accent); }
+    .search-icon { font-size: 18px; color: var(--fg-muted); flex-shrink: 0; }
+    .search-input {
+        flex: 1;
+        background: transparent;
+        border: none;
+        color: var(--fg);
+        font-size: 0.85rem;
+        outline: none;
+    }
+    .search-input::placeholder { color: var(--fg-muted); }
+    .search-count {
+        font-size: 0.75rem;
+        color: var(--fg-muted);
+        white-space: nowrap;
+        flex-shrink: 0;
     }
 
     @media (max-width: 600px) {

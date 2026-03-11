@@ -7,6 +7,7 @@
     import { onMount } from 'svelte';
     import CurrentTask from './CurrentTask.svelte';
     import PipelineHistory from './PipelineHistory.svelte';
+    import PipelineStats from './PipelineStats.svelte';
     import PipelineStatusBar from './PipelineStatusBar.svelte';
     import TaskQueue from './TaskQueue.svelte';
 
@@ -71,11 +72,13 @@
         try {
             const result = await api.pipeline_log();
             log_text = result.log;
+            return true;
         }
         catch (err) {
             console.error('Failed to load log:', err);
             toast_store.error('Failed to load log');
             log_text = 'Failed to load log.';
+            throw err;
         }
         finally {
             log_loading = false;
@@ -149,6 +152,36 @@
         const m = Math.floor(elapsed / 60);
         return `${m}m ${elapsed % 60}s`;
     }
+
+    async function reorder_queue(task_ids: string[]) {
+        try {
+            await api.pipeline_reorder(task_ids);
+        } catch (err) {
+            console.error('Failed to reorder queue:', err);
+            toast_store.error('Failed to reorder queue');
+            await load_queue();
+        }
+    }
+
+    async function remove_from_queue(task_id: string) {
+        try {
+            await api.update_task(task_id, { status: 'Pending_Approval' } as never);
+            await load_queue();
+        } catch (err) {
+            console.error('Failed to remove from queue:', err);
+            toast_store.error('Failed to remove from queue');
+        }
+    }
+
+    async function retry_task(task_id: string) {
+        try {
+            await api.approve_task(task_id);
+            await load_queue();
+        } catch (err) {
+            console.error('Failed to retry task:', err);
+            toast_store.error('Failed to retry task');
+        }
+    }
 </script>
 
 <div class="page" aria-busy={loading}>
@@ -168,6 +201,8 @@
     {:else}
         <PipelineStatusBar {pipeline} {action_busy} {action_error} onpause={do_pause} onresume={do_resume} onstop={do_stop} />
 
+        <PipelineStats {pipeline} {history} />
+
         <CurrentTask
             {pipeline}
             {log_visible}
@@ -185,7 +220,7 @@
         </div>
 
         {#if active_tab === 'queue'}
-            <TaskQueue {queue} />
+            <TaskQueue {queue} onreorder={reorder_queue} onremove={remove_from_queue} />
         {:else}
             <PipelineHistory
                 {history}
@@ -200,6 +235,7 @@
                 onpage_change={(page) => {
                     history_page = page;
                 }}
+                onretry={retry_task}
             />
         {/if}
     {/if}

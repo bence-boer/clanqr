@@ -84,3 +84,43 @@ export async function delete_selected_features(deps: FeatureActionDeps, ids: Set
         toast_store.error('Failed to delete features');
     }
 }
+
+export async function duplicate_feature(
+    deps: FeatureActionDeps,
+    source: {
+        title: string
+        description?: string | null
+        cli?: string | null
+        execution_cli?: string | null
+        planning_model?: string | null
+        execution_model?: string | null
+        on_task_failure?: FailureBehavior | null
+        task_timeout_minutes?: number | null
+        resources?: { url: string, title?: string | null }[] | null
+    }
+) {
+    type FeatureInput = Parameters<typeof api.create_feature>[0];
+    try {
+        const resources_input = (source.resources ?? [])
+            .map((r) => ({ url: r.url, title: r.title ?? undefined }))
+            .filter((r) => r.url);
+        await api.create_feature({
+            project_id: deps.project_id,
+            title: `${source.title} (copy)`,
+            description: source.description ?? undefined,
+            cli: source.cli ?? 'copilot',
+            execution_cli: source.execution_cli ?? source.cli ?? 'copilot',
+            planning_model: source.planning_model ?? null,
+            execution_model: source.execution_model ?? null,
+            on_task_failure: source.on_task_failure ?? 'stop',
+            task_timeout_minutes: source.task_timeout_minutes ?? 10,
+            resources: resources_input.length > 0 ? (resources_input as FeatureInput['resources']) : undefined
+        });
+        toast_store.success('Feature duplicated');
+        await deps.load_data();
+    }
+    catch (error) {
+        console.error('Failed to duplicate feature:', error);
+        toast_store.error('Failed to duplicate feature');
+    }
+}

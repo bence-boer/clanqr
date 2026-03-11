@@ -10,6 +10,10 @@ const create_session_schema = z.object({
     model: z.string().optional()
 });
 
+const update_session_schema = z.object({
+    title: z.string().min(1).max(200)
+});
+
 const send_message_schema = z.object({
     content: z.string().min(1),
     model: z.string().optional()
@@ -66,6 +70,28 @@ export const chat_routes = new Hono<AppBindings>()
 
         if (error || !session) return context.json({ error: 'Session not found' }, 404);
         return context.json(session);
+    })
+
+    // Update session (rename)
+    .patch('/sessions/:id', validate_uuid_params('id'), async (context) => {
+        const id = context.req.param('id');
+        const body = await context.req.json();
+        const result = update_session_schema.safeParse(body);
+        if (!result.success) return context.json({ error: result.error.format() }, 400);
+
+        const supabase = context.get('supabase');
+        const { data, error } = await supabase
+            .from('chat_sessions')
+            .update({ title: result.data.title })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error || !data) {
+            logger.error('Failed to update session', { route: 'PATCH /api/chat/sessions/:id', id, error: String(error) });
+            return context.json({ error: 'Failed to update session' }, 500);
+        }
+        return context.json(data);
     })
 
     // Delete session

@@ -21,7 +21,7 @@
     <div class="section-header">
         <h3>System Stats</h3>
         <div class="section-actions">
-            <Button variant="ghost" size="icon" onclick={onrefresh} title="Refresh stats" icon="refresh" />
+            <Button variant="ghost" size="icon" onclick={onrefresh} title="Refresh stats" icon="refresh" aria-label="Refresh stats" />
             <Button variant={stats_auto_refresh ? 'primary' : 'secondary'} onclick={ontoggle_auto_refresh} title="Auto-refresh every 15s" icon="update">
                 Auto-refresh
             </Button>

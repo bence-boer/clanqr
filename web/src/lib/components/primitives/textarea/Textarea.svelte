@@ -20,7 +20,8 @@
         ...rest_props
     }: TextareaProperties = $props();
 
-    const textarea_id = $derived(id || `textarea-${Math.random().toString(36).slice(2, 9)}`);
+    const fallback_id = `textarea-${crypto.randomUUID().slice(0, 8)}`;
+    const textarea_id = $derived(id || fallback_id);
 </script>
 
 <div class="textarea">
@@ -62,8 +63,13 @@
         min-height: 60px;
     }
 
-    .base-textarea:focus {
-        border-color: var(--accent, #0066cc);
+    .base-textarea:focus:not(:focus-visible) {
+        outline: none;
+    }
+
+    .base-textarea:focus-visible {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.25);
     }
 
     .base-textarea:disabled {

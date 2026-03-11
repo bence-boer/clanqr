@@ -75,6 +75,16 @@ export const api = {
         unwrap(await (await client.api.agents.resume.$post()).json()),
     pipeline_stop_current: async (): Promise<{ success: boolean }> =>
         unwrap(await (await client.api.agents['stop-current'].$post()).json()),
+    pipeline_reorder: async (task_ids: string[]): Promise<{ success: boolean }> => {
+        const response = await fetch(`${API_URL}/api/agents/queue/reorder`, {
+            method: 'PATCH',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ task_ids })
+        });
+        if (!response.ok) throw new Error('Failed to reorder queue');
+        return response.json();
+    },
 
     // ── Prompts ───────────────────────────────────────────────────────────────
     list_prompts: async (): Promise<Types.PromptRecord[]> =>
@@ -145,6 +155,10 @@ export const api = {
     usage_breakdown: async (): Promise<Types.UsageBreakdown> =>
         unwrap(await (await client.api.usage.breakdown.$get()).json()),
 
+    // ── Activity ──────────────────────────────────────────────────────────────
+    activity_feed: async (limit = 20): Promise<Types.ActivityEvent[]> =>
+        unwrap(await (await client.api.activity.feed.$get({ query: { limit: String(limit) } })).json()),
+
     // ── Chat ──────────────────────────────────────────────────────────────────
     list_chat_sessions: async (): Promise<Types.ChatSession[]> =>
         unwrap(await (await client.api.chat.sessions.$get()).json()),
@@ -154,6 +168,16 @@ export const api = {
         unwrap(await (await client.api.chat.sessions.$post({ json: data as never })).json()),
     delete_chat_session: async (id: string): Promise<{ success: boolean }> =>
         unwrap(await (await client.api.chat.sessions[':id'].$delete({ param: { id } })).json()),
+    rename_chat_session: async (id: string, title: string): Promise<Types.ChatSession> => {
+        const response = await fetch(`${API_URL}/api/chat/sessions/${encodeURIComponent(id)}`, {
+            method: 'PATCH',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title })
+        });
+        if (!response.ok) throw new Error('Failed to rename session');
+        return response.json();
+    },
     send_chat_message: async (session_id: string, content: string, model?: string): Promise<Response> => {
         const response = await fetch(`${API_URL}/api/chat/sessions/${encodeURIComponent(session_id)}/send`, {
             method: 'POST',

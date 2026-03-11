@@ -64,11 +64,21 @@
         }
         catch (err: unknown) {
             const message: string = err instanceof Error ? err.message : String(err);
-            if (message.includes('409') || message.toLowerCase().includes('already used')) {
+            const lower = message.toLowerCase();
+            if (message.includes('409') || lower.includes('already used')) {
                 error = 'This invite link has already been used.';
             }
-            else if (message.toLowerCase().includes('expired')) {
+            else if (lower.includes('expired')) {
                 error = 'This invite link has expired.';
+            }
+            else if (lower.includes('notallowed') || lower.includes('not allowed') || lower.includes('cancelled') || lower.includes('abort')) {
+                error = 'Passkey creation was cancelled. Click the button to try again.';
+            }
+            else if (lower.includes('not supported') || lower.includes('webauthn')) {
+                error = 'WebAuthn is not supported in this browser. Try Chrome, Safari, or Edge.';
+            }
+            else if (lower.includes('network') || lower.includes('fetch')) {
+                error = 'Network error — check your connection and try again.';
             }
             else {
                 error = message || 'Registration failed. Please try again.';
@@ -91,12 +101,15 @@
             <a href={resolve('/')} class="auth-link">Go to login</a>
         {:else}
             <span class="icon large">person_add</span>
-            <h1>Ralph Agent Workspace</h1>
-            <p class="auth-subtitle">You've been invited. Create a passkey to get started.</p>
+            <h1>Welcome!</h1>
+            <p class="auth-subtitle">You've been invited to Ralph Agent Workspace. Create a passkey to get started.</p>
             {#if invite_info?.valid}
                 <div class="invite-meta">
+                    {#if invite_info.label}
+                        <span class="meta-badge"><span class="icon" style="font-size:14px">badge</span> {invite_info.label}</span>
+                    {/if}
                     {#if invite_info.expires_at}
-                        <span>Expires {new Date(invite_info.expires_at).toLocaleDateString()}</span>
+                        <span class="meta-badge"><span class="icon" style="font-size:14px">schedule</span> Expires {new Date(invite_info.expires_at).toLocaleDateString()}</span>
                     {/if}
                 </div>
             {/if}
@@ -150,6 +163,17 @@
     .auth-link { color: var(--accent); text-decoration: none; font-size: 0.85rem; }
     .auth-link:hover { text-decoration: underline; }
     .invite-meta { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
+    .meta-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        font-size: 0.78rem;
+        color: var(--fg-muted);
+        background: var(--bg-elevated);
+        padding: 0.25rem 0.6rem;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+    }
     @media (max-width: 768px) {
         .auth-card { max-width: 100%; padding: 1.5rem; }
     }

@@ -81,6 +81,11 @@
         cursor: not-allowed;
     }
 
+    .base-btn:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+    }
+
     /* Variants */
     .btn-default {
         border-color: var(--border);
@@ -173,8 +178,12 @@
     }
 
     .size-icon {
-        padding: 0.35rem;
-        min-width: 0;
+        padding: 0.5rem;
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
     }
 
     /* Icon scaling relative to size */

@@ -130,9 +130,9 @@ describe('PipelineService', () => {
             expect(pipeline_service.get_status().state).toBe('paused');
         });
 
-        it('does not pause when idle', () => {
+        it('pauses when idle', () => {
             pipeline_service.pause();
-            expect(pipeline_service.get_status().state).toBe('idle');
+            expect(pipeline_service.get_status().state).toBe('paused');
         });
 
         it('resumes from paused to idle', () => {

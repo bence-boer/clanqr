@@ -84,8 +84,37 @@ const AGENT_ENV_ALLOWLIST = [
     'ANTHROPIC_API_KEY',
     'OPENAI_API_KEY',
     'GEMINI_API_KEY',
-    'GITHUB_TOKEN'
+    'GITHUB_TOKEN',
+    'GH_TOKEN',
+    'COPILOT_GITHUB_TOKEN'
 ];
+
+/**
+ * Resolve GITHUB_TOKEN from `gh auth token` if no GitHub auth env var is set.
+ * Called once at startup so spawned agents inherit the token.
+ */
+function resolve_github_token(): void {
+    if (process.env.GITHUB_TOKEN || process.env.GH_TOKEN || process.env.COPILOT_GITHUB_TOKEN) return;
+    try {
+        const result = Bun.spawnSync(['gh', 'auth', 'token'], {
+            stdout: 'pipe',
+            stderr: 'pipe',
+            env: { ...process.env, PATH: ENRICHED_PATH }
+        });
+        if (result.exitCode === 0) {
+            const token = new TextDecoder().decode(result.stdout).trim();
+            if (token) {
+                process.env.GITHUB_TOKEN = token;
+                console.log('ℹ️  Resolved GITHUB_TOKEN from gh CLI auth');
+            }
+        }
+    }
+    catch {
+        // gh CLI not available or not authenticated — agents will need their own auth
+    }
+}
+
+resolve_github_token();
 
 /** Build a safe environment for agent subprocesses (no server secrets) */
 export function build_agent_env(): Record<string, string> {

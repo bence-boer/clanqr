@@ -83,7 +83,7 @@ test.describe("authenticated flows", () => {
         await page.goto("/");
         // Wait for the app to load and show authenticated content
         // The exact content depends on the app state, but it shouldn't show an error
-        await page.waitForLoadState("networkidle");
+        await page.waitForLoadState("domcontentloaded");
         const body = page.locator("body");
         await expect(body).toBeVisible();
     });

@@ -19,7 +19,8 @@
         ...rest_props
     }: InputProperties = $props();
 
-    const input_id = $derived(id || `input-${Math.random().toString(36).slice(2, 9)}`);
+    const fallback_id = `input-${crypto.randomUUID().slice(0, 8)}`;
+    const input_id = $derived(id || fallback_id);
 </script>
 
 <div class="input">
@@ -60,8 +61,13 @@
         transition: border-color 0.15s;
     }
 
-    .base-input:focus {
-        border-color: var(--accent, #0066cc);
+    .base-input:focus:not(:focus-visible) {
+        outline: none;
+    }
+
+    .base-input:focus-visible {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.25);
     }
 
     .base-input:disabled {

@@ -76,7 +76,7 @@ export function use_event_stream(
     let connected = $state(false);
     let is_stale = $state(false);
     let last_event_at = $state(Date.now());
-    const stale_threshold_ms = 60_000;
+    const stale_threshold_ms = 30_000;
 
     onMount(() => {
         let event_source: EventSource | null = null;
@@ -86,6 +86,7 @@ export function use_event_stream(
         let stale_check_timer: ReturnType<typeof setInterval> | null = null;
         let destroyed = false;
         let consecutive_failures = 0;
+        let was_disconnected = false;
         const MAX_FAILURES_BEFORE_FALLBACK = 3;
 
         function mark_event_received() {
@@ -142,13 +143,20 @@ export function use_event_stream(
             event_source.onopen = () => {
                 connected = true;
                 reconnect_delay = INITIAL_RECONNECT_DELAY_MS;
+                const reconnecting = consecutive_failures > 0 || was_disconnected;
                 consecutive_failures = 0;
                 mark_event_received();
                 stop_fallback_polling();
+                // Reconcile stale data on reconnect
+                if (reconnecting && fallback_poll) {
+                    fallback_poll();
+                }
+                was_disconnected = false;
             };
 
             event_source.onerror = () => {
                 connected = false;
+                was_disconnected = true;
                 event_source?.close();
                 event_source = null;
                 consecutive_failures++;
@@ -173,6 +181,15 @@ export function use_event_stream(
                     parse_and_dispatch(sse_event, event.data);
                 });
             }
+
+            // Snapshot after reconnect triggers full reconciliation
+            event_source.addEventListener('snapshot', (event: MessageEvent) => {
+                mark_event_received();
+                parse_and_dispatch('snapshot', event.data);
+                if (was_disconnected && fallback_poll) {
+                    fallback_poll();
+                }
+            });
 
             // Ping just keeps the connection fresh
             event_source.addEventListener('ping', () => {

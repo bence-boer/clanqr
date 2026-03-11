@@ -22,6 +22,7 @@ import { skills_routes } from './routes/skills';
 import { system_routes } from './routes/system';
 import { tasks_routes } from './routes/tasks';
 import { traits_routes } from './routes/traits';
+import { activity_routes } from './routes/activity';
 import { usage_routes } from './routes/usage';
 import { agent_service } from './services/agent_service';
 import { pipeline_service } from './services/pipeline_service';
@@ -73,7 +74,7 @@ const app = new Hono<AppBindings>()
         }
         await next();
     })
-    .use('*', rate_limit(100, 60_000))
+    .use('*', rate_limit(env.NODE_ENV === 'development' ? 500 : 100, 60_000))
     .use('*', supabase_middleware())
     // Health check (no auth)
     .get('/health', (context) => {
@@ -101,6 +102,7 @@ const app = new Hono<AppBindings>()
     .route('/api/traits', traits_routes)
     .route('/api/skills', skills_routes)
     .route('/api/usage', usage_routes)
+    .route('/api/activity', activity_routes)
     // Admin routes (role check handled inside admin_routes, auth already applied by /api/* above)
     .route('/api/admin', admin_routes);
 
