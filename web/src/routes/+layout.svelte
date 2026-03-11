@@ -81,7 +81,7 @@
     }
 
     // ── Global SSE for notifications ─────────────────────────────────────────────
-    let notification_source: EventSource | null = $state(null);
+    let notification_source: EventSource | null = null;
 
     $effect(() => {
         if (auth_store.state === 'authenticated' && !notification_source) {

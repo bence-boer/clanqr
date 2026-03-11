@@ -27,29 +27,29 @@ test.describe("navigation and page rendering", () => {
 
     test("dashboard loads with sidebar", async ({ page }) => {
         await page.goto("/");
-        await page.waitForLoadState("networkidle");
+        await page.waitForLoadState("domcontentloaded");
 
         // Sidebar should have key navigation links
         const sidebar = page.locator("nav, .sidebar, [class*=sidebar]");
         await expect(sidebar.first()).toBeVisible({ timeout: 10_000 });
 
         // Key nav items should be present
-        await expect(page.getByText("Dashboard")).toBeVisible();
-        await expect(page.getByText("Projects")).toBeVisible();
-        await expect(page.getByText("Pipeline")).toBeVisible();
-        await expect(page.getByText("Chat")).toBeVisible();
+        await expect(page.locator('nav a[href="/"]')).toBeVisible();
+        await expect(page.locator('nav a[href="/projects"]')).toBeVisible();
+        await expect(page.locator('nav a[href="/pipeline"]')).toBeVisible();
+        await expect(page.locator('nav a[href="/chat"]')).toBeVisible();
     });
 
     test("monitoring link exists in sidebar", async ({ page }) => {
         await page.goto("/");
-        await page.waitForLoadState("networkidle");
+        await page.waitForLoadState("domcontentloaded");
         // §4.1: Monitoring should be in nav
-        await expect(page.getByText("Monitoring")).toBeVisible({ timeout: 10_000 });
+        await expect(page.locator('nav a[href="/monitoring"]')).toBeVisible({ timeout: 10_000 });
     });
 
     test("projects page renders project list", async ({ page }) => {
         await page.goto("/projects");
-        await page.waitForLoadState("networkidle");
+        await page.waitForLoadState("domcontentloaded");
 
         // Page should load without errors
         const body = page.locator("body");
@@ -63,7 +63,7 @@ test.describe("navigation and page rendering", () => {
 
     test("chat page loads with session list", async ({ page }) => {
         await page.goto("/chat");
-        await page.waitForLoadState("networkidle");
+        await page.waitForLoadState("domcontentloaded");
 
         // Chat page should render
         const body = page.locator("body");
@@ -72,7 +72,7 @@ test.describe("navigation and page rendering", () => {
 
     test("pipeline page loads with status", async ({ page }) => {
         await page.goto("/pipeline");
-        await page.waitForLoadState("networkidle");
+        await page.waitForLoadState("domcontentloaded");
 
         // Pipeline page should show status information
         const body = page.locator("body");
@@ -95,7 +95,7 @@ test.describe("project detail page (decomposed components)", () => {
 
         try {
             await page.goto(`/projects/${project.id}`);
-            await page.waitForLoadState("networkidle");
+            await page.waitForLoadState("domcontentloaded");
 
             // The page should render without errors
             const body = page.locator("body");
@@ -124,11 +124,11 @@ test.describe("error toast display", () => {
     test("error toasts are visible long enough", async ({ page }) => {
         await authenticate(page);
         await page.goto("/");
-        await page.waitForLoadState("networkidle");
+        await page.waitForLoadState("domcontentloaded");
 
         // Trigger an error by navigating to a non-existent project
         await page.goto("/projects/00000000-0000-0000-0000-000000099999");
-        await page.waitForLoadState("networkidle");
+        await page.waitForLoadState("domcontentloaded");
 
         // If an error toast appears, it should be visible for at least 5s
         const toast = page.locator("[class*=toast], [role=alert]").first();
@@ -147,7 +147,7 @@ test.describe("admin page protection", () => {
     test("non-admin users get redirected from admin page", async ({ page }) => {
         await authenticate(page);
         await page.goto("/admin");
-        await page.waitForLoadState("networkidle");
+        await page.waitForLoadState("domcontentloaded");
 
         // Should redirect away or show an access denied state
         // The dev session is a regular user, not admin
@@ -167,7 +167,7 @@ test.describe("CSS variable consistency", () => {
 
         for (const path of pages_to_check) {
             await page.goto(path);
-            await page.waitForLoadState("networkidle");
+            await page.waitForLoadState("domcontentloaded");
 
             // Check that the page has proper styling (not falling back to browser defaults)
             const bg_color = await page.evaluate(() => {
