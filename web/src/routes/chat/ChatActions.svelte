@@ -14,7 +14,7 @@
     const starter_prompts = [
         { icon: 'lightbulb', text: 'Help me design a new feature' },
         { icon: 'architecture', text: 'Explain the current project architecture' },
-        { icon: 'bug_report', text: 'Write tests for the auth module' },
+        { icon: 'bug_report', text: 'Write tests for the auth module' }
     ];
 
     let {
@@ -83,7 +83,8 @@
         if (!active_session) {
             input_text = prompt_text;
             on_create();
-        } else {
+        }
+        else {
             input_text = prompt_text;
             on_send();
         }

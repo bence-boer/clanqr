@@ -1,26 +1,16 @@
-<script lang="ts">
-    import type { HTMLAttributes } from 'svelte/elements';
-
-    interface TabItem {
-        label: string
-        value: string
-    }
-
-    interface Props extends HTMLAttributes<HTMLDivElement> {
-        ref?: HTMLDivElement | null
-        items: TabItem[]
-        value?: string
-        aria_label?: string
-    }
+<script lang="ts" generics="ValueType">
+    import { Icon } from '../primitives';
+    import type { TabsProperties } from './types';
 
     let {
         ref = $bindable(null),
         class: class_name,
         items,
-        value = $bindable(''),
+        value = $bindable<ValueType>(),
         aria_label = 'Tabs',
+        ontabselect,
         ...rest_props
-    }: Props = $props();
+    }: TabsProperties<ValueType> = $props();
 
     $effect(() => {
         if (items.length === 0) return;
@@ -71,8 +61,12 @@
             }}
             onclick={() => {
                 value = item.value;
+                if (ontabselect) ontabselect(value);
             }}
         >
+            {#if item.icon}
+                <Icon type={item.icon} />
+            {/if}
             {item.label}
         </button>
     {/each}
@@ -80,28 +74,52 @@
 
 <style>
     .tabs {
+        position: relative;
         display: flex;
         align-items: center;
         gap: 0.25rem;
-        border-bottom: 1px solid var(--border);
         overflow-x: auto;
+        overflow-y: hidden;
         scrollbar-width: thin;
     }
 
+    .tabs::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 1px;
+        background-color: var(--border);
+        z-index: -1;
+    }
+
     .tab-button {
-        padding: 0.75rem 0.65rem 0.6rem;
-        margin-bottom: -1px;
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+
+        padding: calc(0.75rem - 1px) 0.75rem calc(0.75rem + 1px);
         border: 0;
-        border-bottom: 2px solid transparent;
         background: transparent;
         color: var(--fg-muted);
         font-size: 0.875rem;
         font-weight: 600;
         cursor: pointer;
-        transition:
-            color 0.15s ease,
-            border-color 0.15s ease;
+        transition: color 0.15s ease;
         white-space: nowrap;
+    }
+
+    .tab-button::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background-color: transparent;
+        transition: background-color 0.15s ease;
     }
 
     .tab-button:hover {
@@ -110,6 +128,9 @@
 
     .tab-button.selected {
         color: var(--accent);
-        border-color: var(--accent);
+    }
+
+    .tab-button.selected::after {
+        background-color: var(--accent);
     }
 </style>

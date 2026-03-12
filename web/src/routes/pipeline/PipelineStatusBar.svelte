@@ -25,7 +25,9 @@
         return () => {
             action();
             debounced = true;
-            setTimeout(() => { debounced = false; }, 1000);
+            setTimeout(() => {
+                debounced = false;
+            }, 1000);
         };
     }
 

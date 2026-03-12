@@ -30,8 +30,8 @@
 
   function handle_scroll() {
       if (!messages_container) return;
-      const { scrollTop, scrollHeight, clientHeight } = messages_container;
-      show_scroll_btn = scrollHeight - scrollTop - clientHeight > 100;
+      const { scrollTop: scroll_top, scrollHeight: scroll_height, clientHeight: client_height } = messages_container;
+      show_scroll_btn = scroll_height - scroll_top - client_height > 100;
   }
 
   function copy_message(content: string) {

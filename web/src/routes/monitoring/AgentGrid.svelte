@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { resolve } from '$app/paths';
     import type { AgentProcess } from '$lib/types';
     import { Badge, Button } from '$lib/components/primitives';
 
@@ -18,7 +19,9 @@
         const has_running = entries.some(([, agent]) => agent.status === 'running');
         if (!has_running) return;
 
-        const interval = setInterval(() => { now = Date.now(); }, 1000);
+        const interval = setInterval(() => {
+            now = Date.now();
+        }, 1000);
         return () => clearInterval(interval);
     });
 
@@ -73,7 +76,7 @@
 
             {#if is_manager && feature_id}
                 <nav class="breadcrumb" aria-label="Agent context">
-                    <a href="/projects" class="breadcrumb-link">
+                    <a href={resolve('/projects')} class="breadcrumb-link">
                         <span class="icon" style="font-size:14px">folder</span> Projects
                     </a>
                     <span class="breadcrumb-sep">/</span>
@@ -81,7 +84,7 @@
                 </nav>
             {:else if !is_manager}
                 <nav class="breadcrumb" aria-label="Agent context">
-                    <a href="/projects" class="breadcrumb-link">
+                    <a href={resolve('/projects')} class="breadcrumb-link">
                         <span class="icon" style="font-size:14px">folder</span> Projects
                     </a>
                     <span class="breadcrumb-sep">/</span>
@@ -118,111 +121,24 @@
 </div>
 
 <style>
-    .agent-grid {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-
-    .agent-card {
-        background: var(--bg-surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 1rem;
-    }
-    .agent-card.running {
-        border-color: rgba(106, 168, 254, 0.4);
-    }
-    .agent-card.failed {
-        border-color: rgba(201, 84, 74, 0.4);
-    }
-
-    .agent-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 0.5rem;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-    }
-    .agent-info {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-    }
-    .agent-icon {
-        font-size: 24px;
-        color: var(--accent);
-    }
-    .agent-type {
-        display: block;
-        font-weight: 600;
-        color: var(--fg);
-        text-transform: capitalize;
-        font-size: 0.9rem;
-    }
-    .agent-id {
-        display: block;
-        font-size: 0.7rem;
-        color: var(--fg-muted);
-        font-family: monospace;
-    }
-
-    .breadcrumb {
-        display: flex;
-        align-items: center;
-        gap: 0.35rem;
-        font-size: 0.75rem;
-        color: var(--fg-muted);
-        margin-bottom: 0.5rem;
-    }
-    .breadcrumb-link {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.2rem;
-        color: var(--accent);
-        text-decoration: none;
-    }
-    .breadcrumb-link:hover {
-        text-decoration: underline;
-    }
-    .breadcrumb-sep {
-        color: var(--fg-muted);
-        opacity: 0.5;
-    }
-    .breadcrumb-item {
-        font-family: monospace;
-    }
-
-    .agent-times {
-        font-size: 0.8rem;
-        color: var(--fg-muted);
-        display: flex;
-        gap: 1.5rem;
-        margin-bottom: 0.5rem;
-        flex-wrap: wrap;
-    }
-    .agent-times span {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-    }
-
-    .duration-muted {
-        color: var(--fg-muted);
-    }
-    .duration-warning {
-        color: #e6a23c;
-        font-weight: 600;
-    }
-    .duration-danger {
-        color: var(--danger);
-        font-weight: 700;
-    }
-
-    .agent-actions {
-        display: flex;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-    }
+    .agent-grid { display: flex; flex-direction: column; gap: 0.75rem; }
+    .agent-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; }
+    .agent-card.running { border-color: rgba(106, 168, 254, 0.4); }
+    .agent-card.failed { border-color: rgba(201, 84, 74, 0.4); }
+    .agent-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem; }
+    .agent-info { display: flex; align-items: center; gap: 0.6rem; }
+    .agent-icon { font-size: 24px; color: var(--accent); }
+    .agent-type { display: block; font-weight: 600; color: var(--fg); text-transform: capitalize; font-size: 0.9rem; }
+    .agent-id { display: block; font-size: 0.7rem; color: var(--fg-muted); font-family: monospace; }
+    .breadcrumb { display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: var(--fg-muted); margin-bottom: 0.5rem; }
+    .breadcrumb-link { display: inline-flex; align-items: center; gap: 0.2rem; color: var(--accent); text-decoration: none; }
+    .breadcrumb-link:hover { text-decoration: underline; }
+    .breadcrumb-sep { color: var(--fg-muted); opacity: 0.5; }
+    .breadcrumb-item { font-family: monospace; }
+    .agent-times { font-size: 0.8rem; color: var(--fg-muted); display: flex; gap: 1.5rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
+    .agent-times span { display: inline-flex; align-items: center; gap: 0.25rem; }
+    .duration-muted { color: var(--fg-muted); }
+    .duration-warning { color: #e6a23c; font-weight: 600; }
+    .duration-danger { color: var(--danger); font-weight: 700; }
+    .agent-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 </style>

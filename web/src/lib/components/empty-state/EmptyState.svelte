@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { resolve } from '$app/paths';
+    import type { Pathname } from '$app/types';
     import { Button } from '$lib/components/primitives';
     import type { Snippet } from 'svelte';
 
@@ -28,7 +30,7 @@
     {:else if action_label}
         <div class="empty-actions">
             {#if action_href}
-                <a href={action_href} class="empty-link">{action_label}</a>
+                <a href={resolve(action_href as Pathname)} class="empty-link">{action_label}</a>
             {:else if onaction}
                 <Button variant="primary" size="sm" onclick={onaction}>{action_label}</Button>
             {/if}

@@ -1,6 +1,6 @@
 <script lang="ts">
     import { api } from '$lib/api/client';
-    import { LoadingSpinner } from '$lib/components';
+    import { LoadingSpinner, Checkbox } from '$lib/components';
     import { toast_store } from '$lib/stores/toast.svelte';
     import type { ResolvedTrait, SkillLink, Trait } from '$lib/types';
 
@@ -112,7 +112,7 @@
             {:else}
                 {#each available_traits as trait (trait.id)}
                     <label class="artifact-check">
-                        <input type="checkbox" checked={trait_assignments.some((a) => a.trait_id === trait.id)} onchange={() => toggle_trait(trait)} />
+                        <Checkbox checked={trait_assignments.some((a) => a.trait_id === trait.id)} onchange={() => toggle_trait(trait)} />
                         <span class="artifact-copy">
                             <span class="artifact-name">{trait.name}</span>
                             {#if trait.description}
@@ -130,7 +130,7 @@
             {:else}
                 {#each available_skills as skill (skill.name)}
                     <label class="artifact-check">
-                        <input type="checkbox" checked={skill_links.some((sl) => sl.skill_name === skill.name)} onchange={() => toggle_skill(skill.name)} />
+                        <Checkbox checked={skill_links.some((sl) => sl.skill_name === skill.name)} onchange={() => toggle_skill(skill.name)} />
                         <span class="artifact-copy">
                             <span class="artifact-name">{skill.name}</span>
                             {#if skill.description}
@@ -195,10 +195,6 @@
         background: var(--bg);
         border: 1px solid var(--border);
         border-radius: calc(var(--radius) - 2px);
-    }
-    .artifact-check input {
-        margin: 0.1rem 0 0;
-        flex-shrink: 0;
     }
     .artifact-copy {
         display: flex;

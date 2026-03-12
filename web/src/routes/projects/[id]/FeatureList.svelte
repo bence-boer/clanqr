@@ -1,6 +1,6 @@
 <script lang="ts">
     import { Button, Badge } from '$lib/components/primitives';
-    import { EmptyState } from '$lib/components';
+    import { EmptyState, Checkbox } from '$lib/components';
     import type { Feature, TaskRow } from '$lib/types';
     import { status_icon, status_class } from '$lib/utils/status';
     import { SvelteSet } from 'svelte/reactivity';
@@ -59,7 +59,7 @@
         <div class="features-panel-actions">
             {#if features.length > 0}
                 <label class="select-all-label">
-                    <input type="checkbox" checked={all_selected} onchange={toggle_all} />
+                    <Checkbox checked={all_selected} onchange={toggle_all} />
                     All
                 </label>
             {/if}
@@ -79,7 +79,7 @@
             <button class="feature-item" class:selected={selected_feature?.id === feature.id} onclick={() => on_select(feature)}>
                 <div class="feature-item-header">
                     <div class="feature-name-row">
-                        <input type="checkbox" checked={selected_ids.has(feature.id)} onclick={(e: MouseEvent) => toggle_select(feature.id, e)} />
+                        <Checkbox checked={selected_ids.has(feature.id)} onclick={(e: MouseEvent) => toggle_select(feature.id, e)} />
                         <span class="feature-name">{feature.title}</span>
                         {#if pending_count > 0}
                             <span class="approval-badge" title="{pending_count} task{pending_count > 1 ? 's' : ''} pending approval">{pending_count}</span>

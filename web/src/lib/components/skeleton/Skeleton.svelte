@@ -11,7 +11,7 @@
     const { variant = 'text', width, height, count = 1 }: Props = $props();
 </script>
 
-{#each Array(count) as _, i (i)}
+{#each Array.from({ length: count }, (_, index) => index) as index (index)}
     <div
         class="skeleton skeleton-{variant}"
         style:width={width}

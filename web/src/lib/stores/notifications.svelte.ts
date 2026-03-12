@@ -1,17 +1,17 @@
 export interface Notification {
-    id: string;
-    type: 'danger' | 'success' | 'warning' | 'info';
-    message: string;
-    link?: string;
-    timestamp: string;
-    read: boolean;
+    id: string
+    type: 'danger' | 'success' | 'warning' | 'info'
+    message: string
+    link?: string
+    timestamp: string
+    read: boolean
 }
 
 class NotificationStore {
     items = $state<Notification[]>([]);
 
     get unread_count() {
-        return this.items.filter(n => !n.read).length;
+        return this.items.filter((n) => !n.read).length;
     }
 
     add(notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) {
@@ -25,12 +25,12 @@ class NotificationStore {
     }
 
     mark_read(id: string) {
-        const item = this.items.find(n => n.id === id);
+        const item = this.items.find((n) => n.id === id);
         if (item) item.read = true;
     }
 
     mark_all_read() {
-        this.items.forEach(n => n.read = true);
+        this.items.forEach((n) => n.read = true);
     }
 
     clear() {

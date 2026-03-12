@@ -137,91 +137,34 @@
     variant="danger"
     loading={revoke_target ? revoking.has(revoke_target.id) : false}
     onconfirm={confirm_revoke}
-    oncancel={() => { show_revoke_modal = false; revoke_target = null; }}
+    oncancel={() => {
+        show_revoke_modal = false;
+        revoke_target = null;
+    }}
 />
 
 <style>
-    /* Table */
-    .table-wrap {
-        overflow-x: auto;
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-    }
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.875rem;
-    }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
     thead th {
-        background: var(--bg-surface);
-        color: var(--fg-muted);
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        padding: 0.75rem 1rem;
-        text-align: left;
-        border-bottom: 1px solid var(--border);
-        white-space: nowrap;
+        background: var(--bg-surface); color: var(--fg-muted); font-size: 0.75rem;
+        font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+        padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap;
     }
-    tbody tr {
-        border-bottom: 1px solid var(--border);
-        transition: background 0.1s;
-    }
-    tbody tr:last-child {
-        border-bottom: none;
-    }
-    tbody tr:hover {
-        background: var(--bg-surface);
-    }
-    td {
-        padding: 0.75rem 1rem;
-        color: var(--fg);
-        vertical-align: middle;
-    }
-    .date-cell {
-        color: var(--fg-muted);
-        font-size: 0.8rem;
-        white-space: nowrap;
-    }
-    .label-cell {
-        max-width: 160px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    /* Row actions */
-    .row-actions {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-    }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--bg-surface); }
+    td { padding: 0.75rem 1rem; color: var(--fg); vertical-align: middle; }
+    .date-cell { color: var(--fg-muted); font-size: 0.8rem; white-space: nowrap; }
+    .label-cell { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .row-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
     .token-preview {
         font-family: 'SF Mono', 'Fira Code', monospace;
-        font-size: 0.75rem;
-        color: var(--fg-muted);
-        background: var(--bg-elevated);
-        padding: 0.15rem 0.4rem;
-        border-radius: 4px;
+        font-size: 0.75rem; color: var(--fg-muted);
+        background: var(--bg-elevated); padding: 0.15rem 0.4rem; border-radius: 4px;
     }
-
-    .section-title {
-        font-size: 0.95rem;
-        font-weight: 600;
-        color: var(--fg);
-    }
-
-    .section-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-        margin-bottom: 0.75rem;
-    }
-
-    /* Mobile */
+    .section-title { font-size: 0.95rem; font-weight: 600; color: var(--fg); }
+    .section-header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.75rem; }
     @media (max-width: 768px) {
         .table-wrap { border: none; border-radius: 0; overflow-x: visible; }
         table { display: block; }
@@ -232,10 +175,7 @@
             background: var(--bg-surface); border: 1px solid var(--border);
             border-radius: var(--radius); padding: 0.75rem;
         }
-        td {
-            padding: 0; font-size: 0.85rem;
-            display: flex; align-items: center; gap: 0.5rem;
-        }
+        td { padding: 0; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; }
         td::before {
             content: attr(data-label); font-size: 0.7rem; font-weight: 600;
             text-transform: uppercase; letter-spacing: 0.04em;

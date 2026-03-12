@@ -28,8 +28,8 @@
         if (category_search.trim()) {
             const query = category_search.trim().toLowerCase();
             result = result.filter((trait) =>
-                trait.name.toLowerCase().includes(query) ||
-                (trait.description ?? '').toLowerCase().includes(query)
+                trait.name.toLowerCase().includes(query)
+                || (trait.description ?? '').toLowerCase().includes(query)
             );
         }
         return result;
@@ -48,13 +48,16 @@
     async function load_assignments() {
         try {
             assignments = await api.list_trait_assignments({});
-        } catch {
+        }
+        catch {
             // non-critical — counts just won't display
         }
     }
 
     import { onMount } from 'svelte';
-    onMount(() => { load_assignments(); });
+    onMount(() => {
+        load_assignments();
+    });
 
     const default_trait_form = (): TraitFormData => ({
         name: '', description: '', target: 'ralph', is_global: false, content: ''

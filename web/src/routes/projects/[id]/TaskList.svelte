@@ -1,6 +1,6 @@
 <script lang="ts">
     import { Button, Input } from '$lib/components/primitives';
-    import { EmptyState } from '$lib/components';
+    import { EmptyState, Checkbox } from '$lib/components';
     import { toast_store } from '$lib/stores/toast.svelte';
     import type { Feature, TaskRow } from '$lib/types';
     import TaskItem from './TaskItem.svelte';
@@ -92,7 +92,7 @@
         <h4><span class="icon" style="font-size:16px">task</span> Tasks ({feature.tasks?.length ?? 0})</h4>
         <div class="tasks-actions">
             <label class="toggle-label">
-                <input type="checkbox" checked={auto_approve} onchange={handle_auto_approve_change} /> Auto-Approve
+                <Checkbox checked={auto_approve} onchange={handle_auto_approve_change} /> Auto-Approve
             </label>
             {#if pending_tasks.length > 0}
                 <Button variant="primary" size="sm" icon="done_all" onclick={handle_approve_and_run_all}>Approve &amp; Run All</Button>

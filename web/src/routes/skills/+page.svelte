@@ -4,7 +4,7 @@
     import { api } from '$lib/api/client';
     import { toast_store } from '$lib/stores/toast.svelte';
     import { EmptyState, ErrorBanner, LoadingSpinner } from '$lib/components';
-    import type { SkillInfoListItem, SkillLink } from '$lib/types';
+    import type { SkillInfoListItem } from '$lib/types';
     import SkillCard from './SkillCard.svelte';
 
     let skills = $state<SkillInfoListItem[]>([]);
@@ -25,8 +25,8 @@
         if (!search_query.trim()) return skills;
         const q = search_query.trim().toLowerCase();
         return skills.filter((s) =>
-            s.name.toLowerCase().includes(q) ||
-            (s.description ?? '').toLowerCase().includes(q)
+            s.name.toLowerCase().includes(q)
+            || (s.description ?? '').toLowerCase().includes(q)
         );
     });
 

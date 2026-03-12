@@ -23,25 +23,21 @@ class PipelineService {
     private active_run: ActiveRun | null = null;
     private is_processing = false;
 
-    private emit_status() {
-        event_bus.emit({
-            type: 'pipeline:status',
-            data: {
-                state: this.state,
-                current_task_id: this.active_run?.task_id ?? null,
-                current_run_id: this.active_run?.run_id ?? null,
-                current_feature_id: this.active_run?.feature_id ?? null
-            }
-        });
-    }
-
-    get_status() {
+    private build_status() {
         return {
             state: this.state,
             current_task_id: this.active_run?.task_id ?? null,
             current_run_id: this.active_run?.run_id ?? null,
             current_feature_id: this.active_run?.feature_id ?? null
         };
+    }
+
+    private emit_status() {
+        event_bus.emit({ type: 'pipeline:status', data: this.build_status() });
+    }
+
+    get_status() {
+        return this.build_status();
     }
 
     private is_paused(): boolean {

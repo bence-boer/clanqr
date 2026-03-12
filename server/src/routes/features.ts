@@ -13,11 +13,13 @@ const create_feature_schema = z.object({
     description: z.string().max(10_000).nullable().optional(),
     cli: z.string().default('copilot'),
     execution_cli: z.string().default('copilot'),
-    planning_model: z.string().min(1, 'Planning model is required'),
-    execution_model: z.string().min(1, 'Execution model is required'),
-    on_task_failure: z.enum(['stop', 'retry', 'skip']).optional(),
-    auto_approve: z.boolean().optional(),
-    task_timeout_minutes: z.number().int().min(1).max(120).optional(),
+    planning_model: z.string().min(1).nullable().optional(),
+    execution_model: z.string().min(1).nullable().optional(),
+    on_task_failure: z.enum(['stop', 'retry', 'skip']).default('stop'),
+    auto_approve: z.boolean().default(false),
+    task_timeout_minutes: z.number().int().min(1).max(120).default(30),
+    manager_retry_count: z.number().int().min(0).max(10).default(0),
+    status: z.enum(['Draft', 'Submitted', 'In_Progress', 'Done']).default('Draft'),
     resources: z
         .array(z.object({ url: z.string().url(), title: z.string().optional() }))
         .optional()
@@ -91,15 +93,31 @@ export const features_routes = new Hono<AppBindings>()
         const supabase = context.get('supabase');
         const { resources, ...feature_data } = parsed.data;
 
+        // Ensure all required fields are present for DB insert
+        const db_feature_data = {
+            ...feature_data,
+            status: feature_data.status ?? 'Draft',
+            task_timeout_minutes: feature_data.task_timeout_minutes ?? 30,
+            manager_retry_count: feature_data.manager_retry_count ?? 0,
+            on_task_failure: feature_data.on_task_failure ?? 'stop',
+            auto_approve: feature_data.auto_approve ?? false
+        };
+
         const { data: feature, error: feature_error } = await supabase
             .from('features')
-            .insert(feature_data)
+            .insert(db_feature_data)
             .select()
             .single();
 
         if (feature_error) {
-            logger.error('Failed to create feature', { route: 'POST /api/features', error: String(feature_error) });
-            return context.json({ error: 'Failed to create feature' }, 500);
+            logger.error('Failed to create feature', {
+                route: 'POST /api/features',
+                error: JSON.stringify(feature_error),
+                feature_data: db_feature_data
+            });
+            // Print error to console for debugging
+            console.error('Feature creation error:', feature_error);
+            return context.json({ error: 'Failed to create feature', details: feature_error }, 500);
         }
 
         if (resources && resources.length > 0) {
