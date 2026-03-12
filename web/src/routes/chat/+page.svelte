@@ -1,30 +1,15 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { api } from '$lib/api/client';
-    import { toast_store } from '$lib/stores/toast.svelte';
     import { read_sse_stream } from '$lib/utils/sse';
-    import { generate_id } from '$lib/utils/id';
     import type { ChatSession, ChatSessionFull, ChatMessage } from '$lib/types';
+    import { chat_models, format_session_title, build_message } from './chat-models';
+    import {
+        fetch_sessions, fetch_session_detail, create_new_session,
+        remove_session, update_session_title, cancel_chat_stream
+    } from './chat-session-api';
     import SessionList from './SessionList.svelte';
     import ChatActions from './ChatActions.svelte';
-
-    const models = [
-        {
-            group: 'Claude',
-            models: [
-                'claude-sonnet-4.6', 'claude-sonnet-4.5', 'claude-haiku-4.5',
-                'claude-opus-4.6', 'claude-opus-4.6-fast', 'claude-opus-4.5', 'claude-sonnet-4'
-            ]
-        },
-        { group: 'Gemini', models: ['gemini-3-pro-preview'] },
-        {
-            group: 'GPT',
-            models: [
-                'gpt-5.3-codex', 'gpt-5.2-codex', 'gpt-5.2', 'gpt-5.1-codex-max',
-                'gpt-5.1-codex', 'gpt-5.1', 'gpt-5.1-codex-mini', 'gpt-5-mini', 'gpt-4.1'
-            ]
-        }
-    ];
 
     let sessions = $state<ChatSession[]>([]);
     let active_session = $state<ChatSessionFull | null>(null);
@@ -49,15 +34,8 @@
     });
 
     async function load_sessions() {
-        try {
-            sessions = await api.list_chat_sessions();
-        }
-        catch {
-            toast_store.error('Failed to load chat sessions');
-        }
-        finally {
-            loading_sessions = false;
-        }
+        sessions = await fetch_sessions();
+        loading_sessions = false;
     }
 
     async function select_session(session: ChatSession) {
@@ -67,64 +45,39 @@
         loading_messages = true;
         messages = [];
         mobile_sessions_open = false;
-        try {
-            const { chat_messages, ...rest } = await api.get_chat_session(session.id);
-            const full_session: ChatSessionFull = {
-                ...rest,
-                messages: chat_messages ?? []
-            };
-            messages = full_session.messages;
-            active_session = full_session;
+        const detail = await fetch_session_detail(session.id);
+        if (detail) {
+            active_session = detail;
+            messages = detail.messages;
         }
-        catch {
-            error_msg = 'Failed to load messages';
-            toast_store.error(error_msg);
-        }
-        finally {
-            loading_messages = false;
-        }
+        loading_messages = false;
     }
 
     async function create_session() {
-        try {
-            const session = await api.create_chat_session({ model: selected_model });
-            sessions = [session, ...sessions];
-            await select_session(session);
-        }
-        catch {
-            error_msg = 'Failed to create session';
-            toast_store.error(error_msg);
-        }
+        const session = await create_new_session(selected_model);
+        if (!session) return;
+        sessions = [session, ...sessions];
+        await select_session(session);
     }
 
     async function delete_session(session_id: string, event: MouseEvent) {
         event.stopPropagation();
         if (!confirm('Delete this session?')) return;
-        try {
-            await api.delete_chat_session(session_id);
-            sessions = sessions.filter((s) => s.id !== session_id);
-            if (active_session?.id === session_id) {
-                active_session = null;
-                messages = [];
-                sessionStorage.removeItem('active_chat_session');
-            }
-        }
-        catch {
-            error_msg = 'Failed to delete session';
-            toast_store.error(error_msg);
+        if (!await remove_session(session_id)) return;
+        sessions = sessions.filter((s) => s.id !== session_id);
+        if (active_session?.id === session_id) {
+            active_session = null;
+            messages = [];
+            sessionStorage.removeItem('active_chat_session');
         }
     }
 
     async function rename_session(session_id: string, title: string) {
-        try {
-            const updated = await api.rename_chat_session(session_id, title);
-            sessions = sessions.map((s) => s.id === session_id ? { ...s, title: updated.title } : s);
-            if (active_session?.id === session_id) {
-                active_session = { ...active_session, title: updated.title };
-            }
-        }
-        catch {
-            toast_store.error('Failed to rename session');
+        const updated = await update_session_title(session_id, title);
+        if (!updated) return;
+        sessions = sessions.map((s) => s.id === session_id ? { ...s, title: updated.title } : s);
+        if (active_session?.id === session_id) {
+            active_session = { ...active_session, title: updated.title };
         }
     }
 
@@ -136,10 +89,7 @@
         error_msg = '';
         is_streaming = true;
         streaming_content = '';
-        const user_message: ChatMessage = {
-            id: generate_id(), session_id,
-            role: 'user', content: message_content, created_at: new Date().toISOString()
-        };
+        const user_message = build_message(session_id, 'user', message_content);
         messages = [...messages, user_message];
         try {
             const response = await api.send_chat_message(session_id, message_content, selected_model);
@@ -152,23 +102,15 @@
                 }
             });
             if (streaming_content) {
-                messages = [...messages, {
-                    id: generate_id(), session_id,
-                    role: 'assistant', content: streaming_content, created_at: new Date().toISOString()
-                }];
+                messages = [...messages, build_message(session_id, 'assistant', streaming_content)];
             }
             streaming_content = '';
             is_streaming = false;
             load_sessions();
         }
         catch {
-            // Preserve partial streaming content as an assistant message (§14.1)
             if (streaming_content) {
-                messages = [...messages, {
-                    id: generate_id(), session_id,
-                    role: 'assistant', content: streaming_content + '\n\n*(response interrupted)*',
-                    created_at: new Date().toISOString()
-                }];
+                messages = [...messages, build_message(session_id, 'assistant', streaming_content + '\n\n*(response interrupted)*')];
                 streaming_content = '';
             }
             else {
@@ -179,24 +121,11 @@
         }
     }
 
-    function format_session_title(session: ChatSession) {
-        return session.title ?? `Chat ${new Date(session.created_at).toLocaleDateString()}`;
-    }
-
     async function stop_generating() {
         if (!active_session || !is_streaming) return;
-        try {
-            await api.cancel_chat(active_session.id);
-        }
-        catch {
-            /* Best-effort cancel */
-        }
+        await cancel_chat_stream(active_session.id);
         if (streaming_content) {
-            messages = [...messages, {
-                id: generate_id(), session_id: active_session.id,
-                role: 'assistant', content: streaming_content + '\n\n*(generation stopped)*',
-                created_at: new Date().toISOString()
-            }];
+            messages = [...messages, build_message(active_session.id, 'assistant', streaming_content + '\n\n*(generation stopped)*')];
         }
         streaming_content = '';
         is_streaming = false;
@@ -216,7 +145,7 @@
     </div>
     <ChatActions
         session={active_session} {messages} {loading_messages} {is_streaming} {streaming_content}
-        bind:input_text bind:selected_model {error_msg} {models}
+        bind:input_text bind:selected_model {error_msg} models={chat_models}
         {format_session_title} on_send={send_message} on_stop={stop_generating} on_create={create_session} on_rename={rename_session}
     />
 </div>

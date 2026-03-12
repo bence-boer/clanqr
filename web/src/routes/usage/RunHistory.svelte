@@ -1,12 +1,11 @@
 <script lang="ts">
     import { EmptyState, LoadingSpinner, StatusBadge } from '$lib/components';
-    import { Badge, Pagination, Select } from '$lib/components/primitives';
+    import { Badge, Pagination } from '$lib/components/primitives';
     import type { AgentRun } from '$lib/types';
     import RunDetailRow from './RunDetailRow.svelte';
+    import RunHistoryFilters from './RunHistoryFilters.svelte';
 
     type DateRange = 'today' | '7d' | '30d' | 'all';
-    type SortField = 'type' | 'model' | 'status' | 'duration' | 'tokens' | 'date';
-    type SortDir = 'asc' | 'desc';
 
     let {
         runs,
@@ -35,6 +34,9 @@
         onpage_change: (page: number) => void
         ondate_range_change?: (value: DateRange) => void
     } = $props();
+
+    type SortField = 'type' | 'model' | 'status' | 'duration' | 'tokens' | 'date';
+    type SortDir = 'asc' | 'desc';
 
     let sort_field = $state<SortField>('date');
     let sort_dir = $state<SortDir>('desc');
@@ -107,21 +109,6 @@
             month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
         });
     }
-
-    function on_type_change(event: Event) {
-        onfilter_type_change((event.currentTarget as HTMLSelectElement).value);
-    }
-
-    function on_status_change(event: Event) {
-        onfilter_status_change((event.currentTarget as HTMLSelectElement).value);
-    }
-
-    const date_range_options: { value: DateRange, label: string }[] = [
-        { value: 'today', label: 'Today' },
-        { value: '7d', label: 'Last 7 days' },
-        { value: '30d', label: 'Last 30 days' },
-        { value: 'all', label: 'All time' }
-    ];
 </script>
 
 <div class="history-section">
@@ -130,29 +117,14 @@
             Recent Runs {#if total_count > 0}<Badge variant="muted">{total_count}</Badge>{/if}
         </h3>
         <div class="filters">
-            <div class="date-pills">
-                {#each date_range_options as opt (opt.value)}
-                    <button
-                        class="date-pill"
-                        class:active={date_range === opt.value}
-                        onclick={() => ondate_range_change?.(opt.value)}
-                    >{opt.label}</button>
-                {/each}
-            </div>
-            <Select style="flex: 1;" onchange={on_type_change} value={filter_type}>
-                <option value="">All types</option>
-                <option value="manager">manager</option>
-                <option value="ralph">ralph</option>
-                <option value="chat">chat</option>
-            </Select>
-            <Select style="flex: 1;" onchange={on_status_change} value={filter_status}>
-                <option value="">All statuses</option>
-                <option value="completed">completed</option>
-                <option value="failed">failed</option>
-                <option value="running">running</option>
-                <option value="stopped">stopped</option>
-                <option value="queued">queued</option>
-            </Select>
+            <RunHistoryFilters
+                {date_range}
+                {filter_type}
+                {filter_status}
+                {ondate_range_change}
+                {onfilter_type_change}
+                {onfilter_status_change}
+            />
         </div>
     </div>
 
@@ -212,14 +184,6 @@
     }
     .history-header h3 { font-size: 1rem; color: var(--fg); display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
     .filters { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-    .date-pills { display: flex; gap: 0.25rem; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-    .date-pill {
-        background: transparent; border: none; color: var(--fg-muted);
-        font-size: 0.75rem; padding: 0.35rem 0.65rem; cursor: pointer;
-        transition: background 0.15s, color 0.15s; white-space: nowrap;
-    }
-    .date-pill:hover { background: var(--bg-elevated); }
-    .date-pill.active { background: var(--accent); color: var(--bg); font-weight: 600; }
     .table-wrap { overflow-x: auto; }
     .runs-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
     .runs-table thead tr { border-bottom: 1px solid var(--border); }
@@ -243,7 +207,5 @@
     @media (max-width: 768px) { .filters { flex-wrap: wrap; } }
     @media (max-width: 640px) {
         .history-header { flex-direction: column; align-items: flex-start; }
-        .date-pills { width: 100%; }
-        .date-pill { flex: 1; text-align: center; }
     }
 </style>

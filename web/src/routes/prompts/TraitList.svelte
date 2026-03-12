@@ -1,9 +1,10 @@
 <script lang="ts">
     import { api } from '$lib/api/client';
     import { EmptyState, ErrorBanner } from '$lib/components';
-    import { Badge, Button } from '$lib/components/primitives';
+    import { Button } from '$lib/components/primitives';
     import type { Trait, TraitAssignment } from '$lib/types';
     import TraitForm from './TraitForm.svelte';
+    import TraitRow from './TraitRow.svelte';
 
     interface TraitFormData {
         name: string
@@ -143,11 +144,6 @@
             deleting_id = null;
         }
     }
-
-    function truncate(text: string | null, max_len = 80): string {
-        if (!text) return '';
-        return text.length > max_len ? text.slice(0, max_len) + '…' : text;
-    }
 </script>
 
 <div class="filter-bar">
@@ -182,38 +178,20 @@
 {:else}
     <div class="traits-list">
         {#each filtered_traits as trait (trait.id)}
-            <div class="trait-row">
-                <div class="trait-main">
-                    <div class="trait-header-row">
-                        <span class="trait-name">{trait.name}</span>
-                        <div class="trait-badges">
-                            <Badge variant={trait.target === 'manager' ? 'info' : trait.target === 'ralph' ? 'warning' : 'default'}>{trait.target}</Badge>
-                            {#if trait.is_global}<Badge variant="success">global</Badge>{/if}
-                            {#if (assignment_counts[trait.id] ?? 0) > 0}
-                                <Badge variant="muted">Used in {assignment_counts[trait.id]} task{assignment_counts[trait.id] !== 1 ? 's' : ''}</Badge>
-                            {/if}
-                        </div>
-                    </div>
-                    {#if trait.description}<p class="trait-desc">{truncate(trait.description)}</p>{/if}
-                    <p class="trait-preview">{truncate(trait.content, 120)}</p>
-                </div>
-                <div class="trait-actions">
-                    {#if delete_confirm_id === trait.id}
-                        <span class="confirm-text">Delete?</span>
-                        <Button variant="danger" size="sm" onclick={() => delete_trait(trait.id)} disabled={deleting_id === trait.id}>
-                            {deleting_id === trait.id ? '…' : 'Yes'}
-                        </Button>
-                        <Button variant="secondary" size="sm" onclick={() => {
-                            delete_confirm_id = null;
-                        }}>No</Button>
-                    {:else}
-                        <Button variant="secondary" size="sm" icon="edit" onclick={() => open_edit_form(trait)}>Edit</Button>
-                        <Button variant="danger" size="sm" icon="delete" onclick={() => {
-                            delete_confirm_id = trait.id;
-                        }} aria-label="Delete {trait.name}" />
-                    {/if}
-                </div>
-            </div>
+            <TraitRow
+                {trait}
+                assignment_count={assignment_counts[trait.id] ?? 0}
+                delete_confirming={delete_confirm_id === trait.id}
+                deleting={deleting_id === trait.id}
+                on_edit={() => open_edit_form(trait)}
+                on_confirm_delete={() => delete_trait(trait.id)}
+                on_request_delete={() => {
+                    delete_confirm_id = trait.id;
+                }}
+                on_cancel_delete={() => {
+                    delete_confirm_id = null;
+                }}
+            />
         {/each}
     </div>
 {/if}
@@ -236,29 +214,8 @@
     .category-search:focus { border-color: var(--accent); }
     .category-search::placeholder { color: var(--fg-muted); }
     .traits-list { overflow-x: hidden; display: flex; flex-direction: column; gap: 0.5rem; }
-    .trait-row {
-        display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-        background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius);
-        padding: 0.85rem 1.1rem; transition: border-color 0.15s; flex-wrap: wrap;
-        max-width: 100%; overflow: hidden; box-sizing: border-box;
-    }
-    .trait-row:hover { border-color: var(--bg-elevated); }
-    .trait-main { flex: 1; min-width: 0; width: 100%; display: flex; flex-direction: column; gap: 0.2rem; }
-    .trait-header-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-    .trait-name { font-weight: 600; color: var(--fg); font-size: 0.875rem; font-family: 'SF Mono', 'Fira Code', monospace; }
-    .trait-badges { display: flex; gap: 0.35rem; flex-wrap: wrap; }
-    .trait-desc { font-size: 0.82rem; color: var(--fg-muted); }
-    .trait-preview {
-        font-size: 0.75rem; color: var(--fg-muted); opacity: 0.55;
-        font-family: 'SF Mono', 'Fira Code', monospace;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .trait-actions { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
-    .confirm-text { font-size: 0.8rem; color: var(--danger); font-weight: 600; white-space: nowrap; }
     @media (max-width: 768px) {
         .filter-row { flex-direction: column; align-items: stretch; }
         .filter-count { margin-left: 0; width: 100%; }
-        .trait-row { flex-direction: column; align-items: flex-start; }
-        .trait-actions { align-self: flex-end; flex-wrap: wrap; }
     }
 </style>

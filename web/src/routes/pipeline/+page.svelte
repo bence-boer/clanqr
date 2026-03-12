@@ -10,6 +10,7 @@
     import PipelineStats from './PipelineStats.svelte';
     import PipelineStatusBar from './PipelineStatusBar.svelte';
     import TaskQueue from './TaskQueue.svelte';
+    import { format_duration, reorder_queue, remove_from_queue, retry_task } from './pipeline-helpers';
 
     let pipeline = $state<PipelineStatus | null>(null);
     let queue = $state<Task[]>([]);
@@ -145,46 +146,6 @@
         if (log_visible) await refresh_log();
     }
 
-    function format_duration(started_at: string | null): string {
-        if (!started_at) return '';
-        const elapsed = Math.floor((Date.now() - new Date(started_at).getTime()) / 1000);
-        if (elapsed < 60) return `${elapsed}s`;
-        const m = Math.floor(elapsed / 60);
-        return `${m}m ${elapsed % 60}s`;
-    }
-
-    async function reorder_queue(task_ids: string[]) {
-        try {
-            await api.pipeline_reorder(task_ids);
-        }
-        catch (err) {
-            console.error('Failed to reorder queue:', err);
-            toast_store.error('Failed to reorder queue');
-            await load_queue();
-        }
-    }
-
-    async function remove_from_queue(task_id: string) {
-        try {
-            await api.update_task(task_id, { status: 'Pending_Approval' } as never);
-            await load_queue();
-        }
-        catch (err) {
-            console.error('Failed to remove from queue:', err);
-            toast_store.error('Failed to remove from queue');
-        }
-    }
-
-    async function retry_task(task_id: string) {
-        try {
-            await api.approve_task(task_id);
-            await load_queue();
-        }
-        catch (err) {
-            console.error('Failed to retry task:', err);
-            toast_store.error('Failed to retry task');
-        }
-    }
 </script>
 
 <div class="page" aria-busy={loading}>
@@ -223,7 +184,7 @@
         </div>
 
         {#if active_tab === 'queue'}
-            <TaskQueue {queue} onreorder={reorder_queue} onremove={remove_from_queue} />
+            <TaskQueue {queue} onreorder={(ids) => reorder_queue(ids, load_queue)} onremove={(id) => remove_from_queue(id, load_queue)} />
         {:else}
             <PipelineHistory
                 {history}
@@ -238,7 +199,7 @@
                 onpage_change={(page) => {
                     history_page = page;
                 }}
-                onretry={retry_task}
+                onretry={(id) => retry_task(id, load_queue)}
             />
         {/if}
     {/if}
