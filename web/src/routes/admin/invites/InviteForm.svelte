@@ -40,8 +40,11 @@
             try {
                 await navigator.clipboard.writeText(new_invite_url);
                 copy_done = true;
-                setTimeout(() => { copy_done = false; }, 2000);
-            } catch {
+                setTimeout(() => {
+                    copy_done = false;
+                }, 2000);
+            }
+            catch {
                 // Clipboard not available — user can copy manually
             }
             oninvite_created();

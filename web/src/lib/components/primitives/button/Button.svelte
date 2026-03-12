@@ -2,6 +2,7 @@
     import type { MaterialSymbol } from '$lib/types';
     import type { Snippet } from 'svelte';
     import type { HTMLButtonAttributes } from 'svelte/elements';
+    import { Icon } from '../icon';
 
     export type ButtonVariant = 'default' | 'primary' | 'secondary' | 'danger' | 'ghost' | 'tab' | 'filter';
     export type ButtonSize = 'default' | 'sm' | 'icon';
@@ -52,9 +53,9 @@
     class={['base-btn', variant_classes[variant], size_classes[size], active ? 'active' : '', class_name].filter(Boolean).join(' ')}
 >
     {#if loading}
-        <span class="icon spin btn-icon">progress_activity</span>
+        <Icon type="progress_activity" />
     {:else if icon}
-        <span class="icon btn-icon">{icon}</span>
+        <Icon type={icon} />
     {/if}
     {#if children}
         {@render children()}

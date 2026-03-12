@@ -3,5 +3,7 @@ export function save_scroll(el: HTMLElement | null): number {
 }
 
 export function restore_scroll(el: HTMLElement | null, pos: number) {
-    if (el) requestAnimationFrame(() => { el.scrollTop = pos; });
+    if (el) requestAnimationFrame(() => {
+        el.scrollTop = pos;
+    });
 }

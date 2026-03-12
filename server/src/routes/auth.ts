@@ -32,7 +32,7 @@ export const auth_routes = new Hono<AppBindings>()
 
         let token = getCookie(context, 'session');
 
-        if (!token && env.NODE_ENV === 'development') {
+        const set_dev_token = () => {
             token = 'dev-admin-session-token';
             setCookie(context, 'session', token, {
                 httpOnly: true,
@@ -41,6 +41,10 @@ export const auth_routes = new Hono<AppBindings>()
                 path: '/',
                 expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
             });
+        };
+
+        if (!token && env.NODE_ENV === 'development') {
+            set_dev_token();
         }
 
         const { count } = await db
@@ -67,6 +71,26 @@ export const auth_routes = new Hono<AppBindings>()
                     .eq('id', data.passkey_id)
                     .single();
                 role = passkey?.role ?? null;
+            }
+            else if (env.NODE_ENV === 'development') {
+                // Stale cookie — replace with dev token and retry
+                set_dev_token();
+                const { data: dev_session } = await db
+                    .from('sessions')
+                    .select('id, expires_at, passkey_id')
+                    .eq('token', token)
+                    .gt('expires_at', new Date().toISOString())
+                    .single();
+                if (dev_session) {
+                    authenticated = true;
+                    passkey_id = dev_session.passkey_id;
+                    const { data: passkey } = await db
+                        .from('passkeys')
+                        .select('role')
+                        .eq('id', dev_session.passkey_id)
+                        .single();
+                    role = passkey?.role ?? null;
+                }
             }
         }
 

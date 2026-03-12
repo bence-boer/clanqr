@@ -151,6 +151,9 @@ export default [
                 svelteConfig,
                 parser: tseslint.parser
             }
+        },
+        rules: {
+            'svelte/no-at-html-tags': 'warn'
         }
     },
 

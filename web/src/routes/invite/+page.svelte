@@ -5,6 +5,7 @@
     import { api } from '$lib/api/client';
     import { check_auth, register_passkey } from '$lib/auth';
     import { Button, Input } from '$lib/components/primitives';
+    import Icon from '$lib/components/primitives/icon/Icon.svelte';
     import type { InviteStatus } from '$lib/types';
     import { onMount } from 'svelte';
 
@@ -106,10 +107,13 @@
             {#if invite_info?.valid}
                 <div class="invite-meta">
                     {#if invite_info.label}
-                        <span class="meta-badge"><span class="icon" style="font-size:14px">badge</span> {invite_info.label}</span>
+                        <span class="meta-badge"><Icon type="badge" /> {invite_info.label}</span>
                     {/if}
                     {#if invite_info.expires_at}
-                        <span class="meta-badge"><span class="icon" style="font-size:14px">schedule</span> Expires {new Date(invite_info.expires_at).toLocaleDateString()}</span>
+                        <span class="meta-badge">
+                            <Icon type="schedule" />
+                            Expires {new Date(invite_info.expires_at).toLocaleDateString()}
+                        </span>
                     {/if}
                 </div>
             {/if}

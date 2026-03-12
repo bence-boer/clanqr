@@ -34,7 +34,8 @@
         if (!dialog_ref) return;
         if (open && !dialog_ref.open) {
             dialog_ref.showModal();
-        } else if (!open && dialog_ref.open) {
+        }
+        else if (!open && dialog_ref.open) {
             dialog_ref.close();
         }
     });
@@ -68,7 +69,6 @@
     onkeydown={handle_keydown}
     aria-labelledby="confirm-title"
 >
-    <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div class="modal-content" role="presentation" onclick={(e) => e.stopPropagation()}>
         <h3 id="confirm-title" class="modal-title">{title}</h3>
         {#if message}

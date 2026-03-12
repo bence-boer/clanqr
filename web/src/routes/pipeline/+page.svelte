@@ -156,7 +156,8 @@
     async function reorder_queue(task_ids: string[]) {
         try {
             await api.pipeline_reorder(task_ids);
-        } catch (err) {
+        }
+        catch (err) {
             console.error('Failed to reorder queue:', err);
             toast_store.error('Failed to reorder queue');
             await load_queue();
@@ -167,7 +168,8 @@
         try {
             await api.update_task(task_id, { status: 'Pending_Approval' } as never);
             await load_queue();
-        } catch (err) {
+        }
+        catch (err) {
             console.error('Failed to remove from queue:', err);
             toast_store.error('Failed to remove from queue');
         }
@@ -177,7 +179,8 @@
         try {
             await api.approve_task(task_id);
             await load_queue();
-        } catch (err) {
+        }
+        catch (err) {
             console.error('Failed to retry task:', err);
             toast_store.error('Failed to retry task');
         }

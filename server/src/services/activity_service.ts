@@ -1,13 +1,13 @@
 import type { TypedSupabaseClient } from '../db';
 
 export interface ActivityEvent {
-    id: string;
-    type: 'feature_complete' | 'task_failed' | 'task_complete' | 'manager_started' | 'agent_started' | 'agent_complete';
-    message: string;
-    timestamp: string;
-    severity: 'success' | 'danger' | 'info' | 'warning' | 'muted';
-    link?: string;
-    icon: string;
+    id: string
+    type: 'feature_complete' | 'task_failed' | 'task_complete' | 'manager_started' | 'agent_started' | 'agent_complete'
+    message: string
+    timestamp: string
+    severity: 'success' | 'danger' | 'info' | 'warning' | 'muted'
+    link?: string
+    icon: string
 }
 
 export async function get_activity_feed(supabase: TypedSupabaseClient, limit = 20): Promise<ActivityEvent[]> {

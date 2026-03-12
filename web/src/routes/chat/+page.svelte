@@ -130,18 +130,19 @@
 
     async function send_message() {
         if (!input_text.trim() || !active_session || is_streaming) return;
+        const session_id = active_session.id;
         const message_content = input_text.trim();
         input_text = '';
         error_msg = '';
         is_streaming = true;
         streaming_content = '';
         const user_message: ChatMessage = {
-            id: generate_id(), session_id: active_session.id,
+            id: generate_id(), session_id,
             role: 'user', content: message_content, created_at: new Date().toISOString()
         };
         messages = [...messages, user_message];
         try {
-            const response = await api.send_chat_message(active_session.id, message_content, selected_model);
+            const response = await api.send_chat_message(session_id, message_content, selected_model);
             await read_sse_stream(response, {
                 on_chunk: (chunk) => {
                     streaming_content += chunk;
@@ -152,7 +153,7 @@
             });
             if (streaming_content) {
                 messages = [...messages, {
-                    id: generate_id(), session_id: active_session.id,
+                    id: generate_id(), session_id,
                     role: 'assistant', content: streaming_content, created_at: new Date().toISOString()
                 }];
             }
@@ -164,12 +165,13 @@
             // Preserve partial streaming content as an assistant message (§14.1)
             if (streaming_content) {
                 messages = [...messages, {
-                    id: generate_id(), session_id: active_session!.id,
+                    id: generate_id(), session_id,
                     role: 'assistant', content: streaming_content + '\n\n*(response interrupted)*',
                     created_at: new Date().toISOString()
                 }];
                 streaming_content = '';
-            } else {
+            }
+            else {
                 messages = messages.filter((m) => m.id !== user_message.id);
             }
             error_msg = 'Failed to send message';

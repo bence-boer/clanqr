@@ -1,6 +1,6 @@
 <script lang="ts">
     import { Button, Input } from '$lib/components/primitives';
-    import type { Feature, Resource } from '$lib/types';
+    import type { Feature } from '$lib/types';
 
     interface Props {
         feature: Feature

@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { resolve } from '$app/paths';
+    import type { Pathname } from '$app/types';
     import type { ActivityEvent } from '$lib/types';
     import { EmptyState } from '$lib/components';
 
@@ -40,7 +42,7 @@
                     <span class="icon feed-icon" style="color: {severity_colors[event.severity] || 'var(--fg-muted)'}">{event.icon}</span>
                     <div class="feed-content">
                         {#if event.link}
-                            <a href={event.link} class="feed-message">{event.message}</a>
+                            <a href={resolve(event.link as Pathname)} class="feed-message">{event.message}</a>
                         {:else}
                             <span class="feed-message">{event.message}</span>
                         {/if}

@@ -45,21 +45,28 @@
     function handle_login() {
         show_timeout_hint = false;
         if (timeout_timer) clearTimeout(timeout_timer);
-        timeout_timer = setTimeout(() => { show_timeout_hint = true; }, 10000);
+        timeout_timer = setTimeout(() => {
+            show_timeout_hint = true;
+        }, 10000);
         onlogin();
     }
 
     function handle_register(name: string) {
         show_timeout_hint = false;
         if (timeout_timer) clearTimeout(timeout_timer);
-        timeout_timer = setTimeout(() => { show_timeout_hint = true; }, 10000);
+        timeout_timer = setTimeout(() => {
+            show_timeout_hint = true;
+        }, 10000);
         onregister(name);
     }
 
     $effect(() => {
         if (!pending) {
             show_timeout_hint = false;
-            if (timeout_timer) { clearTimeout(timeout_timer); timeout_timer = null; }
+            if (timeout_timer) {
+                clearTimeout(timeout_timer);
+                timeout_timer = null;
+            }
         }
     });
 </script>

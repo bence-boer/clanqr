@@ -47,7 +47,14 @@
         </div>
 
         <div class="form-field">
-            <Textarea id="trait-content" bind:value={form.content} rows={6} placeholder="Write instructions that will be injected into the agent's system prompt." label="Content" required />
+            <Textarea
+                id="trait-content"
+                bind:value={form.content}
+                rows={6}
+                placeholder="Write instructions that will be injected into the agent's system prompt."
+                label="Content"
+                required
+            />
             <span class="char-count">{form.content.length} characters</span>
         </div>
 

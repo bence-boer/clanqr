@@ -3,7 +3,7 @@
     import { api } from '$lib/api/client';
     import { API_URL } from '$lib/api/rpc';
     import { Toast } from '$lib/components';
-    import NotificationBell from '$lib/components/NotificationBell.svelte';
+    import { NotificationBell } from '$lib/components';
     import { auth_store } from '$lib/stores/auth.svelte';
     import { notification_store } from '$lib/stores/notifications.svelte';
     import { toast_store } from '$lib/stores/toast.svelte';
@@ -97,7 +97,9 @@
                         notification_store.add({ type: 'danger', message: `Feature failed`, link: `/projects?feature=${data.feature_id}` });
                     }
                 }
-                catch { /* ignore malformed */ }
+                catch {
+                    /* ignore malformed */
+                }
             });
 
             es.addEventListener('tasks:update', (e: MessageEvent) => {
@@ -107,7 +109,9 @@
                         notification_store.add({ type: 'danger', message: `Task failed`, link: `/projects?feature=${data.feature_id}` });
                     }
                 }
-                catch { /* ignore malformed */ }
+                catch {
+                    /* ignore malformed */
+                }
             });
 
             es.addEventListener('pipeline:status', (e: MessageEvent) => {
@@ -117,7 +121,9 @@
                         notification_store.add({ type: 'warning', message: 'Pipeline paused' });
                     }
                 }
-                catch { /* ignore malformed */ }
+                catch {
+                    /* ignore malformed */
+                }
             });
 
             notification_source = es;
@@ -148,7 +154,15 @@
             <button class="sidebar-overlay" onclick={close_sidebar} aria-label="Close sidebar"></button>
         {/if}
 
-        <Sidebar {current_path} role={auth_store.role} {system_stats} {sidebar_open} collapsed={sidebar_collapsed} onclose={close_sidebar} onlogout={handle_logout} ontoggle_collapse={toggle_sidebar_collapse}>
+        <Sidebar
+         {current_path}
+          role={auth_store.role}
+          {system_stats}
+           {sidebar_open}
+            collapsed={sidebar_collapsed}
+            onclose={close_sidebar}
+            onlogout={handle_logout}
+            ontoggle_collapse={toggle_sidebar_collapse}>
             {#snippet notification_bell()}
                 <NotificationBell />
             {/snippet}

@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { SvelteDate } from 'svelte/reactivity';
     import type { AgentRun, PipelineStatus } from '$lib/types';
 
     let {
@@ -10,16 +11,16 @@
     } = $props();
 
     const completed_today = $derived(() => {
-        const today = new Date();
+        const today = new SvelteDate();
         today.setHours(0, 0, 0, 0);
-        const today_ms = today.getTime();
-        return history.filter(r =>
-            r.status === 'completed' && r.finished_at && new Date(r.finished_at).getTime() >= today_ms
+        const midnight = today.getTime();
+        return history.filter((item) =>
+            item.status === 'completed' && item.finished_at && new Date(item.finished_at).getTime() >= midnight
         ).length;
     });
 
     const avg_duration_ms = $derived(() => {
-        const completed = history.filter(r => r.status === 'completed' && r.duration_ms);
+        const completed = history.filter((r) => r.status === 'completed' && r.duration_ms);
         if (completed.length === 0) return 0;
         const total = completed.reduce((sum, r) => sum + (r.duration_ms ?? 0), 0);
         return Math.round(total / completed.length);

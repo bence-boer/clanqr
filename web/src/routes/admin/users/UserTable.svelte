@@ -17,7 +17,6 @@
         ondelete_user: (user_id: string) => Promise<void>
     } = $props();
 
-    let confirm_delete: string | null = $state(null);
     let role_toggling: Set<string> = $state(new Set());
     let deleting: Set<string> = $state(new Set());
     let show_delete_modal = $state(false);
@@ -138,66 +137,28 @@
     variant="danger"
     loading={delete_target_user ? deleting.has(delete_target_user.id) : false}
     onconfirm={confirm_delete_user}
-    oncancel={() => { show_delete_modal = false; delete_target_user = null; }}
+    oncancel={() => {
+        show_delete_modal = false;
+        delete_target_user = null;
+    }}
 />
 
 <style>
-    /* Table */
-    .table-wrap {
-        overflow-x: auto;
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-    }
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.875rem;
-    }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
     thead th {
-        background: var(--bg-surface);
-        color: var(--fg-muted);
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        padding: 0.75rem 1rem;
-        text-align: left;
-        border-bottom: 1px solid var(--border);
-        white-space: nowrap;
+        background: var(--bg-surface); color: var(--fg-muted); font-size: 0.75rem;
+        font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+        padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap;
     }
-    tbody tr {
-        border-bottom: 1px solid var(--border);
-        transition: background 0.1s;
-    }
-    tbody tr:last-child {
-        border-bottom: none;
-    }
-    tbody tr:hover {
-        background: var(--bg-surface);
-    }
-    tbody tr.self-row {
-        background: rgba(99, 102, 241, 0.05);
-    }
-    td {
-        padding: 0.75rem 1rem;
-        color: var(--fg);
-        vertical-align: middle;
-    }
-    .date-cell {
-        color: var(--fg-muted);
-        font-size: 0.8rem;
-        white-space: nowrap;
-    }
-    .date-cell.inactive {
-        color: var(--danger);
-        font-weight: 600;
-    }
-    .count-cell {
-        color: var(--fg-muted);
-        text-align: center;
-    }
-
-    /* Mobile */
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--bg-surface); }
+    tbody tr.self-row { background: rgba(99, 102, 241, 0.05); }
+    td { padding: 0.75rem 1rem; color: var(--fg); vertical-align: middle; }
+    .date-cell { color: var(--fg-muted); font-size: 0.8rem; white-space: nowrap; }
+    .date-cell.inactive { color: var(--danger); font-weight: 600; }
+    .count-cell { color: var(--fg-muted); text-align: center; }
     @media (max-width: 768px) {
         .table-wrap { border: none; border-radius: 0; overflow-x: visible; }
         table { display: block; }
@@ -208,10 +169,7 @@
             background: var(--bg-surface); border: 1px solid var(--border);
             border-radius: var(--radius); padding: 0.75rem;
         }
-        td {
-            padding: 0; font-size: 0.85rem;
-            display: flex; align-items: center; gap: 0.5rem;
-        }
+        td { padding: 0; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; }
         td::before {
             content: attr(data-label); font-size: 0.7rem; font-weight: 600;
             text-transform: uppercase; letter-spacing: 0.04em;

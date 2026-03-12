@@ -22,7 +22,7 @@
         action_busy: boolean
         ontoggle_log: () => void
         onstop: () => void
-        onrefresh_log: () => Promise<boolean> | void
+        onrefresh_log: () => Promise<boolean> | Promise<void>
         format_duration: (started_at: string | null) => string
     } = $props();
 
@@ -31,7 +31,10 @@
 
     $effect(() => {
         const task = pipeline?.current_task;
-        if (!task?.updated_at) { elapsed = ''; return; }
+        if (!task?.updated_at) {
+            elapsed = '';
+            return;
+        }
         const update = () => {
             const diff = Math.floor((Date.now() - new Date(task.updated_at).getTime()) / 1000);
             const m = Math.floor(diff / 60);
@@ -55,7 +58,8 @@
             try {
                 await onrefresh_log();
                 log_refresh_interval = LOG_MIN_INTERVAL;
-            } catch {
+            }
+            catch {
                 log_refresh_interval = Math.min(log_refresh_interval * 2, LOG_MAX_INTERVAL);
             }
         }, interval);
@@ -132,7 +136,13 @@
                                 Live Output
                             {/if}
                         </span>
-                        <Button variant="ghost" size="icon" icon="refresh" onclick={onrefresh_log} disabled={log_loading} title="Refresh" aria-label="Refresh log" />
+                        <Button
+                            variant="ghost" size="icon" icon="refresh"
+                            onclick={onrefresh_log}
+                            disabled={log_loading}
+                            title="Refresh"
+                            aria-label="Refresh log"
+                        />
                     </div>
                     <CodeBlock content={log_text} />
                 </div>
@@ -144,129 +154,33 @@
 </section>
 
 <style>
-    .section {
-        margin-bottom: 2rem;
-    }
-
+    .section { margin-bottom: 2rem; }
     .section-title {
-        font-size: 0.875rem;
-        font-weight: 600;
-        color: var(--fg-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        margin-bottom: 0.75rem;
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
+        font-size: 0.875rem; font-weight: 600; color: var(--fg-muted);
+        text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.75rem;
+        display: flex; align-items: center; gap: 0.4rem;
     }
-
-    .current-task-card {
-        background: var(--bg-surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 1rem 1.25rem;
-    }
-
-    .current-task-body {
-        min-width: 0;
-    }
-
-    .breadcrumb {
-        display: flex;
-        align-items: center;
-        gap: 0.35rem;
-        font-size: 0.875rem;
-        flex-wrap: wrap;
-        margin-bottom: 0.3rem;
-    }
-
-    .breadcrumb-link {
-        color: var(--accent);
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.2rem;
-        font-weight: 500;
-    }
-
-    .breadcrumb-link:hover {
-        text-decoration: underline;
-    }
-
-    .breadcrumb-text {
-        color: var(--fg-muted);
-    }
-
-    .breadcrumb-sep {
-        color: var(--border);
-        font-size: 0.8rem;
-    }
-
-    .task-title {
-        font-size: 1rem;
-        color: var(--fg);
-        font-weight: 600;
-        line-height: 1.4;
-        margin-bottom: 0.3rem;
-    }
-
-    .task-desc {
-        font-size: 0.85rem;
-        color: var(--fg-muted);
-        margin-bottom: 0.45rem;
-        line-height: 1.4;
-    }
-
-    .task-meta {
-        font-size: 0.8rem;
-        color: var(--fg-muted);
-        display: flex;
-        align-items: center;
-        gap: 0.35rem;
-        flex-wrap: wrap;
-    }
-
-    .current-task-actions {
-        display: flex;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-        margin-top: 0.75rem;
-    }
-
-    .log-panel {
-        margin-top: 0.85rem;
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        overflow: hidden;
-    }
-
+    .current-task-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; }
+    .current-task-body { min-width: 0; }
+    .breadcrumb { display: flex; align-items: center; gap: 0.35rem; font-size: 0.875rem; flex-wrap: wrap; margin-bottom: 0.3rem; }
+    .breadcrumb-link { color: var(--accent); text-decoration: none; display: inline-flex; align-items: center; gap: 0.2rem; font-weight: 500; }
+    .breadcrumb-link:hover { text-decoration: underline; }
+    .breadcrumb-text { color: var(--fg-muted); }
+    .breadcrumb-sep { color: var(--border); font-size: 0.8rem; }
+    .task-title { font-size: 1rem; color: var(--fg); font-weight: 600; line-height: 1.4; margin-bottom: 0.3rem; }
+    .task-desc { font-size: 0.85rem; color: var(--fg-muted); margin-bottom: 0.45rem; line-height: 1.4; }
+    .task-meta { font-size: 0.8rem; color: var(--fg-muted); display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+    .current-task-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem; }
+    .log-panel { margin-top: 0.85rem; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
     .log-toolbar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0.4rem 0.75rem;
-        background: var(--bg-elevated);
-        border-bottom: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 0.4rem 0.75rem; background: var(--bg-elevated); border-bottom: 1px solid var(--border);
     }
-
-    .log-label {
-        font-size: 0.75rem;
-        color: var(--fg-muted);
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
-    }
-
+    .log-label { font-size: 0.75rem; color: var(--fg-muted); font-weight: 600; display: flex; align-items: center; gap: 0.4rem; }
     .live-dot {
-        display: inline-block;
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--success);
-        animation: pulse-dot 1.5s ease-in-out infinite;
+        display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+        background: var(--success); animation: pulse-dot 1.5s ease-in-out infinite;
     }
-
     @keyframes pulse-dot {
         0%, 100% { opacity: 1; }
         50% { opacity: 0.4; }

@@ -1,19 +1,14 @@
 <script lang="ts">
     import { resolve } from '$app/paths';
+    import { Checkbox } from '$lib/components';
     import { Badge, Button, Input, Textarea } from '$lib/components/primitives';
     import type { Feature, Project } from '$lib/types';
 
     interface Props {
         project: Project
         features: Feature[]
-        editing: boolean
         selected: boolean
-        edit_name: string
-        edit_description: string
-        saving_edit: boolean
-        on_start_edit: (project: Project, event: MouseEvent) => void
-        on_cancel_edit: (event: MouseEvent) => void
-        on_save_edit: (event: MouseEvent) => void
+        on_save: (id: string, name: string, description: string) => Promise<boolean>
         on_delete: (id: string) => void
         on_archive: (id: string) => void
         on_unarchive: (id: string) => void
@@ -21,11 +16,14 @@
     }
 
     let {
-        project, features, editing, selected,
-        edit_name = $bindable(), edit_description = $bindable(),
-        saving_edit, on_start_edit, on_cancel_edit, on_save_edit,
-        on_delete, on_archive, on_unarchive, on_toggle_select
+        project, features, selected,
+        on_save, on_delete, on_archive, on_unarchive, on_toggle_select
     }: Props = $props();
+
+    let editing = $state(false);
+    let edit_name = $state('');
+    let edit_description = $state('');
+    let saving_edit = $state(false);
 
     const feature_count = $derived(features.length);
     const completed_count = $derived(features.filter((f) => f.status === 'Done').length);
@@ -47,6 +45,35 @@
     }
 
     const is_archived = $derived(project.status === 'Archived');
+
+    function start_edit(event: MouseEvent) {
+        event.preventDefault();
+        event.stopPropagation();
+        editing = true;
+        edit_name = project.name;
+        edit_description = project.description ?? '';
+    }
+
+    function cancel_edit(event: MouseEvent) {
+        event.preventDefault();
+        event.stopPropagation();
+        editing = false;
+    }
+
+    async function save_edit(event: MouseEvent) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!edit_name.trim()) return;
+        saving_edit = true;
+        try {
+            if (await on_save(project.id, edit_name, edit_description)) {
+                editing = false;
+            }
+        }
+        finally {
+            saving_edit = false;
+        }
+    }
 </script>
 
 {#if editing}
@@ -54,8 +81,8 @@
         <Input type="text" class="input" bind:value={edit_name} placeholder="Project name" />
         <Textarea bind:value={edit_description} placeholder="Description" rows={2} />
         <div class="project-footer">
-            <Button variant="secondary" size="sm" onclick={on_cancel_edit}>Cancel</Button>
-            <Button variant="primary" size="sm" onclick={on_save_edit} disabled={saving_edit || !edit_name.trim()}>
+            <Button variant="secondary" size="sm" onclick={cancel_edit}>Cancel</Button>
+            <Button variant="primary" size="sm" onclick={save_edit} disabled={saving_edit || !edit_name.trim()}>
                 {saving_edit ? 'Saving...' : 'Save'}
             </Button>
         </div>
@@ -64,11 +91,9 @@
     <a href={resolve(`/projects/${project.id}`)} class="project-card" class:selected-card={selected}>
         <div class="project-header">
             <div class="project-header-left">
-                <input
-                    type="checkbox"
+                <Checkbox
                     checked={selected}
                     onclick={(event: MouseEvent) => {
-                        event.preventDefault();
                         event.stopPropagation();
                         on_toggle_select(project.id);
                     }}
@@ -108,7 +133,7 @@
                 {new Date(project.created_at).toLocaleDateString()}
             </span>
             <div class="project-card-actions">
-                <Button variant="secondary" size="sm" icon="edit" onclick={(event: Event) => on_start_edit(project, event as MouseEvent)} />
+                <Button variant="secondary" size="sm" icon="edit" onclick={start_edit} />
                 {#if is_archived}
                     <Button variant="secondary" size="sm" icon="unarchive" onclick={(event: Event) => {
                         event.preventDefault();

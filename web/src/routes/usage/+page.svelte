@@ -4,6 +4,7 @@
     import { toast_store } from '$lib/stores/toast.svelte';
     import type { AgentRun, UsageBreakdown, UsageSummary } from '$lib/types';
     import { onMount } from 'svelte';
+    import { SvelteDate } from 'svelte/reactivity';
     import RunHistory from './RunHistory.svelte';
     import UsageBreakdownPanel from './UsageBreakdown.svelte';
 
@@ -28,10 +29,13 @@
     });
 
     let success_rate_color = $derived(
-        success_rate === null ? 'var(--fg-muted)' :
-        success_rate >= 80 ? 'var(--success, #4ade80)' :
-        success_rate >= 50 ? 'var(--accent)' :
-        'var(--danger)'
+        success_rate === null
+            ? 'var(--fg-muted)'
+            : success_rate >= 80
+                ? 'var(--success, #4ade80)'
+                : success_rate >= 50
+                    ? 'var(--accent)'
+                    : 'var(--danger)'
     );
 
     onMount(() => {
@@ -81,15 +85,15 @@
             });
     });
 
-    function get_date_cutoff(range: typeof date_range): Date | null {
-        const now = new Date();
+    function get_date_cutoff(range: typeof date_range): SvelteDate | null {
+        const now_ms = Date.now();
         if (range === 'today') {
-            const start = new Date(now);
+            const start = new SvelteDate(now_ms);
             start.setHours(0, 0, 0, 0);
             return start;
         }
-        if (range === '7d') return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        if (range === '30d') return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        if (range === '7d') return new SvelteDate(now_ms - 7 * 24 * 60 * 60 * 1000);
+        if (range === '30d') return new SvelteDate(now_ms - 30 * 24 * 60 * 60 * 1000);
         return null;
     }
 

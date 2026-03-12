@@ -24,7 +24,9 @@
     $effect(() => {
         if (!is_live) return;
 
-        const interval = setInterval(() => { on_refresh(); }, 3000);
+        const interval = setInterval(() => {
+            on_refresh();
+        }, 3000);
         return () => clearInterval(interval);
     });
 

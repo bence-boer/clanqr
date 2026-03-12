@@ -38,7 +38,8 @@ const marked_instance = new Marked({
                 highlighted = language === 'plaintext'
                     ? text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
                     : hljs.highlight(text, { language }).value;
-            } catch {
+            }
+            catch {
                 highlighted = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             }
             const escaped_text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -51,7 +52,7 @@ export function render_markdown(content: string): string {
     const raw_html = marked_instance.parse(content, { async: false }) as string;
     return DOMPurify.sanitize(raw_html, {
         ADD_TAGS: ['button'],
-        ADD_ATTR: ['data-code'],
+        ADD_ATTR: ['data-code']
     });
 }
 
@@ -61,7 +62,9 @@ export function init_code_copy_handlers(container: HTMLElement) {
             const code = btn.dataset.code?.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"') ?? '';
             navigator.clipboard.writeText(code).then(() => {
                 btn.textContent = 'Copied!';
-                setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+                setTimeout(() => {
+                    btn.textContent = 'Copy';
+                }, 2000);
             });
         };
     });

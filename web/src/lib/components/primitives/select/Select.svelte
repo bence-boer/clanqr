@@ -18,8 +18,9 @@
         class: class_name,
         label,
         id,
-        children,
         required,
+        style,
+        children,
         ...rest_props
     }: SelectProperties = $props();
 
@@ -27,7 +28,7 @@
     const select_id = $derived(id || fallback_id);
 </script>
 
-<div class="select">
+<div class={['select', class_name].filter(Boolean).join(' ')} {style}>
     {#if label}
         <Label for={select_id} {required}>
             {label}
@@ -40,7 +41,7 @@
         data-slot="select"
         bind:this={ref}
         bind:value
-        class={['base-select', class_name].filter(Boolean).join(' ')}
+        class="base-select"
     >
         {@render children?.()}
     </select>

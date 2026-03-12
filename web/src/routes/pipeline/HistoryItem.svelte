@@ -39,7 +39,9 @@
             const age = Date.now() - finished;
             if (age < 10000) {
                 is_new = true;
-                const timeout = setTimeout(() => { is_new = false; }, 2000);
+                const timeout = setTimeout(() => {
+                    is_new = false;
+                }, 2000);
                 return () => clearTimeout(timeout);
             }
         }
@@ -131,7 +133,7 @@
         <Badge variant={status_class(run.status) as 'success' | 'danger' | 'muted' | 'info'}>{run.status}</Badge>
         <div class="footer-actions">
             {#if run.status === 'failed' && run.task_id && onretry}
-                <Button variant="secondary" size="sm" icon="replay" onclick={() => onretry(run.task_id!)}>Retry</Button>
+                <Button variant="secondary" size="sm" icon="replay" onclick={() => onretry(run.task_id ?? '')}>Retry</Button>
             {/if}
             {#if run.log}
                 <Button variant="ghost" size="sm" icon="terminal" onclick={() => on_toggle_log(run.id)}>
@@ -147,130 +149,38 @@
 </div>
 
 <style>
-    .history-item {
-        background: var(--bg-surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 0.75rem 1rem;
-    }
-
-    .history-item.flash-success {
-        animation: flash-success 2s ease-out;
-    }
-
+    .history-item { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem 1rem; }
+    .history-item.flash-success { animation: flash-success 2s ease-out; }
     @keyframes flash-success {
         from { background: rgba(var(--success-rgb, 74, 222, 128), 0.15); }
         to { background: var(--bg-surface); }
     }
-
-    .history-item-main {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.65rem;
-    }
-
-    .history-item-copy {
-        min-width: 0;
-        flex: 1;
-    }
-
+    .history-item-main { display: flex; align-items: flex-start; gap: 0.65rem; }
+    .history-item-copy { min-width: 0; flex: 1; }
     .history-item-footer {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-        flex-wrap: wrap;
-        margin-top: 0.75rem;
-        padding-top: 0.75rem;
-        border-top: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 0.75rem; flex-wrap: wrap; margin-top: 0.75rem;
+        padding-top: 0.75rem; border-top: 1px solid var(--border);
     }
-
-    .footer-actions {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .run-status-icon {
-        font-size: 20px;
-        flex-shrink: 0;
-        margin-top: 0.1rem;
-    }
+    .footer-actions { display: flex; align-items: center; gap: 0.5rem; }
+    .run-status-icon { font-size: 20px; flex-shrink: 0; margin-top: 0.1rem; }
     .run-status-icon.success { color: var(--success); }
     .run-status-icon.danger { color: var(--danger); }
     .run-status-icon.warning { color: var(--accent); }
     .run-status-icon.muted { color: var(--fg-muted); }
-    .run-breadcrumb {
-        display: flex;
-        align-items: center;
-        gap: 0.25rem;
-        font-size: 0.8rem;
-        flex-wrap: wrap;
-    }
-    .crumb-link {
-        color: var(--accent);
-        text-decoration: none;
-        font-weight: 500;
-    }
-    .crumb-link:hover {
-        text-decoration: underline;
-    }
-
-    .crumb-text {
-        color: var(--fg-muted);
-    }
-
-    .crumb-sep {
-        color: var(--border);
-        font-size: 0.75rem;
-    }
-
-    .run-title {
-        font-size: 0.95rem;
-        color: var(--fg);
-        font-weight: 600;
-        line-height: 1.4;
-        margin-top: 0.2rem;
-    }
-
-    .run-meta {
-        font-size: 0.75rem;
-        color: var(--fg-muted);
-        margin-top: 0.2rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-    }
-
+    .run-breadcrumb { display: flex; align-items: center; gap: 0.25rem; font-size: 0.8rem; flex-wrap: wrap; }
+    .crumb-link { color: var(--accent); text-decoration: none; font-weight: 500; }
+    .crumb-link:hover { text-decoration: underline; }
+    .crumb-text { color: var(--fg-muted); }
+    .crumb-sep { color: var(--border); font-size: 0.75rem; }
+    .run-title { font-size: 0.95rem; color: var(--fg); font-weight: 600; line-height: 1.4; margin-top: 0.2rem; }
+    .run-meta { font-size: 0.75rem; color: var(--fg-muted); margin-top: 0.2rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
     .model-badge {
-        font-size: 0.7rem;
-        padding: 0.05rem 0.4rem;
-        border-radius: var(--radius);
-        background: var(--bg-elevated);
-        border: 1px solid var(--border);
-        color: var(--fg-muted);
-        font-family: var(--font-mono, monospace);
+        font-size: 0.7rem; padding: 0.05rem 0.4rem; border-radius: var(--radius);
+        background: var(--bg-elevated); border: 1px solid var(--border);
+        color: var(--fg-muted); font-family: var(--font-mono, monospace);
     }
-
-    .token-info {
-        font-size: 0.7rem;
-        color: var(--fg-muted);
-        opacity: 0.8;
-    }
-
-    .run-summary {
-        font-size: 0.8rem;
-        color: var(--fg-muted);
-        margin-top: 0.45rem;
-        line-height: 1.45;
-    }
-    .run-error {
-        font-size: 0.8rem;
-        color: var(--danger);
-        margin-top: 0.4rem;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
+    .token-info { font-size: 0.7rem; color: var(--fg-muted); opacity: 0.8; }
+    .run-summary { font-size: 0.8rem; color: var(--fg-muted); margin-top: 0.45rem; line-height: 1.45; }
+    .run-error { font-size: 0.8rem; color: var(--danger); margin-top: 0.4rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>
