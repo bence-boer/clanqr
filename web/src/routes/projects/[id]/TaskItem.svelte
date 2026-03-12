@@ -1,11 +1,11 @@
 <script lang="ts">
-    import { api } from '$lib/api/client';
     import { Accordion, CodeBlock } from '$lib/components';
-    import { Badge, Button, Input, Select } from '$lib/components/primitives';
+    import { Badge, Button } from '$lib/components/primitives';
     import { toast_store } from '$lib/stores/toast.svelte';
     import type { TaskRow as Task } from '$lib/types';
     import { status_icon, status_class } from '$lib/utils/status';
     import TaskArtifacts from './TaskArtifacts.svelte';
+    import TaskEditForm from './TaskEditForm.svelte';
     import TaskFiles from './TaskFiles.svelte';
 
     interface Props {
@@ -36,29 +36,6 @@
     let optimistic_status = $state<string | null>(null);
     const display_status = $derived(optimistic_status ?? task.status);
 
-    let model_options = $state<{ value: string, label: string }[]>([]);
-    let loading_models = $state(false);
-    let last_loaded_cli = $state('');
-
-    async function load_models() {
-        if (feature_cli === last_loaded_cli) return;
-        loading_models = true;
-        try {
-            model_options = await api.list_models(feature_cli);
-            last_loaded_cli = feature_cli;
-        }
-        catch {
-            model_options = [];
-        }
-        finally {
-            loading_models = false;
-        }
-    }
-
-    $effect(() => {
-        if (editing) load_models();
-    });
-
     async function handle_approve() {
         const prev_status = task.status;
         optimistic_status = 'Approved';
@@ -83,39 +60,16 @@
 
 <div class="task-item">
     {#if editing}
-        <div class="task-edit-form">
-            <Input
-                class="task-input"
-                type="text"
-                placeholder="Task title (optional)"
-                bind:value={editing_title}
-                onkeydown={(event) => {
-                    if (event.key === 'Enter') on_save_edit();
-                    if (event.key === 'Escape') on_cancel_edit();
-                }}
-            />
-            <textarea
-                class="task-desc-input"
-                placeholder="Task description…"
-                bind:value={editing_desc}
-                rows="4"
-                onkeydown={(event) => {
-                    if (event.key === 'Escape') on_cancel_edit();
-                }}
-            ></textarea>
-            <div class="task-model-field">
-                <Select id="task-model-{task.id}" label={`Model Override ${loading_models ? '(...)' : ''}`} bind:value={editing_model} class="input select" disabled={loading_models}>
-                    <option value={null}>Feature default</option>
-                    {#each model_options as m (m.value)}
-                        <option value={m.value}>{m.label}</option>
-                    {/each}
-                </Select>
-            </div>
-            <div class="task-edit-actions">
-                <Button variant="primary" size="sm" onclick={on_save_edit} disabled={saving}>Save</Button>
-                <Button variant="secondary" size="sm" onclick={on_cancel_edit}>Cancel</Button>
-            </div>
-        </div>
+        <TaskEditForm
+            task_id={task.id}
+            {feature_cli}
+            bind:title={editing_title}
+            bind:description={editing_desc}
+            bind:model={editing_model}
+            {saving}
+            on_save={on_save_edit}
+            on_cancel={on_cancel_edit}
+        />
     {:else}
         <div class="task-header">
             <div class="task-info">
@@ -191,11 +145,6 @@
     .task-info { flex: 1; min-width: 0; }
     .task-title { font-size: 0.9rem; font-weight: 600; color: var(--fg); display: block; line-height: 1.4; }
     .task-badges { display: flex; gap: 0.35rem; align-items: center; flex-shrink: 0; }
-    .task-desc-input {
-        width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: var(--radius);
-        background: var(--bg); color: var(--fg); font-size: 0.85rem; font-family: inherit;
-        resize: vertical; line-height: 1.5;
-    }
     .task-actions {
         margin-top: 0.5rem; display: flex;
         gap: 0.5rem; align-items: center; flex-wrap: wrap;
@@ -207,13 +156,6 @@
         line-height: 1.55;
         white-space: pre-wrap;
     }
-    .task-edit-form {
-        display: flex; flex-direction: column; gap: 0.5rem;
-        background: var(--bg); border: 1px solid var(--accent);
-        border-radius: var(--radius); padding: 0.75rem;
-    }
-    .task-model-field { max-width: 300px; }
-    .task-edit-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
     .task-failure-reason {
         display: flex; align-items: flex-start; gap: 0.3rem;
         margin-top: 0.35rem; padding: 0.3rem 0.5rem;

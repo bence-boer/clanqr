@@ -1,16 +1,15 @@
 <script lang="ts">
     import { page } from '$app/state';
     import { api } from '$lib/api/client';
-    import { API_URL } from '$lib/api/rpc';
     import { Toast } from '$lib/components';
     import { NotificationBell } from '$lib/components';
     import { auth_store } from '$lib/stores/auth.svelte';
-    import { notification_store } from '$lib/stores/notifications.svelte';
     import { toast_store } from '$lib/stores/toast.svelte';
     import '$lib/styles/global.css';
     import type { SystemAlert, SystemStats } from '$lib/types';
     import { onMount } from 'svelte';
     import AuthScreen from './AuthScreen.svelte';
+    import { create_notification_stream } from './notification-stream';
     import Sidebar from './Sidebar.svelte';
 
     let { children } = $props();
@@ -80,55 +79,12 @@
         sidebar_open = false;
     }
 
-    // ── Global SSE for notifications ─────────────────────────────────────────────
     let notification_source: EventSource | null = null;
 
     $effect(() => {
         if (auth_store.state === 'authenticated' && !notification_source) {
-            const es = new EventSource(`${API_URL}/api/events/stream`, { withCredentials: true });
-
-            es.addEventListener('features:update', (e: MessageEvent) => {
-                try {
-                    const data = JSON.parse(e.data);
-                    if (data.status === 'Complete') {
-                        notification_store.add({ type: 'success', message: `Feature completed`, link: `/projects?feature=${data.feature_id}` });
-                    }
-                    if (data.status === 'Failed') {
-                        notification_store.add({ type: 'danger', message: `Feature failed`, link: `/projects?feature=${data.feature_id}` });
-                    }
-                }
-                catch {
-                    /* ignore malformed */
-                }
-            });
-
-            es.addEventListener('tasks:update', (e: MessageEvent) => {
-                try {
-                    const data = JSON.parse(e.data);
-                    if (data.status === 'Failed') {
-                        notification_store.add({ type: 'danger', message: `Task failed`, link: `/projects?feature=${data.feature_id}` });
-                    }
-                }
-                catch {
-                    /* ignore malformed */
-                }
-            });
-
-            es.addEventListener('pipeline:status', (e: MessageEvent) => {
-                try {
-                    const data = JSON.parse(e.data);
-                    if (data.state === 'paused') {
-                        notification_store.add({ type: 'warning', message: 'Pipeline paused' });
-                    }
-                }
-                catch {
-                    /* ignore malformed */
-                }
-            });
-
-            notification_source = es;
+            notification_source = create_notification_stream();
         }
-
         return () => {
             notification_source?.close();
             notification_source = null;

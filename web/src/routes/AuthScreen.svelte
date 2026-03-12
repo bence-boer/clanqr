@@ -1,6 +1,7 @@
 <script lang="ts">
     import { Button } from '$lib/components/primitives/button';
     import { Input } from '$lib/components/primitives';
+    import AuthFeedback from './AuthFeedback.svelte';
     let {
         auth_state,
         error = null,
@@ -42,21 +43,21 @@
 
     let classified_error = $derived(classify_error(error ?? null));
 
-    function handle_login() {
+    function start_timeout() {
         show_timeout_hint = false;
         if (timeout_timer) clearTimeout(timeout_timer);
         timeout_timer = setTimeout(() => {
             show_timeout_hint = true;
         }, 10000);
+    }
+
+    function handle_login() {
+        start_timeout();
         onlogin();
     }
 
     function handle_register(name: string) {
-        show_timeout_hint = false;
-        if (timeout_timer) clearTimeout(timeout_timer);
-        timeout_timer = setTimeout(() => {
-            show_timeout_hint = true;
-        }, 10000);
+        start_timeout();
         onregister(name);
     }
 
@@ -100,21 +101,7 @@
                 <span class="icon">{pending ? 'progress_activity' : 'fingerprint'}</span>
                 {pending ? 'Creating…' : 'Create Passkey'}
             </Button>
-            {#if pending}
-                <p class="auth-waiting">
-                    <span class="icon pulse">fingerprint</span>
-                    Waiting for your passkey…
-                </p>
-                {#if show_timeout_hint}
-                    <p class="auth-hint">Taking longer than expected. Check your browser for a passkey prompt.</p>
-                {/if}
-            {/if}
-            {#if error}
-                <p class="auth-error">
-                    <span class="icon" style="font-size:14px">{classified_error.icon}</span>
-                    {classified_error.message}
-                </p>
-            {/if}
+            <AuthFeedback {pending} {show_timeout_hint} {error} error_icon={classified_error.icon} error_message={classified_error.message} />
         </div>
     </div>
 {:else if auth_state === 'login'}
@@ -127,21 +114,7 @@
                 <span class="icon">{pending ? 'progress_activity' : 'fingerprint'}</span>
                 {pending ? 'Authenticating…' : 'Sign in with Passkey'}
             </Button>
-            {#if pending}
-                <p class="auth-waiting">
-                    <span class="icon pulse">fingerprint</span>
-                    Waiting for your passkey…
-                </p>
-                {#if show_timeout_hint}
-                    <p class="auth-hint">Taking longer than expected. Check your browser for a passkey prompt.</p>
-                {/if}
-            {/if}
-            {#if error}
-                <p class="auth-error">
-                    <span class="icon" style="font-size:14px">{classified_error.icon}</span>
-                    {classified_error.message}
-                </p>
-            {/if}
+            <AuthFeedback {pending} {show_timeout_hint} {error} error_icon={classified_error.icon} error_message={classified_error.message} />
         </div>
     </div>
 {/if}
@@ -156,17 +129,6 @@
     .icon.spin {
         font-size: 32px;
         color: var(--accent);
-    }
-
-    .icon.pulse {
-        font-size: 18px;
-        color: var(--accent);
-        animation: pulse 1.5s ease-in-out infinite;
-    }
-
-    @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.4; }
     }
 
     .auth-screen {
@@ -203,32 +165,4 @@
         padding: 0.65rem 0.85rem;
         margin-bottom: 1rem;
     }
-
-    .auth-error {
-        color: var(--danger);
-        font-size: 0.8rem;
-        margin-top: 1rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.35rem;
-    }
-
-    .auth-waiting {
-        color: var(--accent);
-        font-size: 0.82rem;
-        margin-top: 1rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.4rem;
-    }
-
-    .auth-hint {
-        color: var(--fg-muted);
-        font-size: 0.75rem;
-        margin-top: 0.5rem;
-        font-style: italic;
-    }
-
 </style>

@@ -1,8 +1,9 @@
 <script lang="ts">
     import { api } from '$lib/api/client';
-    import { LoadingSpinner, Checkbox } from '$lib/components';
+    import { LoadingSpinner } from '$lib/components';
     import { toast_store } from '$lib/stores/toast.svelte';
     import type { ResolvedTrait, SkillLink, Trait } from '$lib/types';
+    import ArtifactCheckboxList from './ArtifactCheckboxList.svelte';
 
     interface Props {
         task_id: string
@@ -107,39 +108,24 @@
     {:else}
         <div class="artifacts-section">
             <h5><span class="icon" style="font-size:14px">psychology</span> Traits</h5>
-            {#if available_traits.length === 0}
-                <p class="empty">No traits available</p>
-            {:else}
-                {#each available_traits as trait (trait.id)}
-                    <label class="artifact-check">
-                        <Checkbox checked={trait_assignments.some((a) => a.trait_id === trait.id)} onchange={() => toggle_trait(trait)} />
-                        <span class="artifact-copy">
-                            <span class="artifact-name">{trait.name}</span>
-                            {#if trait.description}
-                                <span class="artifact-desc">{trait.description}</span>
-                            {/if}
-                        </span>
-                    </label>
-                {/each}
-            {/if}
+            <ArtifactCheckboxList
+                items={available_traits.map((t) => ({ key: t.id, name: t.name, description: t.description }))}
+                is_checked={(key) => trait_assignments.some((a) => a.trait_id === key)}
+                on_toggle={(key) => {
+                    const trait = available_traits.find((t) => t.id === key);
+                    if (trait) toggle_trait(trait);
+                }}
+                empty_message="No traits available"
+            />
         </div>
         <div class="artifacts-section">
             <h5><span class="icon" style="font-size:14px">extension</span> Skills</h5>
-            {#if available_skills.length === 0}
-                <p class="empty">No skills available</p>
-            {:else}
-                {#each available_skills as skill (skill.name)}
-                    <label class="artifact-check">
-                        <Checkbox checked={skill_links.some((sl) => sl.skill_name === skill.name)} onchange={() => toggle_skill(skill.name)} />
-                        <span class="artifact-copy">
-                            <span class="artifact-name">{skill.name}</span>
-                            {#if skill.description}
-                                <span class="artifact-desc">{skill.description}</span>
-                            {/if}
-                        </span>
-                    </label>
-                {/each}
-            {/if}
+            <ArtifactCheckboxList
+                items={available_skills.map((s) => ({ key: s.name, name: s.name, description: s.description }))}
+                is_checked={(key) => skill_links.some((sl) => sl.skill_name === key)}
+                on_toggle={toggle_skill}
+                empty_message="No skills available"
+            />
         </div>
         <div class="artifacts-section">
             <h5><span class="icon" style="font-size:14px">merge_type</span> Effective Traits</h5>
@@ -183,41 +169,6 @@
         display: flex;
         align-items: center;
         gap: 0.3rem;
-    }
-    .artifact-check {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.65rem;
-        font-size: 0.8rem;
-        color: var(--fg);
-        padding: 0.55rem 0.65rem;
-        cursor: pointer;
-        background: var(--bg);
-        border: 1px solid var(--border);
-        border-radius: calc(var(--radius) - 2px);
-    }
-    .artifact-copy {
-        display: flex;
-        flex-direction: column;
-        gap: 0.15rem;
-        min-width: 0;
-        flex: 1;
-    }
-    .artifact-name {
-        font-weight: 600;
-        color: var(--fg);
-    }
-    .artifact-desc {
-        color: var(--fg-muted);
-        font-size: 0.75rem;
-        line-height: 1.45;
-    }
-    .empty {
-        color: var(--fg-muted);
-        font-size: 0.85rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
     }
     .resolved-trait {
         display: flex;

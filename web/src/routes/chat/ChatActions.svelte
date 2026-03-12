@@ -3,19 +3,10 @@
     import { Button } from '$lib/components/primitives/button';
     import { Select } from '$lib/components/primitives/select';
     import type { ChatMessage, ChatSession, ChatSessionFull } from '$lib/types';
+    import type { ModelGroup } from './chat-models';
     import MessageThread from './MessageThread.svelte';
     import ChatInput from './ChatInput.svelte';
-
-    interface ModelGroup {
-        group: string
-        models: string[]
-    }
-
-    const starter_prompts = [
-        { icon: 'lightbulb', text: 'Help me design a new feature' },
-        { icon: 'architecture', text: 'Explain the current project architecture' },
-        { icon: 'bug_report', text: 'Write tests for the auth module' }
-    ];
+    import StarterPrompts from './StarterPrompts.svelte';
 
     let {
         session: active_session,
@@ -80,14 +71,9 @@
     let show_starters = $derived(!active_session || (active_session && messages.length === 0 && !loading_messages));
 
     function use_starter(prompt_text: string) {
-        if (!active_session) {
-            input_text = prompt_text;
-            on_create();
-        }
-        else {
-            input_text = prompt_text;
-            on_send();
-        }
+        input_text = prompt_text;
+        if (!active_session) on_create();
+        else on_send();
     }
 </script>
 
@@ -99,14 +85,7 @@
             <Button variant="primary" onclick={on_create}>
                 <span class="icon">add</span> New Chat
             </Button>
-            <div class="starter-prompts">
-                {#each starter_prompts as prompt (prompt.text)}
-                    <button class="starter-btn" onclick={() => use_starter(prompt.text)}>
-                        <span class="icon" style="font-size: 18px">{prompt.icon}</span>
-                        <span>{prompt.text}</span>
-                    </button>
-                {/each}
-            </div>
+            <StarterPrompts on_select={use_starter} />
         </div>
     {:else}
         <div class="chat-header">
@@ -140,14 +119,7 @@
         {#if show_starters && messages.length === 0 && !loading_messages}
             <div class="starters-inline">
                 <p class="starters-label">Try a prompt to get started:</p>
-                <div class="starter-prompts">
-                    {#each starter_prompts as prompt (prompt.text)}
-                        <button class="starter-btn" onclick={() => use_starter(prompt.text)}>
-                            <span class="icon" style="font-size: 18px">{prompt.icon}</span>
-                            <span>{prompt.text}</span>
-                        </button>
-                    {/each}
-                </div>
+                <StarterPrompts on_select={use_starter} />
             </div>
         {/if}
 
@@ -231,36 +203,6 @@
         font-family: var(--font);
         min-width: 180px;
     }
-
-    .starter-prompts {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        margin-top: 0.5rem;
-        width: 100%;
-        max-width: 340px;
-    }
-
-    .starter-btn {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        background: var(--bg-elevated);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        color: var(--fg);
-        padding: 0.6rem 0.85rem;
-        cursor: pointer;
-        font-size: 0.8rem;
-        font-family: var(--font);
-        text-align: left;
-        transition: background 150ms, border-color 150ms;
-    }
-    .starter-btn:hover {
-        background: var(--accent-dim);
-        border-color: var(--accent);
-    }
-    .starter-btn .icon { color: var(--accent); }
 
     .starters-inline {
         display: flex;
