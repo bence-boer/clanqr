@@ -15,7 +15,7 @@ const env_schema = z.object({
     GEMINI_BIN: z.string().optional(),
     PORT: z.coerce.number().default(3001),
     WORKSPACE_DIR: z.string().optional(),
-    NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+    NODE_ENV: z.enum(['development', 'production', 'test']).default('production'),
     PATH: z.string().default('/usr/local/bin:/usr/bin:/bin'),
     LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
     MAX_CONCURRENT_AGENTS: z.coerce.number().int().min(1).default(3)
@@ -107,7 +107,7 @@ describe('env schema', () => {
             expect(result.data.SUPABASE_URL).toBe('http://127.0.0.1:54321');
             expect(result.data.RP_ID).toBe('localhost');
             expect(result.data.PORT).toBe(3001);
-            expect(result.data.NODE_ENV).toBe('development');
+            expect(result.data.NODE_ENV).toBe('production');
             expect(result.data.LOG_LEVEL).toBe('info');
             expect(result.data.MAX_CONCURRENT_AGENTS).toBe(3);
         }

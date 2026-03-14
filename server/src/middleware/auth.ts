@@ -1,5 +1,7 @@
 import { createMiddleware } from 'hono/factory';
-import { getCookie } from 'hono/cookie';
+import { deleteCookie, getCookie } from 'hono/cookie';
+import { env } from '../env';
+import { is_dev_passkey_id, is_dev_session_token } from '../utils/dev_sessions';
 import type { AppBindings } from './supabase';
 
 interface SessionWithPasskey {
@@ -16,6 +18,11 @@ export function auth_middleware() {
             return context.json({ error: 'Authentication required' }, 401);
         }
 
+        if (env.NODE_ENV !== 'development' && is_dev_session_token(token)) {
+            deleteCookie(context, 'session', { path: '/' });
+            return context.json({ error: 'Session expired' }, 401);
+        }
+
         const db = context.get('supabase');
 
         // Single query with join to get session + role (BE-012)
@@ -28,6 +35,11 @@ export function auth_middleware() {
             .single();
 
         if (!session) {
+            return context.json({ error: 'Session expired' }, 401);
+        }
+
+        if (env.NODE_ENV !== 'development' && is_dev_passkey_id(session.passkey_id)) {
+            deleteCookie(context, 'session', { path: '/' });
             return context.json({ error: 'Session expired' }, 401);
         }
 

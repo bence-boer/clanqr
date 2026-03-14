@@ -12,7 +12,7 @@ export const env_schema = z.object({
     GEMINI_BIN: z.string().optional(),
     PORT: z.coerce.number().default(3001),
     WORKSPACE_DIR: z.string().optional(),
-    NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+    NODE_ENV: z.enum(['development', 'production', 'test']).default('production'),
     PATH: z.string().default('/usr/local/bin:/usr/bin:/bin'),
     LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
     MAX_CONCURRENT_AGENTS: z.coerce.number().int().min(1).default(3)

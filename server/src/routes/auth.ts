@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
-import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
+import { deleteCookie, getCookie } from 'hono/cookie';
 import { env } from '../env';
 import type { AppBindings } from '../middleware/supabase';
+import { is_dev_passkey_id, is_dev_session_token } from '../utils/dev_sessions';
 import { login_routes } from './auth_login';
 import { register_routes } from './auth_register';
 
@@ -29,28 +30,17 @@ export const auth_routes = new Hono<AppBindings>()
     // Check if any passkeys are registered (setup status)
     .get('/status', async (context) => {
         const db = context.get('supabase');
-
-        let token = getCookie(context, 'session');
-
-        const set_dev_token = () => {
-            token = 'dev-admin-session-token';
-            setCookie(context, 'session', token, {
-                httpOnly: true,
-                secure: false,
-                sameSite: 'Lax',
-                path: '/',
-                expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-            });
-        };
-
-        if (!token && env.NODE_ENV === 'development') {
-            set_dev_token();
-        }
+        const token = getCookie(context, 'session');
 
         const { count } = await db
             .from('passkeys')
             .select('*', { count: 'exact', head: true });
         const is_setup = (count ?? 0) > 0;
+
+        if (token && env.NODE_ENV !== 'development' && is_dev_session_token(token)) {
+            deleteCookie(context, 'session', { path: '/' });
+            return context.json({ is_setup, authenticated: false, role: null, passkey_id: null });
+        }
 
         let authenticated = false;
         let role: string | null = null;
@@ -63,6 +53,10 @@ export const auth_routes = new Hono<AppBindings>()
                 .gt('expires_at', new Date().toISOString())
                 .single();
             if (data) {
+                if (env.NODE_ENV !== 'development' && is_dev_passkey_id(data.passkey_id)) {
+                    deleteCookie(context, 'session', { path: '/' });
+                    return context.json({ is_setup, authenticated: false, role: null, passkey_id: null });
+                }
                 authenticated = true;
                 passkey_id = data.passkey_id;
                 const { data: passkey } = await db
@@ -71,26 +65,6 @@ export const auth_routes = new Hono<AppBindings>()
                     .eq('id', data.passkey_id)
                     .single();
                 role = passkey?.role ?? null;
-            }
-            else if (env.NODE_ENV === 'development') {
-                // Stale cookie — replace with dev token and retry
-                set_dev_token();
-                const { data: dev_session } = await db
-                    .from('sessions')
-                    .select('id, expires_at, passkey_id')
-                    .eq('token', token)
-                    .gt('expires_at', new Date().toISOString())
-                    .single();
-                if (dev_session) {
-                    authenticated = true;
-                    passkey_id = dev_session.passkey_id;
-                    const { data: passkey } = await db
-                        .from('passkeys')
-                        .select('role')
-                        .eq('id', dev_session.passkey_id)
-                        .single();
-                    role = passkey?.role ?? null;
-                }
             }
         }
 
