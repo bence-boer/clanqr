@@ -47,6 +47,9 @@ The seed data includes long-lived sessions for local testing:
 | `dev-session-token` | user | `Cookie: session=dev-session-token` |
 | `dev-admin-session-token` | admin | `Cookie: session=dev-admin-session-token` |
 
+These tokens are development-only. The API does not auto-issue them, and
+non-development environments reject seeded dev sessions.
+
 Example:
 ```bash
 curl -H "Cookie: session=dev-session-token" http://localhost:3001/api/projects

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'bun:test';
+import { Hono } from 'hono';
 import { createMiddleware } from 'hono/factory';
+import { auth_middleware } from './auth';
 import { create_test_app, auth_headers, admin_headers } from '../test-app';
+import { create_mock_supabase, TEST_SEED } from '../test-utils';
 import type { AppBindings } from '../middleware/supabase';
 
 describe('auth middleware', () => {
@@ -52,6 +55,45 @@ describe('auth middleware', () => {
             expect(res.status).toBe(200);
             const body = (await res.json()) as { role: string };
             expect(body.role).toBe('admin');
+        });
+    });
+
+    describe('auth_middleware (real implementation)', () => {
+        it('rejects seeded dev-admin session tokens outside development mode', async () => {
+            const seed = JSON.parse(JSON.stringify(TEST_SEED)) as typeof TEST_SEED;
+            seed.passkeys.push({
+                id: 'dev-admin',
+                credential_id: 'dev-admin-credential',
+                public_key: 'dev-admin-key',
+                counter: 0,
+                device_type: 'singleDevice',
+                display_name: 'Dev Admin',
+                role: 'admin'
+            });
+            seed.sessions.push({
+                id: '00000000-0000-0000-0000-0000000000ab',
+                passkey_id: 'dev-admin',
+                token: 'dev-admin-session-token',
+                expires_at: '2099-12-31T23:59:59Z'
+            });
+
+            const { client } = create_mock_supabase(seed);
+            const app = new Hono<AppBindings>();
+            app.use(
+                '*',
+                createMiddleware<AppBindings>(async (context, next) => {
+                    context.set('supabase', client);
+                    await next();
+                })
+            );
+            app.use('/api/*', auth_middleware());
+            app.get('/api/test', (context) => context.json({ ok: true }));
+
+            const res = await app.request('/api/test', {
+                headers: { Cookie: 'session=dev-admin-session-token' }
+            });
+            expect(res.status).toBe(401);
+            expect(res.headers.get('set-cookie')).toContain('session=');
         });
     });
 

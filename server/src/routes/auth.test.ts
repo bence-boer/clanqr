@@ -70,6 +70,13 @@ describe('auth routes', () => {
             expect(body.authenticated).toBe(false);
         });
 
+        it('does not auto-issue a dev session cookie', async () => {
+            const { app } = setup();
+            const res = await app.request('/api/auth/status');
+            expect(res.status).toBe(200);
+            expect(res.headers.get('set-cookie')).toBeNull();
+        });
+
         it('returns authenticated with valid session cookie', async () => {
             const { app } = setup();
             const res = await app.request('/api/auth/status', {
@@ -90,6 +97,35 @@ describe('auth routes', () => {
             expect(res.status).toBe(200);
             const body = (await res.json()) as Record<string, unknown>;
             expect(body.authenticated).toBe(false);
+        });
+
+        it('rejects seeded dev admin sessions outside development mode', async () => {
+            const { app, store } = setup();
+            store.passkeys.push({
+                id: 'dev-admin',
+                credential_id: 'dev-admin-credential',
+                public_key: 'dev-admin-key',
+                counter: 0,
+                device_type: 'singleDevice',
+                display_name: 'Dev Admin',
+                role: 'admin'
+            });
+            store.sessions.push({
+                id: '00000000-0000-0000-0000-0000000000aa',
+                passkey_id: 'dev-admin',
+                token: 'dev-admin-session-token',
+                expires_at: '2099-12-31T23:59:59Z'
+            });
+
+            const res = await app.request('/api/auth/status', {
+                headers: { Cookie: 'session=dev-admin-session-token' }
+            });
+            expect(res.status).toBe(200);
+            const body = (await res.json()) as Record<string, unknown>;
+            expect(body.authenticated).toBe(false);
+            expect(body.role).toBeNull();
+            expect(body.passkey_id).toBeNull();
+            expect(res.headers.get('set-cookie')).toContain('session=');
         });
     });
 
