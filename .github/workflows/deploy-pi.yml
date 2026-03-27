@@ -57,8 +57,9 @@ jobs:
           cat > /tmp/ralph-api.env << EOF
           SUPABASE_URL=http://172.17.0.1:54321
           SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
-          RP_ID=agents.benceboer.com
-          RP_ORIGIN=https://agents.benceboer.com
+          RP_ID=${{ secrets.RP_ID }}
+          RP_ORIGIN=${{ secrets.RP_ORIGIN }}
+          FRONTEND_URL=${{ secrets.FRONTEND_URL }}
           NODE_ENV=production
           PORT=3001
           EOF
