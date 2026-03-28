@@ -23,32 +23,29 @@ class ChatService {
             throw new Error('Agent concurrency limit reached — please try again shortly');
         }
 
-        // Insert user message
-        await supabase.from('chat_messages').insert({
-            session_id,
-            role: 'user',
-            content
+        // Insert user message as agent event
+        await supabase.from('agent_events').insert({
+            agent_session_id: session_id,
+            event_type: 'chat.message',
+            event_data: { role: 'user', content }
         });
 
         const resolved_model = model || 'gpt-4o';
         // Detect CLI from model name: gemini models use gemini CLI, everything else uses copilot
         const is_gemini = resolved_model.toLowerCase().startsWith('gemini');
-        const cli = is_gemini ? 'gemini' : 'copilot';
         const bin = is_gemini ? GEMINI_BIN : COPILOT_BIN;
         const tool_flag = is_gemini ? '--yolo' : '--allow-all-tools';
 
-        // Create agent_runs record
+        // Update agent session status
         const started_at = new Date().toISOString();
         const { data: run_record } = await supabase
-            .from('agent_runs')
-            .insert({
-                type: 'chat',
-                session_id,
+            .from('agent_sessions')
+            .update({
                 status: 'running',
-                cli,
                 model: resolved_model,
                 started_at
             })
+            .eq('id', session_id)
             .select('id')
             .single();
 
@@ -118,24 +115,18 @@ class ChatService {
             const duration_ms = Date.now() - new Date(started_at).getTime();
             const status = exit_code === 0 ? 'completed' : 'failed';
 
-            // Save assistant message
-            await supabase.from('chat_messages').insert({
-                session_id,
-                role: 'assistant',
-                content: full_response
+            // Save assistant message as agent event
+            await supabase.from('agent_events').insert({
+                agent_session_id: session_id,
+                event_type: 'chat.message',
+                event_data: { role: 'assistant', content: full_response }
             });
 
-            // Update session
-            await supabase
-                .from('chat_sessions')
-                .update({ updated_at: finished_at })
-                .eq('id', session_id);
-
-            // Update agent_runs
+            // Update agent session
             if (run_record?.id) {
                 await supabase
-                    .from('agent_runs')
-                    .update({ status, finished_at, duration_ms, log: full_response.slice(-10000) })
+                    .from('agent_sessions')
+                    .update({ status, finished_at, duration_ms })
                     .eq('id', run_record.id);
             }
         }

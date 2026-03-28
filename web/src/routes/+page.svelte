@@ -29,7 +29,7 @@
                 api.agent_status().catch(() => ({} as Record<string, unknown>))
             ]);
             pipeline = pipeline_status;
-            pending_approval_count = task_list.filter((t) => t.status === 'Pending_Approval').length;
+            pending_approval_count = task_list.filter((t) => t.status === 'queued').length;
             active_agents = Object.keys(agent_map).length;
         }
         catch (error) {

@@ -18,7 +18,7 @@
         total_count
     }: Props = $props();
 
-    const filter_options: FilterStatus[] = ['All', 'Active', 'Archived'];
+    const filter_options: FilterStatus[] = ['All', 'active', 'archived'];
 </script>
 
 <div class="search-filter-bar">

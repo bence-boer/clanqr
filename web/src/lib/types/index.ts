@@ -17,10 +17,11 @@ type Client = ReturnType<typeof hc<AppType>>;
 export type FeatureStatus = Database['public']['Enums']['feature_status'];
 export type TaskStatus = Database['public']['Enums']['task_status'];
 export type ProjectStatus = Database['public']['Enums']['project_status'];
-export type AgentRunStatus = Database['public']['Enums']['agent_run_status'];
+export type AgentSessionStatus = Database['public']['Enums']['agent_session_status'];
+export type AgentType = Database['public']['Enums']['agent_type'];
 export type FailureBehavior = Database['public']['Enums']['failure_behavior'];
 export type MessageRole = 'user' | 'assistant' | 'system';
-export type TraitTarget = Database['public']['Enums']['trait_target'];
+export type TraitTarget = Database['public']['Enums']['agent_type'];
 export type TraitScope = Database['public']['Enums']['assignment_scope'];
 
 // ── Projects ──────────────────────────────────────────────────────────────────
@@ -30,7 +31,17 @@ export type Resource = NonNullable<Feature['resources']>[number];
 
 // ── Auth / Admin ──────────────────────────────────────────────────────────────
 export type User = ExtractSuccess<InferResponseType<Client['api']['admin']['$get']>>[number];
-export type InviteToken = ExtractSuccess<InferResponseType<Client['api']['admin']['invites']['$get']>>[number] & { token?: string };
+export type InviteToken = {
+    id: string
+    token?: string
+    token_preview?: string
+    role: string
+    label: string | null
+    expires_at: string
+    used_at: string | null
+    used_by_display_name: string | null
+    created_at: string
+};
 export type InviteStatus = {
     valid: boolean
     reason?: 'missing' | 'not_found' | 'used' | 'expired'
@@ -46,7 +57,7 @@ export type AgentProcess = ExtractSuccess<InferResponseType<Client['api']['agent
 export type AbbreviatedAgentProcess = {
     id: string
     type: 'manager' | 'ralph'
-    status: AgentRunStatus
+    status: 'running' | 'completed' | 'failed' | 'stopped'
     started_at: string
     finished_at?: string
 };
@@ -60,8 +71,9 @@ export type FeatureAgentStatus = {
     }
 };
 
-// AgentRun comes from the DB row for usage history
-export type AgentRun = Database['public']['Tables']['agent_runs']['Row'];
+// AgentSession comes from the DB row for usage history
+export type AgentSession = Database['public']['Tables']['agent_sessions']['Row'];
+export type AgentRun = AgentSession;
 
 // ── Prompts ───────────────────────────────────────────────────────────────────
 export type PromptRecord = ExtractSuccess<InferResponseType<Client['api']['prompts']['$get']>>[number];
@@ -100,9 +112,22 @@ export type UsageBreakdown = ExtractSuccess<InferResponseType<Client['api']['usa
 export type ActivityEvent = ExtractSuccess<InferResponseType<Client['api']['activity']['feed']['$get']>>[number];
 
 // ── Chat ──────────────────────────────────────────────────────────────────────
-export type ChatSession = ExtractSuccess<InferResponseType<Client['api']['chat']['sessions']['$get']>>[number];
-export type ChatMessage = NonNullable<ExtractSuccess<InferResponseType<Client['api']['chat']['sessions'][':id']['$get']>>['chat_messages']>[number];
-export type ChatSessionFull = { id: string, title: string | null, model: string, created_at: string, updated_at: string, messages: ChatMessage[] };
+export type ChatMessage = {
+    id: string
+    role: 'user' | 'assistant' | 'system'
+    content: string
+    created_at: string
+};
+
+export type ChatSession = {
+    id: string
+    title: string | null
+    model: string | null
+    created_at: string
+    updated_at: string
+};
+
+export type ChatSessionFull = ChatSession & { messages: ChatMessage[] };
 
 // ── Task Artifacts ────────────────────────────────────────────────────────────
 export type TaskArtifact = {

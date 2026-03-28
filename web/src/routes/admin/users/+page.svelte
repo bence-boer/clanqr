@@ -30,7 +30,7 @@
     }
 
     async function toggle_role(user: User) {
-        const new_role = user.role === 'admin' ? 'user' : 'admin';
+        const new_role = user.role === 'admin' ? 'member' : 'admin';
         const prev_role = user.role;
 
         // Optimistic update

@@ -23,19 +23,19 @@ export async function get_usage_summary(supabase: TypedSupabaseClient): Promise<
     const week_start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
     const [total_result, today_result, week_result] = await Promise.all([
-        supabase.from('agent_runs').select('id', { count: 'exact', head: true }),
+        supabase.from('agent_sessions').select('id', { count: 'exact', head: true }),
         supabase
-            .from('agent_runs')
+            .from('agent_sessions')
             .select('id', { count: 'exact', head: true })
             .gte('created_at', today_start),
         supabase
-            .from('agent_runs')
+            .from('agent_sessions')
             .select('id', { count: 'exact', head: true })
             .gte('created_at', week_start)
     ]);
 
     const { data: stats_data } = await supabase
-        .from('agent_runs')
+        .from('agent_sessions')
         .select('duration_ms, prompt_tokens, completion_tokens, status');
 
     type AccType = { total_duration_ms: number, total_prompt_tokens: number, total_completion_tokens: number, completed: number, failed: number };
@@ -66,8 +66,8 @@ export async function get_usage_summary(supabase: TypedSupabaseClient): Promise<
 
 export async function get_usage_breakdown(supabase: TypedSupabaseClient): Promise<UsageBreakdownStats> {
     const { data: runs, error } = await supabase
-        .from('agent_runs')
-        .select('type, model, status, duration_ms, prompt_tokens, completion_tokens');
+        .from('agent_sessions')
+        .select('agent_type, model, status, duration_ms, prompt_tokens, completion_tokens');
 
     if (error) throw error;
 
@@ -76,7 +76,7 @@ export async function get_usage_breakdown(supabase: TypedSupabaseClient): Promis
     const by_status: Record<string, number> = {};
 
     for (const run of runs ?? []) {
-        by_type[run.type] = (by_type[run.type] ?? 0) + 1;
+        by_type[run.agent_type] = (by_type[run.agent_type] ?? 0) + 1;
         by_status[run.status] = (by_status[run.status] ?? 0) + 1;
         const model_name = run.model || 'unknown';
         by_model[model_name] = (by_model[model_name] ?? 0) + 1;

@@ -96,7 +96,7 @@ export const api = {
         unwrap(await (await client.api.prompts.sync.$post()).json()),
 
     // ── Traits ────────────────────────────────────────────────────────────────
-    list_traits: async (target?: 'manager' | 'ralph'): Promise<Types.Trait[]> =>
+    list_traits: async (target?: Types.TraitTarget): Promise<Types.Trait[]> =>
         unwrap(await (await client.api.traits.$get({ query: { target: target ?? '' } })).json()),
     get_trait: async (id: string): Promise<Types.Trait> =>
         unwrap(await (await client.api.traits[':id'].$get({ param: { id } })).json()),
@@ -142,7 +142,9 @@ export const api = {
     // ── Usage ─────────────────────────────────────────────────────────────────
     usage_summary: async (): Promise<Types.UsageSummary> =>
         unwrap(await (await client.api.usage.summary.$get()).json()),
-    usage_history: async (page = 1, per_page = 20, type?: string, status?: string): Promise<{ runs: Types.AgentRun[], total: number, total_pages: number }> =>
+    usage_history: async (
+        page = 1, per_page = 20, type?: string, status?: string
+    ): Promise<{ runs: Types.AgentSession[], total: number, total_pages: number }> =>
         unwrap(await (await client.api.usage.history.$get({
             query: {
                 page: String(page),
@@ -175,27 +177,10 @@ export const api = {
     // ── Admin ─────────────────────────────────────────────────────────────────
     list_users: async (): Promise<Types.User[]> =>
         unwrap(await (await client.api.admin.$get()).json()),
-    update_user_role: async (id: string, role: 'admin' | 'user') =>
+    update_user_role: async (id: string, role: 'admin' | 'member') =>
         unwrap(await (await client.api.admin[':id'].$patch({ param: { id }, json: { role } })).json()),
     delete_user: async (id: string): Promise<{ success: boolean }> =>
         unwrap(await (await client.api.admin[':id'].$delete({ param: { id } })).json()),
-    list_invites: async (): Promise<Types.InviteToken[]> =>
-        unwrap(await (await client.api.admin.invites.$get()).json()),
-    create_invite: async (data: { role: string, expires_at: string, label?: string }) =>
-        unwrap(await (await client.api.admin.invites.$post({ json: data as never })).json()),
-    revoke_invite: async (id: string): Promise<{ success: boolean }> =>
-        unwrap(await (await client.api.admin.invites[':id'].$delete({ param: { id } })).json()),
     revoke_user_sessions: async (id: string): Promise<{ success: boolean }> =>
-        unwrap(await (await client.api.admin[':id'].sessions.$delete({ param: { id } })).json()),
-    clear_old_invites: async () =>
-        unwrap(await (await client.api.admin.invites['bulk-clear'].$delete()).json()),
-    get_invite_status: async (token: string): Promise<Types.InviteStatus> => {
-        const response = await fetch(`${API_URL}/api/auth/invite/status?token=${encodeURIComponent(token)}`, {
-            credentials: 'include'
-        });
-        if (!response.ok) {
-            throw new Error(`Failed to check invite status: ${response.status}`);
-        }
-        return response.json();
-    }
+        unwrap(await (await client.api.admin[':id'].sessions.$delete({ param: { id } })).json())
 };

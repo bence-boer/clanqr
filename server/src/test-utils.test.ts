@@ -5,7 +5,7 @@ describe('mock supabase client', () => {
     it('creates a client with seeded data', () => {
         const { store } = create_mock_supabase(TEST_SEED);
         expect(store.projects.length).toBe(1);
-        expect(store.passkeys.length).toBe(2);
+        expect(store.users.length).toBe(2);
         expect(store.sessions.length).toBe(2);
     });
 
@@ -20,7 +20,7 @@ describe('mock supabase client', () => {
     it('select with eq filter works', async () => {
         const { client } = create_mock_supabase(TEST_SEED);
         const { data } = await client
-            .from('passkeys')
+            .from('users')
             .select('*')
             .eq('role', 'admin');
         expect(data).toHaveLength(1);
@@ -30,7 +30,7 @@ describe('mock supabase client', () => {
     it('select with count returns count', async () => {
         const { client } = create_mock_supabase(TEST_SEED);
         const { count } = await client
-            .from('passkeys')
+            .from('users')
             .select('*', { count: 'exact', head: true });
         expect(count).toBe(2);
     });
@@ -43,7 +43,7 @@ describe('mock supabase client', () => {
             .eq('token', 'test-session-token')
             .single();
         expect(error).toBeNull();
-        expect(data?.passkey_id).toBe('test-passkey');
+        expect(data?.user_id).toBe('test-user');
     });
 
     it('select single returns error when not found', async () => {

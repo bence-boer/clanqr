@@ -12,8 +12,8 @@ export interface ActivityEvent {
 
 export async function get_activity_feed(supabase: TypedSupabaseClient, limit = 20): Promise<ActivityEvent[]> {
     const { data: runs, error } = await supabase
-        .from('agent_runs')
-        .select('id, type, status, feature_id, task_id, started_at, finished_at, error, model')
+        .from('agent_sessions')
+        .select('id, agent_type, status, feature_id, task_id, started_at, finished_at, error, model')
         .order('created_at', { ascending: false })
         .limit(limit);
 
@@ -26,7 +26,7 @@ export async function get_activity_feed(supabase: TypedSupabaseClient, limit = 2
             return {
                 id: run.id,
                 type: 'task_failed' as const,
-                message: `${run.type === 'manager' ? 'Manager' : 'Task'} failed${run.error ? `: ${run.error.slice(0, 100)}` : ''}`,
+                message: `${run.agent_type === 'manager' ? 'Manager' : 'Task'} failed${run.error ? `: ${run.error.slice(0, 100)}` : ''}`,
                 timestamp: ts,
                 severity: 'danger' as const,
                 link: run.feature_id ? `/projects?feature=${run.feature_id}` : undefined,
@@ -37,8 +37,8 @@ export async function get_activity_feed(supabase: TypedSupabaseClient, limit = 2
         if (run.status === 'completed') {
             return {
                 id: run.id,
-                type: run.type === 'manager' ? 'manager_started' as const : 'task_complete' as const,
-                message: run.type === 'manager'
+                type: run.agent_type === 'manager' ? 'manager_started' as const : 'task_complete' as const,
+                message: run.agent_type === 'manager'
                     ? 'Manager completed for feature'
                     : 'Task agent completed successfully',
                 timestamp: ts,
@@ -52,7 +52,7 @@ export async function get_activity_feed(supabase: TypedSupabaseClient, limit = 2
             return {
                 id: run.id,
                 type: 'agent_started' as const,
-                message: `${run.type === 'manager' ? 'Manager' : 'Task agent'} is running`,
+                message: `${run.agent_type === 'manager' ? 'Manager' : 'Task agent'} is running`,
                 timestamp: ts,
                 severity: 'info' as const,
                 link: run.feature_id ? `/projects?feature=${run.feature_id}` : undefined,

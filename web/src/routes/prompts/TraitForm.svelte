@@ -1,10 +1,12 @@
 <script lang="ts">
     import { Button, Input, Select, Textarea } from '$lib/components/primitives';
 
+    import type { TraitTarget } from '$lib/types';
+
     interface TraitFormData {
         name: string
         description: string
-        target: 'manager' | 'ralph'
+        target: TraitTarget
         is_global: boolean
         content: string
     }
@@ -38,6 +40,10 @@
             <Select id="trait-target" bind:value={form.target} label="Target" required>
                 <option value="ralph">Ralph</option>
                 <option value="manager">Manager</option>
+                <option value="researcher">Researcher</option>
+                <option value="editor">Editor</option>
+                <option value="chat">Chat</option>
+                <option value="custom">Custom</option>
             </Select>
         </div>
 
@@ -98,48 +104,19 @@
 
 <style>
     .trait-form-panel {
-        background: var(--bg-surface);
-        border: 1px solid var(--accent);
-        border-radius: var(--radius);
-        margin-bottom: 1.25rem;
-        overflow: hidden;
+        background: var(--bg-surface); border: 1px solid var(--accent);
+        border-radius: var(--radius); margin-bottom: 1.25rem; overflow: hidden;
     }
     .trait-form-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.85rem 1.25rem;
-        background: var(--bg-elevated);
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 0.85rem 1.25rem; background: var(--bg-elevated);
         border-bottom: 1px solid var(--border);
     }
-    .trait-form-header h3 {
-        font-size: 0.9rem;
-        font-weight: 600;
-        color: var(--fg);
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
-    }
-    .trait-form-body {
-        padding: 1.25rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.85rem;
-    }
-    .form-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 0.85rem;
-    }
-    .form-field {
-        display: flex;
-        flex-direction: column;
-        gap: 0.35rem;
-    }
-    .form-toggle-row {
-        display: flex;
-        align-items: center;
-    }
+    .trait-form-header h3 { font-size: 0.9rem; font-weight: 600; color: var(--fg); display: flex; align-items: center; gap: 0.4rem; }
+    .trait-form-body { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.85rem; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; }
+    .form-field { display: flex; flex-direction: column; gap: 0.35rem; }
+    .form-toggle-row { display: flex; align-items: center; }
     .toggle-label {
         display: flex;
         align-items: center;

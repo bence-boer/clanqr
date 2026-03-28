@@ -8,10 +8,10 @@
     let { tasks }: Props = $props();
 
     const total = $derived(tasks.length);
-    const completed = $derived(tasks.filter((t) => t.status === 'Complete').length);
-    const failed = $derived(tasks.filter((t) => t.status === 'Failed').length);
-    const in_progress = $derived(tasks.filter((t) => t.status === 'In_Progress').length);
-    const pending_approval = $derived(tasks.filter((t) => t.status === 'Pending_Approval').length);
+    const completed = $derived(tasks.filter((t) => t.status === 'complete').length);
+    const failed = $derived(tasks.filter((t) => t.status === 'failed').length);
+    const in_progress = $derived(tasks.filter((t) => t.status === 'in_progress').length);
+    const pending_approval = $derived(tasks.filter((t) => t.status === 'queued').length);
     const other = $derived(total - completed - failed - in_progress - pending_approval);
 
     function pct(count: number): string {

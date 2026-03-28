@@ -29,7 +29,7 @@ describe('admin routes', () => {
             const res = await app.request('/api/admin', {
                 headers: admin_headers()
             });
-            // Should succeed (200) — returns passkeys list
+            // Should succeed (200) — returns users list
             expect(res.status).toBe(200);
         });
     });
