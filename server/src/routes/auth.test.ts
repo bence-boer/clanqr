@@ -5,56 +5,14 @@ import type { AppBindings } from '../middleware/supabase';
 import { create_mock_supabase, TEST_SEED } from '../test-utils';
 import { auth_routes } from './auth';
 
-/**
- * Auth routes are partially public (no auth middleware required).
- * We set up a minimal app without the auth middleware to test public endpoints.
- */
 function setup() {
-    const seed = {
-        ...JSON.parse(JSON.stringify(TEST_SEED)),
-        invite_tokens: [
-            {
-                id: '00000000-0000-0000-0000-000000000080',
-                token: 'valid-invite-token',
-                role: 'user',
-                label: 'Test Invite',
-                expires_at: '2099-12-31T23:59:59Z',
-                used_at: null,
-                used_by_passkey_id: null
-            },
-            {
-                id: '00000000-0000-0000-0000-000000000081',
-                token: 'used-invite-token',
-                role: 'user',
-                label: 'Used Invite',
-                expires_at: '2099-12-31T23:59:59Z',
-                used_at: '2026-01-01T00:00:00Z',
-                used_by_passkey_id: 'test-passkey'
-            },
-            {
-                id: '00000000-0000-0000-0000-000000000082',
-                token: 'expired-invite-token',
-                role: 'user',
-                label: 'Expired Invite',
-                expires_at: '2020-01-01T00:00:00Z',
-                used_at: null,
-                used_by_passkey_id: null
-            }
-        ]
-    };
-
+    const seed = { ...JSON.parse(JSON.stringify(TEST_SEED)) };
     const { client, store } = create_mock_supabase(seed);
     const app = new Hono<AppBindings>();
-
-    // Inject supabase mock (no auth middleware — auth routes handle their own auth)
-    app.use(
-        '*',
-        createMiddleware<AppBindings>(async (context, next) => {
-            context.set('supabase', client);
-            await next();
-        })
-    );
-
+    app.use('*', createMiddleware<AppBindings>(async (context, next) => {
+        context.set('supabase', client);
+        await next();
+    }));
     app.route('/api/auth', auth_routes);
     return { app, store };
 }
@@ -68,16 +26,10 @@ describe('auth routes', () => {
             const body = (await res.json()) as Record<string, unknown>;
             expect(body.is_setup).toBe(true);
             expect(body.authenticated).toBe(false);
-        });
-
-        it('does not auto-issue a dev session cookie', async () => {
-            const { app } = setup();
-            const res = await app.request('/api/auth/status');
-            expect(res.status).toBe(200);
             expect(res.headers.get('set-cookie')).toBeNull();
         });
 
-        it('returns authenticated with valid session cookie', async () => {
+        it('returns authenticated user object with valid session', async () => {
             const { app } = setup();
             const res = await app.request('/api/auth/status', {
                 headers: { Cookie: 'session=test-session-token' }
@@ -86,7 +38,12 @@ describe('auth routes', () => {
             const body = (await res.json()) as Record<string, unknown>;
             expect(body.is_setup).toBe(true);
             expect(body.authenticated).toBe(true);
-            expect(body.role).toBe('user');
+            const user = body.user as Record<string, unknown>;
+            expect(user.role).toBe('member');
+            expect(user.username).toBe('testuser');
+            for (const field of ['id', 'github_id', 'username', 'display_name', 'avatar_url', 'role']) {
+                expect(user).toHaveProperty(field);
+            }
         });
 
         it('returns not authenticated with invalid session', async () => {
@@ -94,35 +51,26 @@ describe('auth routes', () => {
             const res = await app.request('/api/auth/status', {
                 headers: { Cookie: 'session=invalid-token' }
             });
-            expect(res.status).toBe(200);
             const body = (await res.json()) as Record<string, unknown>;
             expect(body.authenticated).toBe(false);
+            expect(body.user).toBeNull();
         });
 
-        it('rejects seeded dev admin sessions outside development mode', async () => {
+        it('rejects dev session tokens outside development mode', async () => {
             const { app, store } = setup();
             store.users.push({
-                id: 'dev-admin',
-                github_id: 99999,
-                username: 'dev-admin',
-                display_name: 'Dev Admin',
-                role: 'admin'
+                id: 'dev-admin', github_id: 99999, username: 'dev-admin',
+                display_name: 'Dev Admin', role: 'admin'
             });
             store.sessions.push({
-                id: '00000000-0000-0000-0000-0000000000aa',
-                user_id: 'dev-admin',
-                token: 'dev-admin-session-token',
-                expires_at: '2099-12-31T23:59:59Z'
+                id: '00000000-0000-0000-0000-0000000000aa', user_id: 'dev-admin',
+                token: 'dev-admin-session-token', expires_at: '2099-12-31T23:59:59Z'
             });
-
             const res = await app.request('/api/auth/status', {
                 headers: { Cookie: 'session=dev-admin-session-token' }
             });
-            expect(res.status).toBe(200);
             const body = (await res.json()) as Record<string, unknown>;
             expect(body.authenticated).toBe(false);
-            expect(body.role).toBeNull();
-            expect(body.user_id).toBeNull();
             expect(res.headers.get('set-cookie')).toContain('session=');
         });
     });
@@ -132,8 +80,7 @@ describe('auth routes', () => {
             const { app, store } = setup();
             const before = store.sessions.length;
             const res = await app.request('/api/auth/logout', {
-                method: 'POST',
-                headers: { Cookie: 'session=test-session-token' }
+                method: 'POST', headers: { Cookie: 'session=test-session-token' }
             });
             expect(res.status).toBe(200);
             const body = (await res.json()) as Record<string, unknown>;
@@ -148,69 +95,83 @@ describe('auth routes', () => {
         });
     });
 
-    describe('POST /api/auth/register/options', () => {
-        it('requires invite token when users exist', async () => {
+    describe('GET /api/auth/login/github', () => {
+        it('redirects to GitHub OAuth authorize URL', async () => {
             const { app } = setup();
-            const res = await app.request('/api/auth/register/options', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({})
-            });
-            expect(res.status).toBe(403);
-            const body = (await res.json()) as Record<string, unknown>;
-            expect(body.error).toContain('already registered');
+            const res = await app.request('/api/auth/login/github', { redirect: 'manual' });
+            expect(res.status).toBe(302);
+            const location = res.headers.get('location') ?? '';
+            expect(location).toContain('https://github.com/login/oauth/authorize');
+            expect(location).toContain('client_id=');
+            expect(location).toContain('state=');
         });
 
-        it('rejects invalid invite token', async () => {
+        it('sets oauth_state cookie', async () => {
             const { app } = setup();
-            const res = await app.request('/api/auth/register/options', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ invite_token: 'nonexistent' })
-            });
-            expect(res.status).toBe(400);
+            const res = await app.request('/api/auth/login/github', { redirect: 'manual' });
+            expect(res.headers.get('set-cookie') ?? '').toContain('oauth_state=');
         });
     });
 
-    describe('POST /api/auth/login/options', () => {
-        it('returns login options when users exist', async () => {
+    describe('GET /api/auth/login/callback', () => {
+        it('forwards GitHub error param (e.g. access_denied)', async () => {
             const { app } = setup();
-            const res = await app.request('/api/auth/login/options', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({})
+            const res = await app.request('/api/auth/login/callback?error=access_denied', {
+                redirect: 'manual'
             });
-            expect(res.status).toBe(200);
-            const body = (await res.json()) as Record<string, unknown>;
-            expect(body).toHaveProperty('challenge');
+            expect(res.status).toBe(302);
+            expect(res.headers.get('location') ?? '').toContain('auth_error=access_denied');
+        });
+
+        it('rejects callback without state parameter', async () => {
+            const { app } = setup();
+            const res = await app.request('/api/auth/login/callback?code=test', { redirect: 'manual' });
+            expect(res.headers.get('location') ?? '').toContain('auth_error=invalid_state');
+        });
+
+        it('rejects callback with mismatched state', async () => {
+            const { app } = setup();
+            const res = await app.request('/api/auth/login/callback?code=test&state=wrong', {
+                redirect: 'manual', headers: { Cookie: 'oauth_state=correct' }
+            });
+            expect(res.headers.get('location') ?? '').toContain('auth_error=invalid_state');
+        });
+
+        it('rejects callback without code', async () => {
+            const { app } = setup();
+            const res = await app.request('/api/auth/login/callback?state=test', {
+                redirect: 'manual', headers: { Cookie: 'oauth_state=test' }
+            });
+            expect(res.headers.get('location') ?? '').toContain('auth_error=missing_code');
         });
     });
 
-    describe('POST /api/auth/register/verify', () => {
-        it('rejects when no challenge exists', async () => {
+    describe('GET /api/auth/register/github', () => {
+        it('redirects to login flow', async () => {
             const { app } = setup();
-            const res = await app.request('/api/auth/register/verify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ credential: {} })
-            });
-            expect(res.status).toBe(400);
-            const body = (await res.json()) as Record<string, unknown>;
-            expect(body.error).toContain('challenge expired');
+            const res = await app.request('/api/auth/register/github', { redirect: 'manual' });
+            expect(res.status).toBe(302);
+            expect(res.headers.get('location') ?? '').toContain('/api/auth/login/github');
         });
     });
 
-    describe('POST /api/auth/login/verify', () => {
-        it('rejects when no challenge exists', async () => {
+    describe('GET /api/auth/me', () => {
+        it('returns user when authenticated', async () => {
             const { app } = setup();
-            const res = await app.request('/api/auth/login/verify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ credential: { id: 'test' } })
+            const res = await app.request('/api/auth/me', {
+                headers: { Cookie: 'session=test-session-token' }
             });
-            expect(res.status).toBe(400);
             const body = (await res.json()) as Record<string, unknown>;
-            expect(body.error).toBeDefined();
+            expect(body.authenticated).toBe(true);
+            expect(body.user).toBeTruthy();
+        });
+
+        it('returns not authenticated without session', async () => {
+            const { app } = setup();
+            const res = await app.request('/api/auth/me');
+            const body = (await res.json()) as Record<string, unknown>;
+            expect(body.authenticated).toBe(false);
+            expect(body.user).toBeNull();
         });
     });
 });

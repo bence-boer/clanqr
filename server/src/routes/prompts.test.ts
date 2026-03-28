@@ -9,14 +9,14 @@ function setup() {
         prompts: [
             {
                 id: '00000000-0000-0000-0000-000000000070',
-                role: 'manager',
+                agent_type: 'manager',
                 content: 'You are a manager agent.',
                 created_at: '2026-01-01T00:00:00Z',
                 updated_at: '2026-01-01T00:00:00Z'
             },
             {
                 id: '00000000-0000-0000-0000-000000000071',
-                role: 'ralph',
+                agent_type: 'ralph',
                 content: 'You are Ralph.',
                 created_at: '2026-01-01T00:00:00Z',
                 updated_at: '2026-01-01T00:00:00Z'
@@ -53,7 +53,7 @@ describe('prompts routes', () => {
             });
             expect(res.status).toBe(200);
             const body = (await res.json()) as Record<string, unknown>;
-            expect(body.role).toBe('manager');
+            expect(body.agent_type).toBe('manager');
         });
 
         it('returns prompt for ralph role', async () => {
@@ -63,7 +63,7 @@ describe('prompts routes', () => {
             });
             expect(res.status).toBe(200);
             const body = (await res.json()) as Record<string, unknown>;
-            expect(body.role).toBe('ralph');
+            expect(body.agent_type).toBe('ralph');
         });
 
         it('rejects invalid role', async () => {

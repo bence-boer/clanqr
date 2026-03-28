@@ -2,11 +2,7 @@ import { Hono } from 'hono';
 import type { AppBindings } from '../middleware/supabase';
 
 export const register_routes = new Hono<AppBindings>()
-
-    .post('/options', async (context) => {
-        return context.json({ error: 'GitHub OAuth not yet implemented' }, 501);
-    })
-
-    .post('/verify', async (context) => {
-        return context.json({ error: 'GitHub OAuth not yet implemented' }, 501);
+    .get('/github', (context) => {
+        // Registration is handled by the login flow (auto-creates user on first login)
+        return context.redirect('/api/auth/login/github');
     });

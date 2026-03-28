@@ -6,7 +6,7 @@
     import { onMount } from 'svelte';
     import UserTable from './UserTable.svelte';
 
-    let self_id = $derived(auth_store.passkey_id);
+    let self_id = $derived(auth_store.user_id);
 
     let users: User[] = $state([]);
     let users_loading = $state(true);

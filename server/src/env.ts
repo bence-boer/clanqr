@@ -6,6 +6,8 @@ export const env_schema = z.object({
     SUPABASE_KEY: z.string().min(1, 'SUPABASE_KEY environment variable is required'),
     GITHUB_CLIENT_ID: z.string().default(''),
     GITHUB_CLIENT_SECRET: z.string().default(''),
+    GITHUB_CALLBACK_URL: z.string().url().default('http://localhost:3001/api/auth/login/callback'),
+    ADMIN_GITHUB_IDS: z.string().default(''),
     SESSION_SECRET: z.string().default('dev-session-secret'),
     ENCRYPTION_KEY: z.string().default('dev-encryption-key'),
     FRONTEND_URL: z.string().default('http://localhost:5173'),
