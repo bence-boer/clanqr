@@ -20,6 +20,7 @@ export const TEST_SEED: MockStore = {
             github_id: 12345,
             username: 'testuser',
             display_name: 'Test User',
+            avatar_url: null,
             role: 'member'
         },
         {
@@ -27,6 +28,7 @@ export const TEST_SEED: MockStore = {
             github_id: 67890,
             username: 'adminuser',
             display_name: 'Admin User',
+            avatar_url: null,
             role: 'admin'
         }
     ],

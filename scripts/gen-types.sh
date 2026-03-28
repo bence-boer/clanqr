@@ -33,8 +33,15 @@ cleanup_ephemeral() {
 if docker exec ralph_dev_db pg_isready -U postgres &>/dev/null 2>&1; then
     log "Using running dev database (ralph_dev_db on port 54322)"
     DB_URL="postgresql://postgres:postgres@localhost:54322/postgres"
-    npx supabase gen types typescript --db-url "$DB_URL" > "$OUTPUT_FILE"
-    ok "Types generated from dev database"
+    TMPFILE="$(mktemp)"
+    if npx supabase gen types typescript --db-url "$DB_URL" > "$TMPFILE" && [ -s "$TMPFILE" ]; then
+        mv "$TMPFILE" "$OUTPUT_FILE"
+        ok "Types generated from dev database"
+    else
+        rm -f "$TMPFILE"
+        err "Failed to generate types from dev database"
+        exit 1
+    fi
     exit 0
 fi
 
@@ -90,7 +97,12 @@ done
 
 DB_URL="postgresql://postgres:postgres@localhost:${EPHEMERAL_PORT}/postgres"
 log "Generating types..."
-npx supabase gen types typescript --db-url "$DB_URL" > "$OUTPUT_FILE"
-
-ok "Types generated from ephemeral database"
-# cleanup_ephemeral runs via trap EXIT
+TMPFILE="$(mktemp)"
+if npx supabase gen types typescript --db-url "$DB_URL" > "$TMPFILE" && [ -s "$TMPFILE" ]; then
+    mv "$TMPFILE" "$OUTPUT_FILE"
+    ok "Types generated from ephemeral database"
+else
+    rm -f "$TMPFILE"
+    err "Failed to generate types from ephemeral database"
+    exit 1
+fi

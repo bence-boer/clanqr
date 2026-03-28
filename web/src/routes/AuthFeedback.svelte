@@ -16,11 +16,11 @@
 
 {#if pending}
     <p class="auth-waiting">
-        <span class="icon pulse">fingerprint</span>
-        Waiting for your passkey…
+        <span class="icon pulse">progress_activity</span>
+        Connecting to GitHub…
     </p>
     {#if show_timeout_hint}
-        <p class="auth-hint">Taking longer than expected. Check your browser for a passkey prompt.</p>
+        <p class="auth-hint">Taking longer than expected. Please wait…</p>
     {/if}
 {/if}
 {#if error}

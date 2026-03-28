@@ -1,84 +1,67 @@
-import { check_auth, register_passkey, login_passkey, logout } from '$lib/auth';
-import type { AuthStatus } from '$lib/auth';
+import { check_auth, login_github, logout, type AuthStatus } from '$lib/auth';
 
-export type AuthState = 'loading' | 'setup' | 'login' | 'authenticated' | 'error';
+type AuthState = 'loading' | 'unauthenticated' | 'redirecting' | 'authenticated' | 'error';
 
 class AuthStore {
     state: AuthState = $state('loading');
-    error: string = $state('');
+    error: string | null = $state(null);
     role: string | null = $state(null);
-    passkey_id: string | null = $state(null);
-    pending: boolean = $state(false);
-
+    user_id: string | null = $state(null);
+    user: AuthStatus['user'] = $state(null);
+    pending = $state(false);
     is_admin = $derived(this.role === 'admin');
 
-    async check(): Promise<void> {
+    async check() {
+        this.state = 'loading';
+        this.error = null;
         try {
-            const status: AuthStatus = await check_auth();
-            if (status.authenticated) {
-                this.role = status.role;
-                this.passkey_id = status.passkey_id;
+            const status = await check_auth();
+            if (status.authenticated && status.user) {
                 this.state = 'authenticated';
-            }
-            else if (!status.is_setup) {
-                this.state = 'setup';
+                this.role = status.user.role;
+                this.user_id = status.user.id;
+                this.user = status.user;
             }
             else {
-                this.state = 'login';
+                this.state = 'unauthenticated';
+                this.role = null;
+                this.user_id = null;
+                this.user = null;
             }
         }
         catch (err) {
-            console.error('Auth check failed:', err);
             this.state = 'error';
+            this.error = err instanceof Error ? err.message : 'Auth check failed';
         }
     }
 
-    async register(display_name: string): Promise<boolean> {
-        if (this.pending) return false;
-        this.error = '';
+    login() {
+        this.state = 'redirecting';
         this.pending = true;
+        login_github();
+    }
+
+    async sign_out() {
         try {
-            const ok = await register_passkey(display_name || 'Admin');
-            if (ok) this.state = 'authenticated';
-            return ok;
-        }
-        catch (err: unknown) {
-            this.error = err instanceof Error ? err.message : String(err);
-            return false;
+            await logout();
         }
         finally {
+            this.state = 'unauthenticated';
+            this.role = null;
+            this.user_id = null;
+            this.user = null;
             this.pending = false;
+            this.error = null;
         }
     }
 
-    async login(): Promise<boolean> {
-        if (this.pending) return false;
-        this.error = '';
-        this.pending = true;
-        try {
-            const ok = await login_passkey();
-            if (ok) {
-                const status = await check_auth();
-                this.role = status.role;
-                this.passkey_id = status.passkey_id;
-                this.state = 'authenticated';
-            }
-            return ok;
-        }
-        catch (err: unknown) {
-            this.error = err instanceof Error ? err.message : String(err);
-            return false;
-        }
-        finally {
-            this.pending = false;
-        }
-    }
-
-    async sign_out(): Promise<void> {
-        await logout();
+    reset() {
+        this.state = 'unauthenticated';
         this.role = null;
-        this.passkey_id = null;
-        this.state = 'login';
+        this.user_id = null;
+        this.user = null;
+        this.pending = false;
+        this.error = null;
     }
 }
 

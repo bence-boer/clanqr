@@ -60,12 +60,9 @@ export const auth_routes = new Hono<AppBindings>()
 
         if (token && env.NODE_ENV !== 'development' && is_dev_session_token(token)) {
             deleteCookie(context, 'session', { path: '/' });
-            return context.json({ is_setup, authenticated: false, role: null, user_id: null });
+            return context.json({ is_setup, authenticated: false, user: null });
         }
 
-        let authenticated = false;
-        let role: string | null = null;
-        let user_id: string | null = null;
         if (token) {
             const { data } = await db
                 .from('sessions')
@@ -76,20 +73,20 @@ export const auth_routes = new Hono<AppBindings>()
             if (data) {
                 if (env.NODE_ENV !== 'development' && is_dev_user_id(data.user_id)) {
                     deleteCookie(context, 'session', { path: '/' });
-                    return context.json({ is_setup, authenticated: false, role: null, user_id: null });
+                    return context.json({ is_setup, authenticated: false, user: null });
                 }
-                authenticated = true;
-                user_id = data.user_id;
                 const { data: user } = await db
                     .from('users')
-                    .select('role')
+                    .select('id, github_id, username, display_name, avatar_url, role')
                     .eq('id', data.user_id)
                     .single();
-                role = user?.role ?? null;
+                if (user) {
+                    return context.json({ is_setup, authenticated: true, user });
+                }
             }
         }
 
-        return context.json({ is_setup, authenticated, role, user_id });
+        return context.json({ is_setup, authenticated: false, user: null });
     })
 
     // Mount registration and login sub-routes
