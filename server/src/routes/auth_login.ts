@@ -47,7 +47,7 @@ export const login_routes = new Hono<AppBindings>()
         // GitHub sends ?error=access_denied when user declines
         if (oauth_error) {
             setCookie(context, 'oauth_state', '', { maxAge: 0, path: '/' });
-            return context.redirect(`${env.FRONTEND_URL}?auth_error=${oauth_error}`);
+            return context.redirect(`${env.FRONTEND_URL}?auth_error=${encodeURIComponent(oauth_error)}`);
         }
 
         // Validate state parameter (CSRF protection)
