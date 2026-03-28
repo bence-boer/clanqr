@@ -116,10 +116,10 @@ export async function parse_manager_output(
     if (!existsSync(tasks_file)) {
         logger.error('Manager exited 0 but no tasks.json', { service: 'agent', feature_id });
         await supabase.from('features')
-            .update({ status: 'Draft' })
+            .update({ status: 'draft' })
             .eq('id', feature_id);
         if (run_id) {
-            await supabase.from('agent_runs')
+            await supabase.from('agent_sessions')
                 .update({ status: 'failed', error: 'Manager completed but produced no tasks.json' })
                 .eq('id', run_id);
         }
@@ -132,10 +132,10 @@ export async function parse_manager_output(
             const error_msg = `tasks.json exceeds maximum size (${size} bytes > ${MAX_OUTPUT_FILE_SIZE})`;
             logger.error('tasks.json exceeds size limit', { service: 'agent', feature_id, size, max: MAX_OUTPUT_FILE_SIZE });
             await supabase.from('features')
-                .update({ status: 'Draft' })
+                .update({ status: 'draft' })
                 .eq('id', feature_id);
             if (run_id) {
-                await supabase.from('agent_runs')
+                await supabase.from('agent_sessions')
                     .update({ status: 'failed', error: error_msg })
                     .eq('id', run_id);
             }
@@ -151,10 +151,10 @@ export async function parse_manager_output(
             const error_msg = `Invalid tasks.json: ${result.error.issues.map((i) => i.message).join('; ')}`;
             logger.error('Invalid tasks.json schema', { service: 'agent', feature_id, error: error_msg });
             await supabase.from('features')
-                .update({ status: 'Draft' })
+                .update({ status: 'draft' })
                 .eq('id', feature_id);
             if (run_id) {
-                await supabase.from('agent_runs')
+                await supabase.from('agent_sessions')
                     .update({ status: 'failed', error: error_msg })
                     .eq('id', run_id);
             }
@@ -165,14 +165,14 @@ export async function parse_manager_output(
             feature_id,
             title: 'title' in t ? t.title : null,
             description: t.description,
-            status: 'Pending_Approval' as const,
+            status: 'queued' as const,
             sort_order: index
         }));
 
         const { error: insert_error } = await supabase.from('tasks').insert(task_rows);
         if (insert_error) {
             logger.error('Failed to insert tasks', { service: 'agent', feature_id, error: insert_error.message });
-            await supabase.from('features').update({ status: 'Draft' }).eq('id', feature_id);
+            await supabase.from('features').update({ status: 'draft' }).eq('id', feature_id);
             return;
         }
     }
@@ -180,10 +180,10 @@ export async function parse_manager_output(
         const error_msg = error instanceof Error ? error.message : 'Unknown parse error';
         logger.error('Failed to parse manager tasks output', { service: 'agent', feature_id, error: error_msg });
         await supabase.from('features')
-            .update({ status: 'Draft' })
+            .update({ status: 'draft' })
             .eq('id', feature_id);
         if (run_id) {
-            await supabase.from('agent_runs')
+            await supabase.from('agent_sessions')
                 .update({ status: 'failed', error: `Failed to parse tasks.json: ${error_msg}` })
                 .eq('id', run_id);
         }

@@ -28,6 +28,6 @@ export function format_session_title(session: { title?: string | null, created_a
     return session.title ?? `Chat ${new Date(session.created_at).toLocaleDateString()}`;
 }
 
-export function build_message(session_id: string, role: 'user' | 'assistant', content: string): ChatMessage {
-    return { id: generate_id(), session_id, role, content, created_at: new Date().toISOString() };
+export function build_message(role: 'user' | 'assistant', content: string): ChatMessage {
+    return { id: generate_id(), role, content, created_at: new Date().toISOString() };
 }

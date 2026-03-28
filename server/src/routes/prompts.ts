@@ -7,7 +7,7 @@ import { logger } from '../utils/logger';
 import type { Enums } from '../database.types';
 
 const update_schema = z.object({ content: z.string().min(1) });
-const role_schema = z.enum(['manager', 'ralph']);
+const agent_type_schema = z.enum(['manager', 'ralph', 'researcher', 'editor', 'chat', 'custom']);
 
 export const prompts_routes = new Hono<AppBindings>()
 
@@ -17,7 +17,7 @@ export const prompts_routes = new Hono<AppBindings>()
         const { data, error } = await supabase
             .from('prompts')
             .select('*')
-            .order('role');
+            .order('agent_type');
 
         if (error) {
             logger.error('Failed to fetch prompts', { route: 'GET /api/prompts', error: String(error) });
@@ -32,18 +32,18 @@ export const prompts_routes = new Hono<AppBindings>()
         return context.json({ success: true, message: 'Prompts synced from repo' });
     })
 
-    // Get prompt by role
+    // Get prompt by agent_type
     .get('/:role', async (context) => {
         const role = context.req.param('role');
-        if (!role_schema.safeParse(role).success) {
-            return context.json({ error: 'Invalid role: must be \'manager\' or \'ralph\'' }, 400);
+        if (!agent_type_schema.safeParse(role).success) {
+            return context.json({ error: 'Invalid agent_type' }, 400);
         }
         const supabase = context.get('supabase');
 
         const { data, error } = await supabase
             .from('prompts')
             .select('*')
-            .eq('role', role as Enums<'prompt_role'>)
+            .eq('agent_type', role as Enums<'agent_type'>)
             .single();
 
         if (error || !data) return context.json({ error: 'Prompt not found' }, 404);
@@ -55,8 +55,8 @@ export const prompts_routes = new Hono<AppBindings>()
         const role = context.req.param('role');
         const parsed = context.req.valid('json');
 
-        if (!role_schema.safeParse(role).success) {
-            return context.json({ error: 'Invalid role enum' }, 400);
+        if (!agent_type_schema.safeParse(role).success) {
+            return context.json({ error: 'Invalid agent_type' }, 400);
         }
 
         const ok = await prompt_service.update_prompt(role, parsed.content);
@@ -66,7 +66,7 @@ export const prompts_routes = new Hono<AppBindings>()
         const { data } = await supabase
             .from('prompts')
             .select('*')
-            .eq('role', role as Enums<'prompt_role'>)
+            .eq('agent_type', role as Enums<'agent_type'>)
             .single();
 
         return context.json(data);

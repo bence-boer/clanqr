@@ -4,8 +4,10 @@ import { join } from 'path';
 export const env_schema = z.object({
     SUPABASE_URL: z.string().url().default('http://127.0.0.1:54321'),
     SUPABASE_KEY: z.string().min(1, 'SUPABASE_KEY environment variable is required'),
-    RP_ID: z.string().default('localhost'),
-    RP_ORIGIN: z.string().default('http://localhost:5173'),
+    GITHUB_CLIENT_ID: z.string().default(''),
+    GITHUB_CLIENT_SECRET: z.string().default(''),
+    SESSION_SECRET: z.string().default('dev-session-secret'),
+    ENCRYPTION_KEY: z.string().default('dev-encryption-key'),
     FRONTEND_URL: z.string().default('http://localhost:5173'),
     HOME: z.string().default(process.env.HOME ?? '/tmp'),
     COPILOT_BIN: z.string().optional(),

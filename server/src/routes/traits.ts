@@ -10,7 +10,7 @@ import type { Enums } from '../database.types';
 const create_trait_schema = z.object({
     name: z.string().min(1),
     description: z.string().optional(),
-    target: z.enum(['manager', 'ralph']),
+    target: z.enum(['manager', 'ralph', 'researcher', 'editor', 'chat', 'custom']),
     content: z.string().min(1),
     is_global: z.boolean().default(false)
 });

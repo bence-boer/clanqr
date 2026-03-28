@@ -14,7 +14,7 @@ const create_project_schema = z.object({
 const update_project_schema = z.object({
     name: z.string().min(1).max(255).optional(),
     description: z.string().nullable().optional(),
-    status: z.enum(['Active', 'Archived']).optional()
+    status: z.enum(['active', 'archived', 'planning']).optional()
 });
 
 export const projects_routes = new Hono<AppBindings>()

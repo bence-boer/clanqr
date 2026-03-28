@@ -42,7 +42,7 @@
 
     async function handle_submit() {
         show_submit_confirm = false;
-        if (feature.status !== 'Draft') {
+        if (feature.status !== 'draft') {
             toast_store.warning(`Cannot submit — feature status is now "${feature.status.replace(/_/g, ' ')}".`);
             return;
         }
@@ -51,7 +51,7 @@
 
     async function handle_delete() {
         show_delete_confirm = false;
-        if (feature.status === 'In_Progress') {
+        if (feature.status === 'in_progress') {
             toast_store.warning('Cannot delete — feature is currently in progress.');
             return;
         }
@@ -69,7 +69,7 @@
     <div style="display:flex; flex-direction:column; gap:0.25rem">
         <div class="title-row">
             <h3>{feature.title}</h3>
-            <Badge variant={feature.status === 'Done' ? 'success' : feature.status === 'In_Progress' ? 'warning' : 'muted'}>
+            <Badge variant={feature.status === 'done' ? 'success' : feature.status === 'in_progress' ? 'warning' : 'muted'}>
                 {feature.status.replace('_', ' ')}
             </Badge>
         </div>
@@ -81,7 +81,7 @@
         {/if}
     </div>
     <div class="detail-actions">
-        {#if feature.status === 'Draft' && !editing}
+        {#if feature.status === 'draft' && !editing}
             <Button variant="secondary" size="sm" onclick={() => (editing = true)} icon="edit">Edit</Button>
             <Button variant="primary" size="sm" onclick={() => (show_submit_confirm = true)} icon="send">Submit</Button>
         {/if}
@@ -116,15 +116,6 @@
                 <div class="detail-section">
                     <h4><span class="icon" style="font-size:16px">description</span> Description</h4>
                     <div class="description-text">{feature.description ?? 'No description'}</div>
-                </div>
-                <div class="detail-section">
-                    <h4><span class="icon" style="font-size:16px">smart_toy</span> Engine & Model</h4>
-                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap">
-                        <Badge variant="muted">Plan: {feature.cli || 'copilot'}</Badge>
-                        <Badge variant="muted">Exec: {feature.execution_cli || feature.cli || 'copilot'}</Badge>
-                        <Badge variant="info">Planning: {feature.planning_model || 'Not set'}</Badge>
-                        <Badge variant="info">Execution: {feature.execution_model || 'Not set'}</Badge>
-                    </div>
                 </div>
                 <ResourceList {feature} on_add_resource={handlers.add_resource} on_remove_resource={handlers.remove_resource} />
             </div>

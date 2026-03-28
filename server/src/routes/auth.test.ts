@@ -61,7 +61,7 @@ function setup() {
 
 describe('auth routes', () => {
     describe('GET /api/auth/status', () => {
-        it('returns setup status (passkeys exist)', async () => {
+        it('returns setup status (users exist)', async () => {
             const { app } = setup();
             const res = await app.request('/api/auth/status');
             expect(res.status).toBe(200);
@@ -101,18 +101,16 @@ describe('auth routes', () => {
 
         it('rejects seeded dev admin sessions outside development mode', async () => {
             const { app, store } = setup();
-            store.passkeys.push({
+            store.users.push({
                 id: 'dev-admin',
-                credential_id: 'dev-admin-credential',
-                public_key: 'dev-admin-key',
-                counter: 0,
-                device_type: 'singleDevice',
+                github_id: 99999,
+                username: 'dev-admin',
                 display_name: 'Dev Admin',
                 role: 'admin'
             });
             store.sessions.push({
                 id: '00000000-0000-0000-0000-0000000000aa',
-                passkey_id: 'dev-admin',
+                user_id: 'dev-admin',
                 token: 'dev-admin-session-token',
                 expires_at: '2099-12-31T23:59:59Z'
             });
@@ -124,7 +122,7 @@ describe('auth routes', () => {
             const body = (await res.json()) as Record<string, unknown>;
             expect(body.authenticated).toBe(false);
             expect(body.role).toBeNull();
-            expect(body.passkey_id).toBeNull();
+            expect(body.user_id).toBeNull();
             expect(res.headers.get('set-cookie')).toContain('session=');
         });
     });
@@ -151,7 +149,7 @@ describe('auth routes', () => {
     });
 
     describe('POST /api/auth/register/options', () => {
-        it('requires invite token when passkeys exist', async () => {
+        it('requires invite token when users exist', async () => {
             const { app } = setup();
             const res = await app.request('/api/auth/register/options', {
                 method: 'POST',
@@ -175,7 +173,7 @@ describe('auth routes', () => {
     });
 
     describe('POST /api/auth/login/options', () => {
-        it('returns login options when passkeys exist', async () => {
+        it('returns login options when users exist', async () => {
             const { app } = setup();
             const res = await app.request('/api/auth/login/options', {
                 method: 'POST',

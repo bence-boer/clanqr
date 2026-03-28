@@ -40,7 +40,7 @@
 
     async function select_session(session: ChatSession) {
         active_session = { ...session, messages: [] };
-        selected_model = session.model;
+        selected_model = session.model ?? selected_model;
         sessionStorage.setItem('active_chat_session', session.id);
         loading_messages = true;
         messages = [];
@@ -89,7 +89,7 @@
         error_msg = '';
         is_streaming = true;
         streaming_content = '';
-        const user_message = build_message(session_id, 'user', message_content);
+        const user_message = build_message('user', message_content);
         messages = [...messages, user_message];
         try {
             const response = await api.send_chat_message(session_id, message_content, selected_model);
@@ -102,7 +102,7 @@
                 }
             });
             if (streaming_content) {
-                messages = [...messages, build_message(session_id, 'assistant', streaming_content)];
+                messages = [...messages, build_message('assistant', streaming_content)];
             }
             streaming_content = '';
             is_streaming = false;
@@ -110,7 +110,7 @@
         }
         catch {
             if (streaming_content) {
-                messages = [...messages, build_message(session_id, 'assistant', streaming_content + '\n\n*(response interrupted)*')];
+                messages = [...messages, build_message('assistant', streaming_content + '\n\n*(response interrupted)*')];
                 streaming_content = '';
             }
             else {
@@ -125,7 +125,7 @@
         if (!active_session || !is_streaming) return;
         await cancel_chat_stream(active_session.id);
         if (streaming_content) {
-            messages = [...messages, build_message(active_session.id, 'assistant', streaming_content + '\n\n*(generation stopped)*')];
+            messages = [...messages, build_message('assistant', streaming_content + '\n\n*(generation stopped)*')];
         }
         streaming_content = '';
         is_streaming = false;

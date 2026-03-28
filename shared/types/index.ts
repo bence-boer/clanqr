@@ -1,15 +1,21 @@
-/** Shared types — re-export everything */
 export type {
+    UserRole,
+    ProjectStatus,
     FeatureStatus,
     TaskStatus,
-    AgentRunStatus,
-    AgentRunType,
-    ProjectStatus,
-    UserRole,
-    TraitTarget,
-    TraitScope,
+    AgentType,
+    AgentSessionStatus,
     FailureBehavior,
-    PipelineState,
-    MessageRole,
-    ResourceStatus
+    ResourceStatus,
+    AssignmentScope,
+    MessageRole
 } from './status';
+
+export type { User } from './user';
+
+export type {
+    AgentSession,
+    AgentEvent,
+    AgentToolCall,
+    McpServerConfig
+} from './agent';

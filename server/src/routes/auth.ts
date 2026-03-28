@@ -2,73 +2,94 @@ import { Hono } from 'hono';
 import { deleteCookie, getCookie } from 'hono/cookie';
 import { env } from '../env';
 import type { AppBindings } from '../middleware/supabase';
-import { is_dev_passkey_id, is_dev_session_token } from '../utils/dev_sessions';
+import { is_dev_session_token, is_dev_user_id } from '../utils/dev_sessions';
 import { login_routes } from './auth_login';
 import { register_routes } from './auth_register';
 
 export const auth_routes = new Hono<AppBindings>()
 
-    // Check invite token status (public, no auth required)
-    .get('/invite/status', async (context) => {
-        const token = context.req.query('token');
-        if (!token) return context.json({ valid: false, reason: 'missing' });
+    // Get current authenticated user
+    .get('/me', async (context) => {
+        const token = getCookie(context, 'session');
+        if (!token) return context.json({ authenticated: false, user: null });
+
+        if (env.NODE_ENV !== 'development' && is_dev_session_token(token)) {
+            deleteCookie(context, 'session', { path: '/' });
+            return context.json({ authenticated: false, user: null });
+        }
 
         const db = context.get('supabase');
-        const { data: invite } = await db
-            .from('invite_tokens')
-            .select('role, label, expires_at, used_at')
+        const { data: session } = await db
+            .from('sessions')
+            .select('id, user_id, expires_at')
             .eq('token', token)
+            .gt('expires_at', new Date().toISOString())
             .single();
 
-        if (!invite) return context.json({ valid: false, reason: 'not_found' });
-        if (invite.used_at) return context.json({ valid: false, reason: 'used' });
-        if (new Date(invite.expires_at) <= new Date()) return context.json({ valid: false, reason: 'expired' });
+        if (!session) {
+            return context.json({ authenticated: false, user: null });
+        }
 
-        return context.json({ valid: true, role: invite.role, label: invite.label, expires_at: invite.expires_at });
+        if (env.NODE_ENV !== 'development' && is_dev_user_id(session.user_id)) {
+            deleteCookie(context, 'session', { path: '/' });
+            return context.json({ authenticated: false, user: null });
+        }
+
+        const { data: user } = await db
+            .from('users')
+            .select('id, username, display_name, avatar_url, role, github_id')
+            .eq('id', session.user_id)
+            .single();
+
+        if (!user) {
+            return context.json({ authenticated: false, user: null });
+        }
+
+        return context.json({ authenticated: true, user });
     })
 
-    // Check if any passkeys are registered (setup status)
+    // Auth status check
     .get('/status', async (context) => {
         const db = context.get('supabase');
         const token = getCookie(context, 'session');
 
         const { count } = await db
-            .from('passkeys')
+            .from('users')
             .select('*', { count: 'exact', head: true });
         const is_setup = (count ?? 0) > 0;
 
         if (token && env.NODE_ENV !== 'development' && is_dev_session_token(token)) {
             deleteCookie(context, 'session', { path: '/' });
-            return context.json({ is_setup, authenticated: false, role: null, passkey_id: null });
+            return context.json({ is_setup, authenticated: false, role: null, user_id: null });
         }
 
         let authenticated = false;
         let role: string | null = null;
-        let passkey_id: string | null = null;
+        let user_id: string | null = null;
         if (token) {
             const { data } = await db
                 .from('sessions')
-                .select('id, expires_at, passkey_id')
+                .select('id, expires_at, user_id')
                 .eq('token', token)
                 .gt('expires_at', new Date().toISOString())
                 .single();
             if (data) {
-                if (env.NODE_ENV !== 'development' && is_dev_passkey_id(data.passkey_id)) {
+                if (env.NODE_ENV !== 'development' && is_dev_user_id(data.user_id)) {
                     deleteCookie(context, 'session', { path: '/' });
-                    return context.json({ is_setup, authenticated: false, role: null, passkey_id: null });
+                    return context.json({ is_setup, authenticated: false, role: null, user_id: null });
                 }
                 authenticated = true;
-                passkey_id = data.passkey_id;
-                const { data: passkey } = await db
-                    .from('passkeys')
+                user_id = data.user_id;
+                const { data: user } = await db
+                    .from('users')
                     .select('role')
-                    .eq('id', data.passkey_id)
+                    .eq('id', data.user_id)
                     .single();
-                role = passkey?.role ?? null;
+                role = user?.role ?? null;
             }
         }
 
-        return context.json({ is_setup, authenticated, role, passkey_id });
+        return context.json({ is_setup, authenticated, role, user_id });
     })
 
     // Mount registration and login sub-routes

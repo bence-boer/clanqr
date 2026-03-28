@@ -45,41 +45,12 @@ for f in supabase/supabase/migrations/*.sql; do
   psql_cmd -c "INSERT INTO supabase_migrations.schema_migrations (version, name) VALUES ('$version', '$name') ON CONFLICT DO NOTHING;"
 done
 
-log "Inserting seed data..."
-psql_cmd <<'SQL'
--- Dev project
-INSERT INTO projects (id, name, description)
-VALUES ('00000000-0000-0000-0000-000000000001', 'Dev Project', 'Local development test project')
-ON CONFLICT (id) DO NOTHING;
-
--- Dev passkey (bypasses real WebAuthn)
-INSERT INTO passkeys (id, credential_id, public_key, counter, device_type, display_name)
-VALUES ('dev-passkey', 'dev-credential', 'dev-public-key', 0, 'singleDevice', 'Dev Passkey')
-ON CONFLICT (id) DO NOTHING;
-
--- Admin passkey
-INSERT INTO passkeys (id, credential_id, public_key, counter, device_type, display_name, role)
-VALUES ('dev-admin', 'dev-admin-credential', 'dev-admin-key', 0, 'singleDevice', 'Dev Admin', 'admin')
-ON CONFLICT (id) DO NOTHING;
-
--- Long-lived dev session (expires 2099)
-INSERT INTO sessions (id, passkey_id, token, expires_at)
-VALUES (
-  '00000000-0000-0000-0000-000000000002',
-  'dev-passkey',
-  'dev-session-token',
-  '2099-12-31T23:59:59Z'
-) ON CONFLICT (id) DO NOTHING;
-
--- Admin session (expires 2099)
-INSERT INTO sessions (id, passkey_id, token, expires_at)
-VALUES (
-  '00000000-0000-0000-0000-000000000003',
-  'dev-admin',
-  'dev-admin-session-token',
-  '2099-12-31T23:59:59Z'
-) ON CONFLICT (id) DO NOTHING;
-SQL
+if [ -f "supabase/supabase/seed.sql" ]; then
+  log "Inserting seed data from supabase/supabase/seed.sql..."
+  psql_cmd < supabase/supabase/seed.sql
+else
+  log "No seed.sql found — skipping seed data"
+fi
 
 ok "Database reset complete"
 echo "  Session token:       dev-session-token"

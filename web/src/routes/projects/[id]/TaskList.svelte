@@ -11,7 +11,7 @@
         on_approve_all: (feature_id: string) => Promise<void>
         on_spawn: (task_id: string) => Promise<void>
         on_add: (description: string) => Promise<void>
-        on_update: (task_id: string, description: string, model?: string | null, title?: string | null) => Promise<void>
+        on_update: (task_id: string, description: string, title?: string | null) => Promise<void>
         on_delete: (task_id: string) => Promise<void>
         on_toggle_auto_approve: (enabled: boolean) => Promise<void>
     }
@@ -23,12 +23,11 @@
     let editing_task_id = $state<string | null>(null);
     let editing_task_title = $state('');
     let editing_task_desc = $state('');
-    let editing_task_model = $state<string | null>(null);
     let saving_task = $state(false);
     let managing_task_id: string | null = $state(null);
     const auto_approve = $derived(feature.auto_approve ?? false);
 
-    const pending_tasks = $derived(feature.tasks?.filter((t: TaskRow) => t.status === 'Pending_Approval') ?? []);
+    const pending_tasks = $derived(feature.tasks?.filter((t: TaskRow) => t.status === 'queued') ?? []);
 
     async function handle_add() {
         if (!new_task_desc.trim()) return;
@@ -47,14 +46,13 @@
         editing_task_id = task.id;
         editing_task_title = task.title || '';
         editing_task_desc = task.description;
-        editing_task_model = task.model;
     }
 
     async function save_edit() {
         if (!editing_task_id || !editing_task_desc.trim()) return;
         saving_task = true;
         try {
-            await on_update(editing_task_id, editing_task_desc.trim(), editing_task_model, editing_task_title.trim() || null);
+            await on_update(editing_task_id, editing_task_desc.trim(), editing_task_title.trim() || null);
             editing_task_id = null;
         }
         finally {
@@ -79,7 +77,7 @@
 
     async function handle_guarded_approve(task_id: string) {
         const task = feature.tasks?.find((t: TaskRow) => t.id === task_id);
-        if (task && task.status !== 'Pending_Approval') {
+        if (task && task.status !== 'queued') {
             toast_store.warning('Task status has changed — please refresh before approving.');
             return;
         }
@@ -138,11 +136,9 @@
                 <TaskItem
                     {task}
                     {auto_approve}
-                    feature_cli={feature.execution_cli || feature.cli || 'copilot'}
                     editing={editing_task_id === task.id}
                     bind:editing_title={editing_task_title}
                     bind:editing_desc={editing_task_desc}
-                    bind:editing_model={editing_task_model}
                     saving={saving_task}
                     on_approve={handle_guarded_approve}
                     {on_spawn}
