@@ -57,8 +57,11 @@ jobs:
           cat > /tmp/ralph-api.env << EOF
           SUPABASE_URL=http://172.17.0.1:54321
           SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
-          RP_ID=${{ secrets.RP_ID }}
-          RP_ORIGIN=${{ secrets.RP_ORIGIN }}
+          GITHUB_CLIENT_ID=${{ secrets.GITHUB_CLIENT_ID }}
+          GITHUB_CLIENT_SECRET=${{ secrets.GITHUB_CLIENT_SECRET }}
+          GITHUB_CALLBACK_URL=${{ secrets.GITHUB_CALLBACK_URL }}
+          ADMIN_GITHUB_IDS=${{ secrets.ADMIN_GITHUB_IDS }}
+          SESSION_SECRET=${{ secrets.SESSION_SECRET }}
           FRONTEND_URL=${{ secrets.FRONTEND_URL }}
           NODE_ENV=production
           PORT=3001

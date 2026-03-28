@@ -56,7 +56,7 @@ export const chat_routes = new Hono<AppBindings>()
             logger.error('Failed to create session', { route: 'POST /api/chat/sessions', error: String(error) });
             return context.json({ error: 'Failed to create session' }, 500);
         }
-        return context.json(data, 201);
+        return context.json({ ...data, title: data.summary }, 201);
     })
 
     // Get session with messages (agent_events with event_type='chat.message')

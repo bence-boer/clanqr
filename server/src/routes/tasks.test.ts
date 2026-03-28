@@ -81,7 +81,7 @@ describe('tasks routes', () => {
             expect(res.status).toBe(201);
             const body = (await res.json()) as Record<string, unknown>;
             expect(body.description).toBe('New task');
-            expect(body.status).toBe('Pending_Approval');
+            expect(body.status).toBe('queued');
         });
 
         it('rejects missing description', async () => {
@@ -151,7 +151,7 @@ describe('tasks routes', () => {
             });
             expect(res.status).toBe(200);
             const body = (await res.json()) as Record<string, unknown>;
-            expect(body.status).toBe('Approved');
+            expect(body.status).toBe('approved');
         });
 
         it('rejects invalid UUID', async () => {
@@ -206,7 +206,7 @@ describe('tasks routes', () => {
             });
             expect(res.status).toBe(200);
             const body = (await res.json()) as Record<string, unknown>[];
-            expect(body.every((t: Record<string, unknown>) => t.status === 'Approved')).toBe(true);
+            expect(body.every((t: Record<string, unknown>) => t.status === 'approved')).toBe(true);
         });
     });
 });
