@@ -115,45 +115,45 @@ async function boot() {
 
     // Find features with interrupted managers BEFORE marking runs as failed
     const { data: interrupted_runs } = await supabase
-        .from('agent_runs')
+        .from('agent_sessions')
         .select('feature_id')
-        .eq('type', 'manager')
+        .eq('agent_type', 'manager')
         .eq('status', 'running');
     const interrupted_feature_ids: string[] = (interrupted_runs ?? [])
         .map((r) => r.feature_id)
         .filter((id): id is string => id !== null);
 
     await supabase
-        .from('agent_runs')
+        .from('agent_sessions')
         .update({ status: 'failed', error: 'Server restarted during execution', finished_at: now })
         .eq('status', 'running');
     await supabase
         .from('tasks')
-        .update({ status: 'Approved' })
-        .eq('status', 'In_Progress');
+        .update({ status: 'approved' })
+        .eq('status', 'in_progress');
 
     // Only reset features whose managers were actually interrupted
     if (interrupted_feature_ids.length > 0) {
         await supabase
             .from('features')
-            .update({ status: 'Submitted' })
-            .eq('status', 'In_Progress')
+            .update({ status: 'submitted' })
+            .eq('status', 'in_progress')
             .in('id', interrupted_feature_ids);
     }
 
-    // M-6.5: Reset In_Progress features that have no tasks (missing tasks.json scenario)
+    // M-6.5: Reset in_progress features that have no tasks (missing tasks.json scenario)
     const { data: in_progress_features } = await supabase
         .from('features')
         .select('id, tasks(id)')
-        .eq('status', 'In_Progress');
+        .eq('status', 'in_progress');
 
     for (const feature of in_progress_features ?? []) {
         if (!feature.tasks?.length) {
             await supabase
                 .from('features')
-                .update({ status: 'Submitted' })
+                .update({ status: 'submitted' })
                 .eq('id', feature.id);
-            logger.info('Reset feature to Submitted (no tasks found)', { service: 'boot', feature_id: feature.id });
+            logger.info('Reset feature to submitted (no tasks found)', { service: 'boot', feature_id: feature.id });
         }
     }
 
@@ -191,10 +191,9 @@ async function boot() {
     logger.info('Pipeline service started', { service: 'boot' });
 }
 
-/** M-5.5: Clean expired sessions and used/expired invite tokens */
+/** M-5.5: Clean expired sessions */
 async function cleanup_expired_data(supabase: ReturnType<typeof create_supabase_client>) {
     const now = new Date().toISOString();
-    const thirty_days_ago = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
     // Delete expired sessions
     const { count: sessions_deleted } = await supabase
@@ -202,26 +201,10 @@ async function cleanup_expired_data(supabase: ReturnType<typeof create_supabase_
         .delete({ count: 'exact' })
         .lt('expires_at', now);
 
-    // Delete used invites older than 30 days
-    const { count: used_invites_deleted } = await supabase
-        .from('invite_tokens')
-        .delete({ count: 'exact' })
-        .not('used_at', 'is', null)
-        .lt('used_at', thirty_days_ago);
-
-    // Delete expired unused invites
-    const { count: expired_invites_deleted } = await supabase
-        .from('invite_tokens')
-        .delete({ count: 'exact' })
-        .is('used_at', null)
-        .lt('expires_at', now);
-
-    const total = (sessions_deleted ?? 0) + (used_invites_deleted ?? 0) + (expired_invites_deleted ?? 0);
-    if (total > 0) {
+    if ((sessions_deleted ?? 0) > 0) {
         logger.info('Cleaned expired data', {
             service: 'boot',
-            sessions_deleted: sessions_deleted ?? 0,
-            invites_deleted: (used_invites_deleted ?? 0) + (expired_invites_deleted ?? 0)
+            sessions_deleted: sessions_deleted ?? 0
         });
     }
 }

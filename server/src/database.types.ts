@@ -9,10 +9,44 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      agent_runs: {
+      agent_events: {
         Row: {
-          cli: string | null
-          completion_tokens: number | null
+          agent_session_id: string
+          created_at: string
+          event_data: Json
+          event_type: string
+          id: string
+        }
+        Insert: {
+          agent_session_id: string
+          created_at?: string
+          event_data?: Json
+          event_type: string
+          id?: string
+        }
+        Update: {
+          agent_session_id?: string
+          created_at?: string
+          event_data?: Json
+          event_type?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_events_agent_session_id_fkey"
+            columns: ["agent_session_id"]
+            isOneToOne: false
+            referencedRelation: "agent_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_sessions: {
+        Row: {
+          agent_type: Database["public"]["Enums"]["agent_type"]
+          cache_read_tokens: number
+          cache_write_tokens: number
+          completion_tokens: number
           created_at: string
           duration_ms: number | null
           error: string | null
@@ -20,19 +54,22 @@ export type Database = {
           files_changed: string[] | null
           finished_at: string | null
           id: string
-          log: string | null
           model: string | null
-          prompt_tokens: number | null
+          prompt_tokens: number
           session_id: string | null
+          source: string
           started_at: string | null
-          status: Database["public"]["Enums"]["agent_run_status"]
+          status: Database["public"]["Enums"]["agent_session_status"]
           summary: string | null
           task_id: string | null
-          type: Database["public"]["Enums"]["agent_type"]
+          updated_at: string
+          user_id: string | null
         }
         Insert: {
-          cli?: string | null
-          completion_tokens?: number | null
+          agent_type: Database["public"]["Enums"]["agent_type"]
+          cache_read_tokens?: number
+          cache_write_tokens?: number
+          completion_tokens?: number
           created_at?: string
           duration_ms?: number | null
           error?: string | null
@@ -40,19 +77,22 @@ export type Database = {
           files_changed?: string[] | null
           finished_at?: string | null
           id?: string
-          log?: string | null
           model?: string | null
-          prompt_tokens?: number | null
+          prompt_tokens?: number
           session_id?: string | null
+          source?: string
           started_at?: string | null
-          status?: Database["public"]["Enums"]["agent_run_status"]
+          status?: Database["public"]["Enums"]["agent_session_status"]
           summary?: string | null
           task_id?: string | null
-          type: Database["public"]["Enums"]["agent_type"]
+          updated_at?: string
+          user_id?: string | null
         }
         Update: {
-          cli?: string | null
-          completion_tokens?: number | null
+          agent_type?: Database["public"]["Enums"]["agent_type"]
+          cache_read_tokens?: number
+          cache_write_tokens?: number
+          completion_tokens?: number
           created_at?: string
           duration_ms?: number | null
           error?: string | null
@@ -60,109 +100,110 @@ export type Database = {
           files_changed?: string[] | null
           finished_at?: string | null
           id?: string
-          log?: string | null
           model?: string | null
-          prompt_tokens?: number | null
+          prompt_tokens?: number
           session_id?: string | null
+          source?: string
           started_at?: string | null
-          status?: Database["public"]["Enums"]["agent_run_status"]
+          status?: Database["public"]["Enums"]["agent_session_status"]
           summary?: string | null
           task_id?: string | null
-          type?: Database["public"]["Enums"]["agent_type"]
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "agent_runs_feature_id_fkey"
+            foreignKeyName: "agent_sessions_feature_id_fkey"
             columns: ["feature_id"]
             isOneToOne: false
             referencedRelation: "features"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "agent_runs_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
-            referencedRelation: "chat_sessions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "agent_runs_task_id_fkey"
+            foreignKeyName: "agent_sessions_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
-        ]
-      }
-      chat_messages: {
-        Row: {
-          content: string
-          created_at: string
-          id: string
-          role: string
-          session_id: string
-        }
-        Insert: {
-          content: string
-          created_at?: string
-          id?: string
-          role: string
-          session_id: string
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          id?: string
-          role?: string
-          session_id?: string
-        }
-        Relationships: [
           {
-            foreignKeyName: "chat_messages_session_id_fkey"
-            columns: ["session_id"]
+            foreignKeyName: "agent_sessions_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "chat_sessions"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
       }
-      chat_sessions: {
+      agent_tool_calls: {
         Row: {
+          agent_session_id: string
+          arguments: Json | null
           created_at: string
+          duration_ms: number | null
+          error_message: string | null
           id: string
-          model: string
-          title: string | null
-          updated_at: string
+          mcp_server_name: string | null
+          permission_decision: string | null
+          result_success: boolean | null
+          result_summary: string | null
+          tool_call_id: string | null
+          tool_name: string
+          tool_type: string | null
+          was_suppressed: boolean
         }
         Insert: {
+          agent_session_id: string
+          arguments?: Json | null
           created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
           id?: string
-          model?: string
-          title?: string | null
-          updated_at?: string
+          mcp_server_name?: string | null
+          permission_decision?: string | null
+          result_success?: boolean | null
+          result_summary?: string | null
+          tool_call_id?: string | null
+          tool_name: string
+          tool_type?: string | null
+          was_suppressed?: boolean
         }
         Update: {
+          agent_session_id?: string
+          arguments?: Json | null
           created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
           id?: string
-          model?: string
-          title?: string | null
-          updated_at?: string
+          mcp_server_name?: string | null
+          permission_decision?: string | null
+          result_success?: boolean | null
+          result_summary?: string | null
+          tool_call_id?: string | null
+          tool_name?: string
+          tool_type?: string | null
+          was_suppressed?: boolean
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "agent_tool_calls_agent_session_id_fkey"
+            columns: ["agent_session_id"]
+            isOneToOne: false
+            referencedRelation: "agent_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       features: {
         Row: {
           auto_approve: boolean
-          cli: string | null
           created_at: string
+          created_by: string | null
           description: string | null
-          execution_cli: string | null
-          execution_model: string | null
           id: string
           last_error: string | null
           manager_retry_count: number
           on_task_failure: Database["public"]["Enums"]["failure_behavior"]
-          planning_model: string | null
           project_id: string
           status: Database["public"]["Enums"]["feature_status"]
           task_timeout_minutes: number
@@ -171,16 +212,13 @@ export type Database = {
         }
         Insert: {
           auto_approve?: boolean
-          cli?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
-          execution_cli?: string | null
-          execution_model?: string | null
           id?: string
           last_error?: string | null
           manager_retry_count?: number
           on_task_failure?: Database["public"]["Enums"]["failure_behavior"]
-          planning_model?: string | null
           project_id: string
           status?: Database["public"]["Enums"]["feature_status"]
           task_timeout_minutes?: number
@@ -189,16 +227,13 @@ export type Database = {
         }
         Update: {
           auto_approve?: boolean
-          cli?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
-          execution_cli?: string | null
-          execution_model?: string | null
           id?: string
           last_error?: string | null
           manager_retry_count?: number
           on_task_failure?: Database["public"]["Enums"]["failure_behavior"]
-          planning_model?: string | null
           project_id?: string
           status?: Database["public"]["Enums"]["feature_status"]
           task_timeout_minutes?: number
@@ -206,6 +241,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "features_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "features_project_id_fkey"
             columns: ["project_id"]
@@ -215,99 +257,52 @@ export type Database = {
           },
         ]
       }
-      invite_tokens: {
+      mcp_server_configs: {
         Row: {
+          args: string[] | null
+          command: string | null
           created_at: string
-          created_by_passkey_id: string | null
-          expires_at: string
+          env: Json | null
           id: string
-          label: string | null
-          role: string
-          token: string
-          used_at: string | null
-          used_by_passkey_id: string | null
+          is_global: boolean
+          name: string
+          server_type: string
+          status: string
+          updated_at: string
+          url: string | null
         }
         Insert: {
+          args?: string[] | null
+          command?: string | null
           created_at?: string
-          created_by_passkey_id?: string | null
-          expires_at: string
+          env?: Json | null
           id?: string
-          label?: string | null
-          role?: string
-          token: string
-          used_at?: string | null
-          used_by_passkey_id?: string | null
+          is_global?: boolean
+          name: string
+          server_type: string
+          status?: string
+          updated_at?: string
+          url?: string | null
         }
         Update: {
+          args?: string[] | null
+          command?: string | null
           created_at?: string
-          created_by_passkey_id?: string | null
-          expires_at?: string
+          env?: Json | null
           id?: string
-          label?: string | null
-          role?: string
-          token?: string
-          used_at?: string | null
-          used_by_passkey_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "invite_tokens_created_by_passkey_id_fkey"
-            columns: ["created_by_passkey_id"]
-            isOneToOne: false
-            referencedRelation: "passkeys"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "invite_tokens_used_by_passkey_id_fkey"
-            columns: ["used_by_passkey_id"]
-            isOneToOne: false
-            referencedRelation: "passkeys"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      passkeys: {
-        Row: {
-          backed_up: boolean
-          counter: number
-          created_at: string
-          credential_id: string
-          device_type: string
-          display_name: string | null
-          id: string
-          public_key: string
-          role: string
-          transports: string[] | null
-        }
-        Insert: {
-          backed_up?: boolean
-          counter?: number
-          created_at?: string
-          credential_id: string
-          device_type?: string
-          display_name?: string | null
-          id: string
-          public_key: string
-          role?: string
-          transports?: string[] | null
-        }
-        Update: {
-          backed_up?: boolean
-          counter?: number
-          created_at?: string
-          credential_id?: string
-          device_type?: string
-          display_name?: string | null
-          id?: string
-          public_key?: string
-          role?: string
-          transports?: string[] | null
+          is_global?: boolean
+          name?: string
+          server_type?: string
+          status?: string
+          updated_at?: string
+          url?: string | null
         }
         Relationships: []
       }
       projects: {
         Row: {
           created_at: string
+          created_by: string | null
           description: string | null
           id: string
           name: string
@@ -316,6 +311,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           description?: string | null
           id?: string
           name: string
@@ -324,33 +320,48 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           description?: string | null
           id?: string
           name?: string
           status?: Database["public"]["Enums"]["project_status"]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "projects_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       prompts: {
         Row: {
+          agent_type: Database["public"]["Enums"]["agent_type"]
           content: string
+          created_at: string
           id: string
-          role: Database["public"]["Enums"]["prompt_role"]
+          is_active: boolean
           updated_at: string
           version: number
         }
         Insert: {
+          agent_type: Database["public"]["Enums"]["agent_type"]
           content: string
+          created_at?: string
           id?: string
-          role: Database["public"]["Enums"]["prompt_role"]
+          is_active?: boolean
           updated_at?: string
           version?: number
         }
         Update: {
+          agent_type?: Database["public"]["Enums"]["agent_type"]
           content?: string
+          created_at?: string
           id?: string
-          role?: Database["public"]["Enums"]["prompt_role"]
+          is_active?: boolean
           updated_at?: string
           version?: number
         }
@@ -398,57 +409,93 @@ export type Database = {
         Row: {
           created_at: string
           expires_at: string
+          github_access_token: string | null
+          github_refresh_token: string | null
           id: string
-          passkey_id: string
           token: string
+          token_expires_at: string | null
+          user_id: string
         }
         Insert: {
           created_at?: string
           expires_at: string
+          github_access_token?: string | null
+          github_refresh_token?: string | null
           id?: string
-          passkey_id: string
           token: string
+          token_expires_at?: string | null
+          user_id: string
         }
         Update: {
           created_at?: string
           expires_at?: string
+          github_access_token?: string | null
+          github_refresh_token?: string | null
           id?: string
-          passkey_id?: string
           token?: string
+          token_expires_at?: string | null
+          user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "sessions_passkey_id_fkey"
-            columns: ["passkey_id"]
+            foreignKeyName: "sessions_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "passkeys"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
       }
       skill_links: {
         Row: {
-          assigned_by: string
+          assigned_by: string | null
           created_at: string
+          feature_id: string | null
           id: string
+          project_id: string | null
           skill_name: string
-          task_id: string
+          task_id: string | null
         }
         Insert: {
-          assigned_by?: string
+          assigned_by?: string | null
           created_at?: string
+          feature_id?: string | null
           id?: string
+          project_id?: string | null
           skill_name: string
-          task_id: string
+          task_id?: string | null
         }
         Update: {
-          assigned_by?: string
+          assigned_by?: string | null
           created_at?: string
+          feature_id?: string | null
           id?: string
+          project_id?: string | null
           skill_name?: string
-          task_id?: string
+          task_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "skill_links_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_links_feature_id_fkey"
+            columns: ["feature_id"]
+            isOneToOne: false
+            referencedRelation: "features"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_links_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "skill_links_task_id_fkey"
             columns: ["task_id"]
@@ -460,30 +507,40 @@ export type Database = {
       }
       task_artifacts: {
         Row: {
-          created_at: string | null
+          agent_session_id: string | null
+          created_at: string
           filename: string
           id: string
-          mime_type: string
-          size_bytes: number
+          mime_type: string | null
+          size_bytes: number | null
           task_id: string
         }
         Insert: {
-          created_at?: string | null
+          agent_session_id?: string | null
+          created_at?: string
           filename: string
           id?: string
-          mime_type?: string
-          size_bytes?: number
+          mime_type?: string | null
+          size_bytes?: number | null
           task_id: string
         }
         Update: {
-          created_at?: string | null
+          agent_session_id?: string | null
+          created_at?: string
           filename?: string
           id?: string
-          mime_type?: string
-          size_bytes?: number
+          mime_type?: string | null
+          size_bytes?: number | null
           task_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "task_artifacts_agent_session_id_fkey"
+            columns: ["agent_session_id"]
+            isOneToOne: false
+            referencedRelation: "agent_sessions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "task_artifacts_task_id_fkey"
             columns: ["task_id"]
@@ -495,13 +552,12 @@ export type Database = {
       }
       tasks: {
         Row: {
-          agent_log: string | null
           created_at: string
+          created_by: string | null
           description: string
           feature_id: string
           id: string
           max_retries: number
-          model: string | null
           output: string | null
           retry_count: number
           sort_order: number
@@ -510,13 +566,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          agent_log?: string | null
           created_at?: string
+          created_by?: string | null
           description: string
           feature_id: string
           id?: string
           max_retries?: number
-          model?: string | null
           output?: string | null
           retry_count?: number
           sort_order?: number
@@ -525,13 +580,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          agent_log?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string
           feature_id?: string
           id?: string
           max_retries?: number
-          model?: string | null
           output?: string | null
           retry_count?: number
           sort_order?: number
@@ -540,6 +594,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tasks_feature_id_fkey"
             columns: ["feature_id"]
@@ -551,7 +612,7 @@ export type Database = {
       }
       trait_assignments: {
         Row: {
-          assigned_by: string
+          assigned_by: string | null
           created_at: string
           feature_id: string | null
           id: string
@@ -562,7 +623,7 @@ export type Database = {
           trait_id: string
         }
         Insert: {
-          assigned_by?: string
+          assigned_by?: string | null
           created_at?: string
           feature_id?: string | null
           id?: string
@@ -573,7 +634,7 @@ export type Database = {
           trait_id: string
         }
         Update: {
-          assigned_by?: string
+          assigned_by?: string | null
           created_at?: string
           feature_id?: string | null
           id?: string
@@ -584,6 +645,13 @@ export type Database = {
           trait_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "trait_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "trait_assignments_feature_id_fkey"
             columns: ["feature_id"]
@@ -622,7 +690,7 @@ export type Database = {
           id: string
           is_global: boolean
           name: string
-          target: Database["public"]["Enums"]["trait_target"]
+          target: Database["public"]["Enums"]["agent_type"]
           updated_at: string
         }
         Insert: {
@@ -632,7 +700,7 @@ export type Database = {
           id?: string
           is_global?: boolean
           name: string
-          target: Database["public"]["Enums"]["trait_target"]
+          target: Database["public"]["Enums"]["agent_type"]
           updated_at?: string
         }
         Update: {
@@ -642,8 +710,44 @@ export type Database = {
           id?: string
           is_global?: boolean
           name?: string
-          target?: Database["public"]["Enums"]["trait_target"]
+          target?: Database["public"]["Enums"]["agent_type"]
           updated_at?: string
+        }
+        Relationships: []
+      }
+      users: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          email: string | null
+          github_id: number
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          github_id: number
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          github_id?: number
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+          username?: string
         }
         Relationships: []
       }
@@ -670,27 +774,38 @@ export type Database = {
       uuid_ns_x500: { Args: never; Returns: string }
     }
     Enums: {
-      agent_run_status:
-        | "queued"
+      agent_session_status:
+        | "pending"
         | "running"
+        | "paused"
         | "completed"
         | "failed"
-        | "stopped"
-      agent_type: "manager" | "ralph" | "chat"
+        | "cancelled"
+      agent_type:
+        | "manager"
+        | "ralph"
+        | "researcher"
+        | "editor"
+        | "chat"
+        | "custom"
       assignment_scope: "project" | "feature" | "task"
       failure_behavior: "stop" | "skip" | "retry"
-      feature_status: "Draft" | "Submitted" | "In_Progress" | "Done"
-      project_status: "Active" | "Archived"
-      prompt_role: "manager" | "ralph"
-      resource_status: "Pending" | "Fetched" | "Error"
+      feature_status:
+        | "draft"
+        | "submitted"
+        | "in_progress"
+        | "done"
+        | "cancelled"
+      project_status: "active" | "archived" | "planning"
+      resource_status: "pending" | "fetched" | "error"
       task_status:
-        | "Pending_Approval"
-        | "Approved"
-        | "In_Progress"
-        | "Complete"
-        | "Skipped"
-        | "Failed"
-      trait_target: "manager" | "ralph"
+        | "queued"
+        | "approved"
+        | "in_progress"
+        | "complete"
+        | "failed"
+        | "skipped"
+      user_role: "admin" | "member"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -818,23 +933,42 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      agent_run_status: ["queued", "running", "completed", "failed", "stopped"],
-      agent_type: ["manager", "ralph", "chat"],
+      agent_session_status: [
+        "pending",
+        "running",
+        "paused",
+        "completed",
+        "failed",
+        "cancelled",
+      ],
+      agent_type: [
+        "manager",
+        "ralph",
+        "researcher",
+        "editor",
+        "chat",
+        "custom",
+      ],
       assignment_scope: ["project", "feature", "task"],
       failure_behavior: ["stop", "skip", "retry"],
-      feature_status: ["Draft", "Submitted", "In_Progress", "Done"],
-      project_status: ["Active", "Archived"],
-      prompt_role: ["manager", "ralph"],
-      resource_status: ["Pending", "Fetched", "Error"],
-      task_status: [
-        "Pending_Approval",
-        "Approved",
-        "In_Progress",
-        "Complete",
-        "Skipped",
-        "Failed",
+      feature_status: [
+        "draft",
+        "submitted",
+        "in_progress",
+        "done",
+        "cancelled",
       ],
-      trait_target: ["manager", "ralph"],
+      project_status: ["active", "archived", "planning"],
+      resource_status: ["pending", "fetched", "error"],
+      task_status: [
+        "queued",
+        "approved",
+        "in_progress",
+        "complete",
+        "failed",
+        "skipped",
+      ],
+      user_role: ["admin", "member"],
     },
   },
 } as const

@@ -4,7 +4,7 @@ import { create_supabase_client, type TypedSupabaseClient } from '../db';
 export type AppBindings = {
     Variables: {
         supabase: TypedSupabaseClient
-        passkey_id: string
+        user_id: string
         role: string
         request_id: string
     }

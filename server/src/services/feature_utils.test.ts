@@ -13,14 +13,14 @@ async function real_check_and_complete_feature(
         .from('tasks')
         .select('id', { count: 'exact', head: true })
         .eq('feature_id', feature_id)
-        .not('status', 'in', '("Complete","Skipped")');
+        .not('status', 'in', '("complete","skipped")');
 
     if (count === 0) {
         const { data } = await supabase
             .from('features')
-            .update({ status: 'Done' })
+            .update({ status: 'done' })
             .eq('id', feature_id)
-            .eq('status', 'In_Progress')
+            .eq('status', 'in_progress')
             .select('id')
             .single();
         return !!data;
@@ -36,75 +36,75 @@ describe('check_and_complete_feature', () => {
     it('completes feature when all tasks are Complete', async () => {
         const { client, store } = create_mock_supabase({
             tasks: [
-                { id: 't1', feature_id: FEATURE_ID, status: 'Complete' },
-                { id: 't2', feature_id: FEATURE_ID, status: 'Complete' }
+                { id: 't1', feature_id: FEATURE_ID, status: 'complete' },
+                { id: 't2', feature_id: FEATURE_ID, status: 'complete' }
             ],
             features: [
-                { id: FEATURE_ID, status: 'In_Progress' }
+                { id: FEATURE_ID, status: 'in_progress' }
             ]
         });
 
         const result = await check_and_complete_feature(FEATURE_ID, client);
         expect(result).toBe(true);
-        expect(store.features[0].status).toBe('Done');
+        expect(store.features[0].status).toBe('done');
     });
 
     it('completes feature when tasks are Complete or Skipped', async () => {
         const { client, store } = create_mock_supabase({
             tasks: [
-                { id: 't1', feature_id: FEATURE_ID, status: 'Complete' },
-                { id: 't2', feature_id: FEATURE_ID, status: 'Skipped' }
+                { id: 't1', feature_id: FEATURE_ID, status: 'complete' },
+                { id: 't2', feature_id: FEATURE_ID, status: 'skipped' }
             ],
             features: [
-                { id: FEATURE_ID, status: 'In_Progress' }
+                { id: FEATURE_ID, status: 'in_progress' }
             ]
         });
 
         const result = await check_and_complete_feature(FEATURE_ID, client);
         expect(result).toBe(true);
-        expect(store.features[0].status).toBe('Done');
+        expect(store.features[0].status).toBe('done');
     });
 
     it('does NOT complete when some tasks are still In_Progress', async () => {
         const { client, store } = create_mock_supabase({
             tasks: [
-                { id: 't1', feature_id: FEATURE_ID, status: 'Complete' },
-                { id: 't2', feature_id: FEATURE_ID, status: 'In_Progress' }
+                { id: 't1', feature_id: FEATURE_ID, status: 'complete' },
+                { id: 't2', feature_id: FEATURE_ID, status: 'in_progress' }
             ],
             features: [
-                { id: FEATURE_ID, status: 'In_Progress' }
+                { id: FEATURE_ID, status: 'in_progress' }
             ]
         });
 
         const result = await check_and_complete_feature(FEATURE_ID, client);
         expect(result).toBe(false);
-        expect(store.features[0].status).toBe('In_Progress');
+        expect(store.features[0].status).toBe('in_progress');
     });
 
-    it('does NOT complete when some tasks are Pending_Approval', async () => {
+    it('does NOT complete when some tasks are queued', async () => {
         const { client, store } = create_mock_supabase({
             tasks: [
-                { id: 't1', feature_id: FEATURE_ID, status: 'Complete' },
-                { id: 't2', feature_id: FEATURE_ID, status: 'Pending_Approval' }
+                { id: 't1', feature_id: FEATURE_ID, status: 'complete' },
+                { id: 't2', feature_id: FEATURE_ID, status: 'queued' }
             ],
             features: [
-                { id: FEATURE_ID, status: 'In_Progress' }
+                { id: FEATURE_ID, status: 'in_progress' }
             ]
         });
 
         const result = await check_and_complete_feature(FEATURE_ID, client);
         expect(result).toBe(false);
-        expect(store.features[0].status).toBe('In_Progress');
+        expect(store.features[0].status).toBe('in_progress');
     });
 
-    it('does NOT complete when some tasks are Approved', async () => {
+    it('does NOT complete when some tasks are approved', async () => {
         const { client } = create_mock_supabase({
             tasks: [
-                { id: 't1', feature_id: FEATURE_ID, status: 'Complete' },
-                { id: 't2', feature_id: FEATURE_ID, status: 'Approved' }
+                { id: 't1', feature_id: FEATURE_ID, status: 'complete' },
+                { id: 't2', feature_id: FEATURE_ID, status: 'approved' }
             ],
             features: [
-                { id: FEATURE_ID, status: 'In_Progress' }
+                { id: FEATURE_ID, status: 'in_progress' }
             ]
         });
 
@@ -115,43 +115,43 @@ describe('check_and_complete_feature', () => {
     it('handles optimistic lock — feature already transitioned to Done', async () => {
         const { client, store } = create_mock_supabase({
             tasks: [
-                { id: 't1', feature_id: FEATURE_ID, status: 'Complete' }
+                { id: 't1', feature_id: FEATURE_ID, status: 'complete' }
             ],
             features: [
-                { id: FEATURE_ID, status: 'Done' }
+                { id: FEATURE_ID, status: 'done' }
             ]
         });
 
         const result = await check_and_complete_feature(FEATURE_ID, client);
-        // Update targets In_Progress but feature is already Done — no match
+        // Update targets in_progress but feature is already done — no match
         expect(result).toBe(false);
-        expect(store.features[0].status).toBe('Done');
+        expect(store.features[0].status).toBe('done');
     });
 
-    it('handles optimistic lock — feature reverted to Draft', async () => {
+    it('handles optimistic lock — feature reverted to draft', async () => {
         const { client, store } = create_mock_supabase({
             tasks: [
-                { id: 't1', feature_id: FEATURE_ID, status: 'Complete' }
+                { id: 't1', feature_id: FEATURE_ID, status: 'complete' }
             ],
             features: [
-                { id: FEATURE_ID, status: 'Draft' }
+                { id: FEATURE_ID, status: 'draft' }
             ]
         });
 
         const result = await check_and_complete_feature(FEATURE_ID, client);
         expect(result).toBe(false);
-        expect(store.features[0].status).toBe('Draft');
+        expect(store.features[0].status).toBe('draft');
     });
 
     it('correctly counts Skipped vs Complete — mixed with incomplete', async () => {
         const { client } = create_mock_supabase({
             tasks: [
-                { id: 't1', feature_id: FEATURE_ID, status: 'Complete' },
-                { id: 't2', feature_id: FEATURE_ID, status: 'Skipped' },
-                { id: 't3', feature_id: FEATURE_ID, status: 'Approved' }
+                { id: 't1', feature_id: FEATURE_ID, status: 'complete' },
+                { id: 't2', feature_id: FEATURE_ID, status: 'skipped' },
+                { id: 't3', feature_id: FEATURE_ID, status: 'approved' }
             ],
             features: [
-                { id: FEATURE_ID, status: 'In_Progress' }
+                { id: FEATURE_ID, status: 'in_progress' }
             ]
         });
 
@@ -163,19 +163,19 @@ describe('check_and_complete_feature', () => {
         const other_feature = '00000000-0000-0000-0000-000000000099';
         const { client, store } = create_mock_supabase({
             tasks: [
-                { id: 't1', feature_id: FEATURE_ID, status: 'Complete' },
-                { id: 't2', feature_id: other_feature, status: 'In_Progress' }
+                { id: 't1', feature_id: FEATURE_ID, status: 'complete' },
+                { id: 't2', feature_id: other_feature, status: 'in_progress' }
             ],
             features: [
-                { id: FEATURE_ID, status: 'In_Progress' },
-                { id: other_feature, status: 'In_Progress' }
+                { id: FEATURE_ID, status: 'in_progress' },
+                { id: other_feature, status: 'in_progress' }
             ]
         });
 
         const result = await check_and_complete_feature(FEATURE_ID, client);
         expect(result).toBe(true);
-        expect(store.features[0].status).toBe('Done');
+        expect(store.features[0].status).toBe('done');
         // Other feature untouched
-        expect(store.features[1].status).toBe('In_Progress');
+        expect(store.features[1].status).toBe('in_progress');
     });
 });

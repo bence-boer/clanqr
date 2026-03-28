@@ -6,27 +6,29 @@ import { TEST_SEED } from '../test-utils';
 function setup() {
     const seed = {
         ...JSON.parse(JSON.stringify(TEST_SEED)),
-        agent_runs: [
+        agent_sessions: [
             {
                 id: '00000000-0000-0000-0000-000000000060',
-                type: 'ralph',
+                agent_type: 'ralph',
                 status: 'completed',
                 model: 'claude-sonnet-4.5',
                 task_id: '00000000-0000-0000-0000-000000000020',
                 feature_id: '00000000-0000-0000-0000-000000000010',
-                exit_code: 0,
                 duration_ms: 5000,
+                prompt_tokens: null,
+                completion_tokens: null,
                 created_at: '2026-01-01T00:00:00Z'
             },
             {
                 id: '00000000-0000-0000-0000-000000000061',
-                type: 'manager',
+                agent_type: 'manager',
                 status: 'failed',
                 model: 'claude-sonnet-4.5',
                 task_id: null,
                 feature_id: '00000000-0000-0000-0000-000000000010',
-                exit_code: 1,
                 duration_ms: 3000,
+                prompt_tokens: null,
+                completion_tokens: null,
                 created_at: '2026-01-02T00:00:00Z'
             }
         ]
@@ -75,7 +77,7 @@ describe('usage routes', () => {
             });
             expect(res.status).toBe(200);
             const body = (await res.json()) as { runs: Record<string, unknown>[] };
-            expect(body.runs.every((r: Record<string, unknown>) => r.type === 'ralph')).toBe(true);
+            expect(body.runs.every((r: Record<string, unknown>) => r.agent_type === 'ralph')).toBe(true);
         });
 
         it('supports status filter', async () => {

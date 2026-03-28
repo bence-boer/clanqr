@@ -1,14 +1,14 @@
 import { createMiddleware } from 'hono/factory';
 import { deleteCookie, getCookie } from 'hono/cookie';
 import { env } from '../env';
-import { is_dev_passkey_id, is_dev_session_token } from '../utils/dev_sessions';
+import { is_dev_session_token, is_dev_user_id } from '../utils/dev_sessions';
 import type { AppBindings } from './supabase';
 
-interface SessionWithPasskey {
+interface SessionWithUser {
     id: string
-    passkey_id: string
+    user_id: string
     expires_at: string
-    passkeys: { role: 'admin' | 'user' } | null
+    users: { id: string, username: string, role: 'admin' | 'member', github_id: number } | null
 }
 
 export function auth_middleware() {
@@ -25,26 +25,25 @@ export function auth_middleware() {
 
         const db = context.get('supabase');
 
-        // Single query with join to get session + role (BE-012)
         const { data: session } = await db
             .from('sessions')
-            .select('id, passkey_id, expires_at, passkeys(role)')
+            .select('id, user_id, expires_at, users(id, username, role, github_id)')
             .eq('token', token)
             .gt('expires_at', new Date().toISOString())
-            .returns<SessionWithPasskey[]>()
+            .returns<SessionWithUser[]>()
             .single();
 
         if (!session) {
             return context.json({ error: 'Session expired' }, 401);
         }
 
-        if (env.NODE_ENV !== 'development' && is_dev_passkey_id(session.passkey_id)) {
+        if (env.NODE_ENV !== 'development' && is_dev_user_id(session.user_id)) {
             deleteCookie(context, 'session', { path: '/' });
             return context.json({ error: 'Session expired' }, 401);
         }
 
-        const role = session.passkeys?.role ?? 'user';
-        context.set('passkey_id', session.passkey_id);
+        const role = session.users?.role ?? 'member';
+        context.set('user_id', session.user_id);
         context.set('role', role);
 
         await next();

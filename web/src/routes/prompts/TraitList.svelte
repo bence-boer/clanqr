@@ -2,14 +2,14 @@
     import { api } from '$lib/api/client';
     import { EmptyState, ErrorBanner } from '$lib/components';
     import { Button } from '$lib/components/primitives';
-    import type { Trait, TraitAssignment } from '$lib/types';
+    import type { Trait, TraitAssignment, TraitTarget } from '$lib/types';
     import TraitForm from './TraitForm.svelte';
     import TraitRow from './TraitRow.svelte';
 
     interface TraitFormData {
         name: string
         description: string
-        target: 'manager' | 'ralph'
+        target: TraitTarget
         is_global: boolean
         content: string
     }
@@ -21,7 +21,7 @@
 
     let { traits, on_updated }: Props = $props();
 
-    let trait_filter = $state<'all' | 'manager' | 'ralph'>('all');
+    let trait_filter = $state<'all' | TraitTarget>('all');
     let category_search = $state('');
 
     let filtered_traits = $derived.by(() => {

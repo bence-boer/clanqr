@@ -11,20 +11,18 @@ import type { Enums } from '../database.types';
 
 const update_task_schema = z.object({
     status: z
-        .enum(['Pending_Approval', 'Approved', 'In_Progress', 'Complete'])
+        .enum(['queued', 'approved', 'in_progress', 'complete', 'failed', 'skipped'])
         .optional(),
     title: z.string().nullable().optional(),
     description: z.string().optional(),
-    agent_log: z.string().optional(),
-    model: z.string().nullable().optional()
+    output: z.string().nullable().optional()
 });
 
 const create_task_schema = z.object({
     feature_id: z.string().uuid(),
     title: z.string().nullable().optional(),
     description: z.string().min(1),
-    sort_order: z.number().int().optional(),
-    model: z.string().nullable().optional()
+    sort_order: z.number().int().optional()
 });
 
 export const tasks_routes = new Hono<AppBindings>()
@@ -92,7 +90,7 @@ export const tasks_routes = new Hono<AppBindings>()
             return context.json({ error: 'Failed to update task' }, 500);
         }
 
-        if (parsed.status === 'Approved') {
+        if (parsed.status === 'approved') {
             pipeline_service.process_next().catch((err) => logger.error('Pipeline process_next error', { error: String(err) }));
         }
 
@@ -115,21 +113,21 @@ export const tasks_routes = new Hono<AppBindings>()
             return context.json({ error: 'Task not found' }, 404);
         }
 
-        if (current_task.status === 'Approved' || current_task.status === 'In_Progress' || current_task.status === 'Complete') {
+        if (current_task.status === 'approved' || current_task.status === 'in_progress' || current_task.status === 'complete') {
         // Already approved or beyond — return current state
             const { data } = await supabase.from('tasks').select('*').eq('id', id).single();
             return context.json(data);
         }
 
-        if (current_task.status !== 'Pending_Approval') {
+        if (current_task.status !== 'queued') {
             return context.json({ error: `Cannot approve task in '${current_task.status}' state` }, 409);
         }
 
         const { data, error } = await supabase
             .from('tasks')
-            .update({ status: 'Approved' })
+            .update({ status: 'approved' })
             .eq('id', id)
-            .eq('status', 'Pending_Approval')
+            .eq('status', 'queued')
             .select()
             .single();
 
@@ -138,7 +136,7 @@ export const tasks_routes = new Hono<AppBindings>()
             return context.json({ error: 'Failed to approve task' }, 500);
         }
         if (data) {
-            event_bus.emit({ type: 'tasks:update', data: { task_id: id, feature_id: data.feature_id, status: 'Approved' } });
+            event_bus.emit({ type: 'tasks:update', data: { task_id: id, feature_id: data.feature_id, status: 'approved' } });
         }
         pipeline_service.process_next().catch((err) => logger.error('Pipeline process_next error', { error: String(err) }));
         return context.json(data);
@@ -157,9 +155,9 @@ export const tasks_routes = new Hono<AppBindings>()
 
         const { data, error } = await supabase
             .from('tasks')
-            .update({ status: 'Approved' })
+            .update({ status: 'approved' })
             .eq('feature_id', feature_id)
-            .eq('status', 'Pending_Approval')
+            .eq('status', 'queued')
             .select();
 
         if (error) {
@@ -169,7 +167,7 @@ export const tasks_routes = new Hono<AppBindings>()
 
         if (data) {
             for (const task of data) {
-                event_bus.emit({ type: 'tasks:update', data: { task_id: task.id, feature_id, status: 'Approved' } });
+                event_bus.emit({ type: 'tasks:update', data: { task_id: task.id, feature_id, status: 'approved' } });
             }
         }
 
@@ -197,7 +195,7 @@ export const tasks_routes = new Hono<AppBindings>()
 
         const { data, error } = await supabase
             .from('tasks')
-            .insert({ ...parsed, status: 'Pending_Approval' })
+            .insert({ ...parsed, status: 'queued' })
             .select()
             .single();
 
@@ -226,7 +224,7 @@ export const tasks_routes = new Hono<AppBindings>()
             logger.error('Task not found', { route: 'DELETE /api/tasks/:id', id, error: String(fetch_error) });
             return context.json({ error: 'Task not found' }, 404);
         }
-        if (!['Pending_Approval', 'Approved'].includes(task.status)) {
+        if (!['queued', 'approved'].includes(task.status)) {
             return context.json({ error: 'Cannot delete a task that is in progress or complete' }, 409);
         }
 

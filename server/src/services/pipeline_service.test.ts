@@ -91,7 +91,7 @@ describe('PipelineService', () => {
         // Reset internal state between tests
         Object.assign(pipeline_service, { state: 'idle', active_run: null, is_processing: false });
         mock_can_spawn_result = true;
-        mock_store = { tasks: [], features: [], agent_runs: [] };
+        mock_store = { tasks: [], features: [], agent_sessions: [] };
         mock_stop_process.mockClear();
         mock_get_log.mockClear();
     });
@@ -169,7 +169,7 @@ describe('PipelineService', () => {
         });
 
         it('sets state to idle when no tasks available', async () => {
-            mock_store = { tasks: [], features: [], agent_runs: [] };
+            mock_store = { tasks: [], features: [], agent_sessions: [] };
             await pipeline_service.process_next();
             expect(pipeline_service.get_status().state).toBe('idle');
         });
@@ -181,15 +181,15 @@ describe('PipelineService', () => {
                     id: 'task-1',
                     feature_id: 'feat-1',
                     description: 'Test task',
-                    status: 'Approved',
+                    status: 'approved',
                     sort_order: 0,
                     retry_count: 0,
                     max_retries: 1,
                     created_at: '2026-01-01T00:00:00Z',
-                    features: { title: 'F', cli: 'copilot', model: 'gpt-4o', on_task_failure: 'stop', task_timeout_minutes: 10, projects: { name: 'P' } }
+                    features: { title: 'F', on_task_failure: 'stop', task_timeout_minutes: 10, projects: { name: 'P', id: 'proj-1' } }
                 }],
-                features: [{ id: 'feat-1', status: 'In_Progress' }],
-                agent_runs: []
+                features: [{ id: 'feat-1', status: 'in_progress' }],
+                agent_sessions: []
             };
             await pipeline_service.process_next();
             // Task should not be picked up — state returns to idle after is_processing clears

@@ -38,8 +38,8 @@ export interface SpawnAgentResult {
 
 /**
  * Generic agent spawn function shared by agent_service and pipeline_service.
- * Handles: mkdir, spec write, agent_runs record, container exec / direct spawn,
- * output collection, optional timeout, log save, artifact cataloguing, agent_runs update.
+ * Handles: mkdir, spec write, agent_sessions record, container exec / direct spawn,
+ * output collection, optional timeout, log save, artifact cataloguing, agent_sessions update.
  */
 export async function spawn_agent(
     options: SpawnAgentOptions,
@@ -59,23 +59,22 @@ export async function spawn_agent(
         throw new Error(`Workspace preparation failed: ${msg}`);
     }
 
-    // 2. Create agent_runs record
+    // 2. Create agent_sessions record
     const started_at = new Date().toISOString();
     const { data: run_record, error: insert_error } = await supabase
-        .from('agent_runs')
+        .from('agent_sessions')
         .insert({
-            type: agent_type,
+            agent_type,
             feature_id: options.feature_id ?? null,
             task_id: options.task_id ?? null,
             status: 'running',
             started_at,
-            cli,
             model
         })
         .select('id')
         .single();
 
-    if (insert_error) logger.error('Failed to insert agent_runs record', { service: 'spawn_agent', error: insert_error.message });
+    if (insert_error) logger.error('Failed to insert agent_sessions record', { service: 'spawn_agent', error: insert_error.message });
     const run_id: string = run_record?.id ?? '';
 
     // 3. Build spawn args — agent CLI command
@@ -148,10 +147,9 @@ export async function spawn_agent(
         const succeeded = exit_code === 0;
 
         const { error: update_error } = await supabase
-            .from('agent_runs')
+            .from('agent_sessions')
             .update({
                 status: succeeded ? 'completed' : 'failed',
-                log: log.slice(-10000),
                 finished_at,
                 duration_ms,
                 summary: progress_data?.summary ?? null,
@@ -159,7 +157,7 @@ export async function spawn_agent(
                 ...(exit_code === -1 ? { error: 'Task timed out' } : {})
             })
             .eq('id', run_id);
-        if (update_error) logger.error('Failed to update agent_runs record', { service: 'spawn_agent', run_id, error: update_error.message });
+        if (update_error) logger.error('Failed to update agent_sessions record', { service: 'spawn_agent', run_id, error: update_error.message });
 
         if (options.task_id) {
             await catalog_artifacts(options.task_id, work_dir, supabase);

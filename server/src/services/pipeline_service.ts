@@ -104,12 +104,12 @@ class PipelineService {
         agent_service.stop_process(task_id, supabase);
 
         if (run_id) {
-            await supabase.from('agent_runs')
-                .update({ status: 'stopped', finished_at: new Date().toISOString() })
+            await supabase.from('agent_sessions')
+                .update({ status: 'cancelled', finished_at: new Date().toISOString() })
                 .eq('id', run_id);
         }
 
-        await supabase.from('tasks').update({ status: 'Approved' }).eq('id', task_id);
+        await supabase.from('tasks').update({ status: 'approved' }).eq('id', task_id);
         this.active_run = null;
         if (this.state !== 'paused') {
             this.state = 'idle';
@@ -126,7 +126,7 @@ class PipelineService {
         const { data, error } = await supabase
             .from('tasks')
             .select('*, features(*, projects(*))')
-            .eq('status', 'Approved')
+            .eq('status', 'approved')
             .order('created_at', { foreignTable: 'features', ascending: true })
             .order('sort_order', { ascending: true })
             .limit(1)
@@ -148,8 +148,8 @@ class PipelineService {
         const project_id: string | undefined = task.features?.projects?.id;
         if (!project_id) {
             logger.error('Task has no associated project, skipping', { service: 'pipeline', task_id });
-            await supabase.from('tasks').update({ status: 'Failed', output: 'No associated project found' }).eq('id', task_id);
-            event_bus.emit({ type: 'tasks:update', data: { task_id, feature_id, status: 'Failed' } });
+            await supabase.from('tasks').update({ status: 'failed', output: 'No associated project found' }).eq('id', task_id);
+            event_bus.emit({ type: 'tasks:update', data: { task_id, feature_id, status: 'failed' } });
             setTimeout(() => this.process_next().catch((err) => logger.error('Pipeline error', { service: 'pipeline', error: String(err) })), 0);
             return;
         }
@@ -162,14 +162,14 @@ class PipelineService {
             project_name: task.features?.projects?.name ?? 'Unknown'
         };
 
-        const { error: status_error } = await supabase.from('tasks').update({ status: 'In_Progress' }).eq('id', task_id);
+        const { error: status_error } = await supabase.from('tasks').update({ status: 'in_progress' }).eq('id', task_id);
         if (status_error) logger.error('Failed to update task status', { service: 'pipeline', task_id, error: status_error.message });
 
-        event_bus.emit({ type: 'tasks:update', data: { task_id, feature_id, status: 'In_Progress' } });
+        event_bus.emit({ type: 'tasks:update', data: { task_id, feature_id, status: 'in_progress' } });
 
         const prompt = await prompt_service.resolve_for_task(task_id, task_spec);
-        const cli = task.features?.execution_cli || task.features?.cli || 'copilot';
-        const model = task.model || task.features?.execution_model || (cli === 'gemini' ? 'gemini-2.5-flash' : 'gpt-4.1');
+        const cli = 'copilot';
+        const model = 'gpt-4.1';
 
         this.active_run = { task_id, run_id: '', feature_id };
 
@@ -187,18 +187,18 @@ class PipelineService {
             if (result.exit_code === 0) {
                 const progress = read_progress(work_dir);
                 const output = progress?.summary ?? null;
-                await supabase.from('tasks').update({ status: 'Complete', output, agent_log: result.log || null }).eq('id', task.id);
-                event_bus.emit({ type: 'tasks:update', data: { task_id, feature_id, status: 'Complete' } });
+                await supabase.from('tasks').update({ status: 'complete', output }).eq('id', task.id);
+                event_bus.emit({ type: 'tasks:update', data: { task_id, feature_id, status: 'complete' } });
                 const done = await check_and_complete_feature(task.feature_id, supabase);
                 if (done) {
                     logger.info('Feature complete', { service: 'pipeline', feature: task.features?.title, feature_id });
-                    event_bus.emit({ type: 'features:update', data: { feature_id, status: 'Done', project_id: task.features?.projects?.id } });
+                    event_bus.emit({ type: 'features:update', data: { feature_id, status: 'done', project_id: task.features?.projects?.id } });
                 }
             }
             else {
                 const outcome = await handle_task_failure(task, supabase, result.run_id, result.exit_code === -1 ? 'Timeout' : undefined);
-                if (result.log) await supabase.from('tasks').update({ agent_log: result.log }).eq('id', task.id);
-                event_bus.emit({ type: 'tasks:update', data: { task_id, feature_id, status: 'Failed' } });
+                if (result.log) await supabase.from('tasks').update({ output: result.log.slice(-5000) }).eq('id', task.id);
+                event_bus.emit({ type: 'tasks:update', data: { task_id, feature_id, status: 'failed' } });
                 if (outcome === 'stop') {
                     this.state = 'paused';
                     this.emit_status();
@@ -208,7 +208,7 @@ class PipelineService {
         catch (error) {
             const error_message = error instanceof Error ? error.message : 'Unknown error';
             const outcome = await handle_task_failure(task, supabase, this.active_run.run_id, error_message);
-            event_bus.emit({ type: 'tasks:update', data: { task_id, feature_id, status: 'Failed' } });
+            event_bus.emit({ type: 'tasks:update', data: { task_id, feature_id, status: 'failed' } });
             if (outcome === 'stop') {
                 this.state = 'paused';
                 this.emit_status();

@@ -10,10 +10,9 @@
 
     let role_checked = $state(false);
 
-    type AdminRoute = 'users' | 'invites' | 'metrics' | 'maintenance';
+    type AdminRoute = 'users' | 'metrics' | 'maintenance';
     const tabs = [
         { label: 'Users', icon: 'group', value: 'users' },
-        { label: 'Invite Links', icon: 'link', value: 'invites' },
         { label: 'Metrics', icon: 'monitoring', value: 'metrics' },
         { label: 'Maintenance', icon: 'build', value: 'maintenance' }
     ] as const satisfies TabItem<AdminRoute>[];
@@ -33,7 +32,6 @@
 
     const PATH_BY_ROUTE_ID: Partial<Record<Exclude<typeof page.route.id, null>, AdminRoute>> = {
         '/admin/users': 'users',
-        '/admin/invites': 'invites',
         '/admin/metrics': 'metrics',
         '/admin/maintenance': 'maintenance'
     };

@@ -21,19 +21,21 @@ const send_message_schema = z.object({
 
 export const chat_routes = new Hono<AppBindings>()
 
-    // List sessions
+    // List chat sessions (agent_sessions with agent_type='chat')
     .get('/sessions', async (context) => {
         const supabase = context.get('supabase');
         const { data, error } = await supabase
-            .from('chat_sessions')
-            .select('id, title, model, created_at, updated_at')
+            .from('agent_sessions')
+            .select('id, summary, model, created_at, updated_at')
+            .eq('agent_type', 'chat')
             .order('updated_at', { ascending: false });
 
         if (error) return context.json({ error: 'Failed to fetch sessions' }, 500);
-        return context.json(data);
+        // Map summary → title for backward compatibility
+        return context.json((data ?? []).map((s) => ({ ...s, title: s.summary })));
     })
 
-    // Create session
+    // Create chat session
     .post('/sessions', async (context) => {
         const body = await context.req.json();
         const result = create_session_schema.safeParse(body);
@@ -41,9 +43,10 @@ export const chat_routes = new Hono<AppBindings>()
 
         const supabase = context.get('supabase');
         const { data, error } = await supabase
-            .from('chat_sessions')
+            .from('agent_sessions')
             .insert({
-                title: result.data.title ?? null,
+                agent_type: 'chat',
+                summary: result.data.title ?? null,
                 model: result.data.model ?? 'claude-sonnet-4.5'
             })
             .select()
@@ -56,20 +59,35 @@ export const chat_routes = new Hono<AppBindings>()
         return context.json(data, 201);
     })
 
-    // Get session with messages
+    // Get session with messages (agent_events with event_type='chat.message')
     .get('/sessions/:id', validate_uuid_params('id'), async (context) => {
         const id = context.req.param('id');
         const supabase = context.get('supabase');
 
         const { data: session, error } = await supabase
-            .from('chat_sessions')
-            .select('*, chat_messages(*)')
+            .from('agent_sessions')
+            .select('*')
             .eq('id', id)
-            .order('created_at', { referencedTable: 'chat_messages', ascending: true })
+            .eq('agent_type', 'chat')
             .single();
 
         if (error || !session) return context.json({ error: 'Session not found' }, 404);
-        return context.json(session);
+
+        const { data: messages } = await supabase
+            .from('agent_events')
+            .select('*')
+            .eq('agent_session_id', id)
+            .eq('event_type', 'chat.message')
+            .order('created_at', { ascending: true });
+
+        const formatted_messages = (messages ?? []).map((m) => ({
+            id: m.id,
+            session_id: id,
+            role: ((m.event_data as Record<string, unknown>)?.role as string) ?? 'user',
+            content: ((m.event_data as Record<string, unknown>)?.content as string) ?? '',
+            created_at: m.created_at
+        }));
+        return context.json({ ...session, title: session.summary, chat_messages: formatted_messages });
     })
 
     // Update session (rename)
@@ -81,9 +99,10 @@ export const chat_routes = new Hono<AppBindings>()
 
         const supabase = context.get('supabase');
         const { data, error } = await supabase
-            .from('chat_sessions')
-            .update({ title: result.data.title })
+            .from('agent_sessions')
+            .update({ summary: result.data.title })
             .eq('id', id)
+            .eq('agent_type', 'chat')
             .select()
             .single();
 
@@ -99,7 +118,11 @@ export const chat_routes = new Hono<AppBindings>()
         const id = context.req.param('id');
         const supabase = context.get('supabase');
 
-        const { error } = await supabase.from('chat_sessions').delete().eq('id', id);
+        const { error } = await supabase
+            .from('agent_sessions')
+            .delete()
+            .eq('id', id)
+            .eq('agent_type', 'chat');
         if (error) {
             logger.error('Failed to delete session', { route: 'DELETE /api/chat/sessions/:id', id, error: String(error) });
             return context.json({ error: 'Failed to delete session' }, 500);
@@ -113,9 +136,10 @@ export const chat_routes = new Hono<AppBindings>()
         const supabase = context.get('supabase');
 
         const { data: session } = await supabase
-            .from('chat_sessions')
+            .from('agent_sessions')
             .select('id, model')
             .eq('id', session_id)
+            .eq('agent_type', 'chat')
             .single();
 
         if (!session) return context.json({ error: 'Session not found' }, 404);
@@ -139,7 +163,7 @@ export const chat_routes = new Hono<AppBindings>()
                         await chat_service.send_message(
                             session_id,
                             content,
-                            model ?? session.model,
+                            model ?? session.model ?? 'claude-sonnet-4.5',
                             supabase,
                             (chunk) => {
                                 controller.enqueue(

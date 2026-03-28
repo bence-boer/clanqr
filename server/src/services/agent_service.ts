@@ -87,19 +87,19 @@ class AgentService {
 
         const { error: status_error } = await supabase
             .from('features')
-            .update({ status: 'In_Progress' })
+            .update({ status: 'in_progress' })
             .eq('id', feature_id);
         if (status_error) logger.error('Failed to update feature status', { service: 'agent', feature_id, error: status_error.message });
 
-        event_bus.emit({ type: 'features:update', data: { feature_id, status: 'In_Progress', project_id: feature.project_id } });
+        event_bus.emit({ type: 'features:update', data: { feature_id, status: 'in_progress', project_id: feature.project_id } });
 
         const prompt = await prompt_service.resolve_for_manager(spec, feature_id, feature.project_id);
-        const cli = feature.cli || 'copilot';
-        const model = feature.planning_model || (cli === 'gemini' ? 'gemini-2.5-flash' : 'gpt-4.1');
+        const cli = 'copilot';
+        const model = 'gpt-4.1';
 
         if (!can_spawn_agent()) {
             logger.warn('Agent concurrency limit reached, deferring manager spawn', { service: 'agent', feature_id });
-            await supabase.from('features').update({ status: 'Submitted' }).eq('id', feature_id);
+            await supabase.from('features').update({ status: 'submitted' }).eq('id', feature_id);
             return;
         }
 
@@ -142,7 +142,7 @@ class AgentService {
                     ? 'Manager timed out after 15 minutes'
                     : `Manager failed with exit code ${result.exit_code}`;
                 const { error: fail_error } = await supabase.from('features').update({
-                    status: 'Submitted', last_error: error_msg, manager_retry_count: (feature.manager_retry_count ?? 0) + 1
+                    status: 'submitted', last_error: error_msg, manager_retry_count: (feature.manager_retry_count ?? 0) + 1
                 }).eq('id', feature_id);
                 if (fail_error) logger.error('Failed to update feature after manager failure', { service: 'agent', feature_id, error: fail_error.message });
             }
@@ -159,7 +159,7 @@ class AgentService {
             });
 
             const { error: catch_error } = await supabase.from('features').update({
-                status: 'Submitted', last_error: error_msg, manager_retry_count: (feature.manager_retry_count ?? 0) + 1
+                status: 'submitted', last_error: error_msg, manager_retry_count: (feature.manager_retry_count ?? 0) + 1
             }).eq('id', feature_id);
             if (catch_error) logger.error('Failed to update feature after manager exception', { service: 'agent', feature_id, error: catch_error.message });
         }
@@ -175,7 +175,7 @@ class AgentService {
             proc.status = 'stopped';
             proc.finished_at = new Date().toISOString();
             if (supabase && proc.run_id) {
-                void supabase.from('agent_runs').update({ status: 'stopped', finished_at: proc.finished_at }).eq('id', proc.run_id);
+                void supabase.from('agent_sessions').update({ status: 'cancelled', finished_at: proc.finished_at }).eq('id', proc.run_id);
             }
         }
     }
@@ -187,7 +187,7 @@ class AgentService {
                 proc.status = 'stopped';
                 proc.finished_at = new Date().toISOString();
                 if (supabase && proc.run_id) {
-                    void supabase.from('agent_runs').update({ status: 'stopped', finished_at: proc.finished_at }).eq('id', proc.run_id);
+                    void supabase.from('agent_sessions').update({ status: 'cancelled', finished_at: proc.finished_at }).eq('id', proc.run_id);
                 }
             }
         }

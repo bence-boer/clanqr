@@ -13,7 +13,7 @@
     let new_resource_url = $state('');
     let new_resource_title = $state('');
 
-    const is_draft = $derived(feature.status === 'Draft');
+    const is_draft = $derived(feature.status === 'draft');
 
     function get_status_display(status: string): { label: string, icon: string, class_name: string } {
         const s = status.toLowerCase();

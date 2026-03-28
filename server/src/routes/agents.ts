@@ -15,7 +15,7 @@ export const agents_routes = new Hono<AppBindings>()
         const { count } = await supabase
             .from('tasks')
             .select('id', { count: 'exact', head: true })
-            .eq('status', 'Approved');
+            .eq('status', 'approved');
 
         // Get current task details if running
         let current_task = null;
@@ -78,7 +78,7 @@ export const agents_routes = new Hono<AppBindings>()
             const { error } = await supabase.from('tasks')
                 .update({ sort_order: i })
                 .eq('id', task_ids[i])
-                .eq('status', 'Approved');
+                .eq('status', 'approved');
             if (error) return context.json({ error: error.message }, 500);
         }
         return context.json({ success: true });

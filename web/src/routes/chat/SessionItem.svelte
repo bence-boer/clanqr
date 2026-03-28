@@ -53,7 +53,7 @@
     <div class="session-info">
         <span class="session-label">{format_title(session)}</span>
         <div class="session-meta">
-            <span class="model-badge">{short_model(session.model)}</span>
+            <span class="model-badge">{short_model(session.model ?? '')}</span>
             <span class="session-time">{relative_time(session.updated_at)}</span>
         </div>
     </div>

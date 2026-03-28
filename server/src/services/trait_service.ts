@@ -18,7 +18,7 @@ export async function resolve_feature_traits(
     supabase: TypedSupabaseClient,
     feature_id: string,
     project_id: string,
-    target: Enums<'trait_target'>
+    target: Enums<'agent_type'>
 ): Promise<ResolvedTrait[]> {
     return resolve_scope_traits(supabase, {
         scope: 'feature',
@@ -35,7 +35,7 @@ export async function resolve_feature_traits(
 export async function resolve_task_traits(
     supabase: TypedSupabaseClient,
     task_id: string,
-    target: Enums<'trait_target'>
+    target: Enums<'agent_type'>
 ): Promise<ResolvedTrait[]> {
     const { data: task, error: task_error } = await supabase
         .from('tasks')
@@ -63,7 +63,7 @@ interface ResolveScopeOptions {
     project_id?: string
     feature_id?: string
     task_id?: string
-    target?: Enums<'trait_target'>
+    target?: Enums<'agent_type'>
 }
 
 /**

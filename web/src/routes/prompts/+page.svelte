@@ -31,8 +31,8 @@
             const result = await api.list_prompts();
             prompts = result;
             for (const prompt of result) {
-                if (!edit_state[prompt.role]) {
-                    edit_state[prompt.role] = { editing: false, content: prompt.content, saving: false };
+                if (!edit_state[prompt.agent_type]) {
+                    edit_state[prompt.agent_type] = { editing: false, content: prompt.content, saving: false };
                 }
             }
         }
@@ -49,22 +49,22 @@
         syncing = true;
         try {
             const before_versions: Record<string, number> = {};
-            for (const p of prompts) before_versions[p.role] = p.version;
+            for (const p of prompts) before_versions[p.agent_type] = p.version;
 
             await api.sync_prompts();
             await load_prompts();
 
             const changed: string[] = [];
             for (const p of prompts) {
-                if (before_versions[p.role] !== undefined && p.version !== before_versions[p.role]) {
-                    changed.push(`${p.role.charAt(0).toUpperCase() + p.role.slice(1)} prompt updated`);
+                if (before_versions[p.agent_type] !== undefined && p.version !== before_versions[p.agent_type]) {
+                    changed.push(`${p.agent_type.charAt(0).toUpperCase() + p.agent_type.slice(1)} prompt updated`);
                 }
             }
             const msg = changed.length > 0 ? `Synced. ${changed.join(', ')}.` : 'Synced. No changes detected.';
             toast_store.success(msg);
 
             for (const prompt of prompts) {
-                edit_state[prompt.role] = { editing: false, content: prompt.content, saving: false };
+                edit_state[prompt.agent_type] = { editing: false, content: prompt.content, saving: false };
             }
         }
         catch (err: unknown) {

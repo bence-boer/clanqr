@@ -45,7 +45,7 @@ class WatcherService {
         const { data: features, error } = await supabase
             .from('features')
             .select('*, resources(*), projects(*)')
-            .eq('status', 'Submitted');
+            .eq('status', 'submitted');
 
         if (error || !features) return;
 
@@ -53,7 +53,7 @@ class WatcherService {
             // M-6.1: Enforce manager retry cap
             if ((feature.manager_retry_count ?? 0) >= MAX_MANAGER_RETRIES) {
                 await supabase.from('features').update({
-                    status: 'Draft',
+                    status: 'draft',
                     last_error: `Manager failed after ${MAX_MANAGER_RETRIES} attempts`
                 }).eq('id', feature.id);
                 continue;
@@ -67,9 +67,9 @@ class WatcherService {
 
             // Check if there's already a recent running manager in the DB (survives restarts)
             const { data: recent_run } = await supabase
-                .from('agent_runs')
+                .from('agent_sessions')
                 .select('id, status')
-                .eq('type', 'manager')
+                .eq('agent_type', 'manager')
                 .eq('feature_id', feature.id)
                 .in('status', ['running', 'completed'])
                 .order('created_at', { ascending: false })
@@ -97,14 +97,14 @@ class WatcherService {
                 .from('tasks')
                 .select('id')
                 .eq('feature_id', feature.id)
-                .eq('status', 'Pending_Approval');
+                .eq('status', 'queued');
 
             if (tasks && tasks.length > 0) {
                 await supabase
                     .from('tasks')
-                    .update({ status: 'Approved' })
+                    .update({ status: 'approved' })
                     .eq('feature_id', feature.id)
-                    .eq('status', 'Pending_Approval');
+                    .eq('status', 'queued');
 
                 logger.info('Auto-approved tasks', { service: 'watcher', feature_id: feature.id, count: tasks.length, title: feature.title });
                 pipeline_service.process_next().catch(
