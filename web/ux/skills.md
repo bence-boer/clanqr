@@ -7,7 +7,7 @@ Displays Copilot CLI skills discovered on the system. Read-only with expand/coll
 ## Page Header
 
 - Heading: "Skills"
-- Subtitle: "Copilot CLI skills available on this system (from ~/.copilot/skills/)"
+- Subtitle: "Copilot CLI skills available on this system (from ~/.agents/skills/)"
 - **Refresh button** (secondary, refresh icon):
   - Text: "Refresh Skills" / "Refreshing…"
   - Disabled while refreshing
