@@ -8,9 +8,6 @@ function setup() {
     return { app, store };
 }
 
-const FEATURE_ID = '00000000-0000-0000-0000-000000000010';
-const INVALID_UUID = 'not-a-uuid';
-
 describe('agents routes', () => {
     describe('GET /api/agents/queue', () => {
         it('returns 401 without auth', async () => {
@@ -82,27 +79,6 @@ describe('agents routes', () => {
         });
     });
 
-    describe('GET /api/agents/feature/:feature_id', () => {
-        it('returns feature agent status', async () => {
-            const { app } = setup();
-            const res = await app.request(`/api/agents/feature/${FEATURE_ID}`, {
-                headers: auth_headers()
-            });
-            expect(res.status).toBe(200);
-            const body = (await res.json()) as Record<string, unknown>;
-            expect(body).toHaveProperty('processes');
-            expect(body).toHaveProperty('pipeline');
-        });
-
-        it('rejects invalid UUID', async () => {
-            const { app } = setup();
-            const res = await app.request(`/api/agents/feature/${INVALID_UUID}`, {
-                headers: auth_headers()
-            });
-            expect(res.status).toBe(400);
-        });
-    });
-
     describe('GET /api/agents/status', () => {
         it('returns all process statuses', async () => {
             const { app } = setup();
@@ -110,36 +86,8 @@ describe('agents routes', () => {
                 headers: auth_headers()
             });
             expect(res.status).toBe(200);
-        });
-    });
-
-    describe('GET /api/agents/log/:task_id', () => {
-        it('rejects path traversal', async () => {
-            const { app } = setup();
-            const res = await app.request('/api/agents/log/..%2Fetc%2Fpasswd', {
-                headers: auth_headers()
-            });
-            expect(res.status).toBe(400);
-        });
-    });
-
-    describe('POST /api/agents/spawn/manager/:feature_id', () => {
-        it('returns 404 for non-existent feature', async () => {
-            const { app } = setup();
-            const res = await app.request(
-                '/api/agents/spawn/manager/00000000-0000-0000-0000-000000099999',
-                { method: 'POST', headers: auth_headers() }
-            );
-            expect(res.status).toBe(404);
-        });
-
-        it('rejects invalid UUID', async () => {
-            const { app } = setup();
-            const res = await app.request(`/api/agents/spawn/manager/${INVALID_UUID}`, {
-                method: 'POST',
-                headers: auth_headers()
-            });
-            expect(res.status).toBe(400);
+            const body = (await res.json()) as Record<string, unknown>[];
+            expect(Array.isArray(body)).toBe(true);
         });
     });
 
@@ -153,17 +101,6 @@ describe('agents routes', () => {
             expect(res.status).toBe(200);
             const body = (await res.json()) as Record<string, unknown>;
             expect(body.success).toBe(true);
-        });
-    });
-
-    describe('POST /api/agents/stop/:task_id', () => {
-        it('rejects invalid UUID', async () => {
-            const { app } = setup();
-            const res = await app.request(`/api/agents/stop/${INVALID_UUID}`, {
-                method: 'POST',
-                headers: auth_headers()
-            });
-            expect(res.status).toBe(400);
         });
     });
 });

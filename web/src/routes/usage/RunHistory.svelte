@@ -1,7 +1,7 @@
 <script lang="ts">
     import { EmptyState, LoadingSpinner, StatusBadge } from '$lib/components';
     import { Badge, Pagination } from '$lib/components/primitives';
-    import type { AgentRun } from '$lib/types';
+    import type { AgentSession } from '$lib/types';
     import RunDetailRow from './RunDetailRow.svelte';
     import RunHistoryFilters from './RunHistoryFilters.svelte';
 
@@ -21,7 +21,7 @@
         onpage_change,
         ondate_range_change
     }: {
-        runs: AgentRun[]
+        runs: AgentSession[]
         total_pages: number
         total_count: number
         loading: boolean
@@ -57,7 +57,7 @@
         return sort_dir === 'asc' ? ' ▲' : ' ▼';
     }
 
-    function get_tokens(run: AgentRun): number {
+    function get_tokens(run: AgentSession): number {
         return (run.prompt_tokens ?? 0) + (run.completion_tokens ?? 0);
     }
 

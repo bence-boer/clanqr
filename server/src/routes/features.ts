@@ -11,6 +11,8 @@ const create_feature_schema = z.object({
     project_id: z.string().uuid(),
     title: z.string().min(1).max(200),
     description: z.string().max(10_000).nullable().optional(),
+    planning_model: z.string().min(1).nullable().optional(),
+    execution_model: z.string().min(1).nullable().optional(),
     on_task_failure: z.enum(['stop', 'retry', 'skip']).default('stop'),
     auto_approve: z.boolean().default(false),
     task_timeout_minutes: z.number().int().min(1).max(120).default(30),
@@ -25,6 +27,8 @@ const update_feature_schema = z.object({
     title: z.string().min(1).max(255).optional(),
     description: z.string().nullable().optional(),
     status: z.enum(['draft', 'submitted', 'in_progress', 'done', 'cancelled']).optional(),
+    planning_model: z.string().nullable().optional(),
+    execution_model: z.string().nullable().optional(),
     on_task_failure: z.enum(['stop', 'retry', 'skip']).optional(),
     auto_approve: z.boolean().optional(),
     task_timeout_minutes: z.number().int().min(1).max(120).optional()

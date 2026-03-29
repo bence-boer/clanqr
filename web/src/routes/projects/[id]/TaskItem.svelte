@@ -26,8 +26,8 @@
     }
 
     let {
-        task, auto_approve, editing, editing_title = $bindable(),
-        editing_desc = $bindable(), saving, on_approve, on_spawn, on_start_edit, on_save_edit,
+        task, auto_approve, editing, editing_title = $bindable(), editing_desc = $bindable(),
+        editing_model = $bindable(), saving, on_approve, on_spawn, on_start_edit, on_save_edit,
         on_cancel_edit, on_delete, on_toggle_artifacts, show_artifacts
     }: Props = $props();
 
@@ -59,6 +59,7 @@
 <div class="task-item">
     {#if editing}
         <TaskEditForm
+            task_id={task.id}
             bind:title={editing_title}
             bind:description={editing_desc}
             {saving}

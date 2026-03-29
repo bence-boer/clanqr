@@ -24,11 +24,9 @@ import { tasks_routes } from './routes/tasks';
 import { traits_routes } from './routes/traits';
 import { activity_routes } from './routes/activity';
 import { usage_routes } from './routes/usage';
-import { agent_service } from './services/agent_service';
 import { pipeline_service } from './services/pipeline_service';
 import { prompt_service } from './services/prompt_service';
 import { watcher_service } from './services/watcher_service';
-import { container_service } from './services/container_service';
 import { logger } from './utils/logger';
 
 const allowed_origins = env.FRONTEND_URL.split(',').map((origin) => origin.trim());
@@ -87,8 +85,8 @@ const app = new Hono<AppBindings>()
     .route('/api/auth', auth_routes)
     // Protected API routes
     .use('/api/*', auth_middleware())
-    // Agent spawning rate limit (M-4.2): 5 req/min
-    .use('/api/agents/spawn/*', rate_limit(5, 60_000))
+    // Agent session rate limit: 5 req/min
+    .use('/api/agents/plan/*', rate_limit(5, 60_000))
     .route('/api/events', events_routes)
     .route('/api/projects', projects_routes)
     .route('/api/features', features_routes)
@@ -113,7 +111,6 @@ async function boot() {
     // 1. Recover stale agent runs from previous server crash
     const now = new Date().toISOString();
 
-    // Find features with interrupted managers BEFORE marking runs as failed
     const { data: interrupted_runs } = await supabase
         .from('agent_sessions')
         .select('feature_id')
@@ -132,7 +129,6 @@ async function boot() {
         .update({ status: 'approved' })
         .eq('status', 'in_progress');
 
-    // Only reset features whose managers were actually interrupted
     if (interrupted_feature_ids.length > 0) {
         await supabase
             .from('features')
@@ -162,24 +158,10 @@ async function boot() {
     // 2. Sync base prompts from repo files → DB
     await prompt_service.sync_from_repo();
 
-    // 3. Cleanup old workspaces (M-5.4) and expired data (M-5.5)
-    agent_service.cleanup_old_workspaces(7);
+    // 3. Cleanup expired data
     await cleanup_expired_data(supabase);
 
-    // 3b. Ensure agent Docker image is built and cleanup orphaned containers
-    try {
-        await container_service.ensure_image();
-        const { data: projects } = await supabase.from('projects').select('id');
-        const valid_ids = new Set((projects ?? []).map((p) => p.id));
-        await container_service.cleanup_orphaned(valid_ids);
-    }
-    catch (err) {
-        logger.warn('Container setup warning (agents will retry on first run)', { service: 'boot', error: String(err) });
-    }
-
-    // Schedule daily cleanup
     setInterval(() => {
-        agent_service.cleanup_old_workspaces(7);
         cleanup_expired_data(supabase).catch((err) => logger.error('Cleanup error', { service: 'boot', error: String(err) }));
     }, 24 * 60 * 60 * 1000);
 

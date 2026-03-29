@@ -4,19 +4,17 @@
     import { Badge, Button } from '$lib/components/primitives';
 
     let {
-        entries,
-        on_view_log,
-        on_stop_agent
+        agents,
+        on_view_log
     }: {
-        entries: [string, AgentProcess][]
+        agents: AgentProcess[]
         on_view_log: (id: string) => void
-        on_stop_agent: (id: string) => void
     } = $props();
 
     let now = $state(Date.now());
 
     $effect(() => {
-        const has_running = entries.some(([, agent]) => agent.status === 'running');
+        const has_running = agents.some((agent) => agent.status === 'running');
         if (!has_running) return;
 
         const interval = setInterval(() => {
@@ -43,24 +41,18 @@
         if (minutes >= 5) return 'duration-warning';
         return 'duration-muted';
     }
-
-    function extract_feature_id(id: string): string | null {
-        if (id.startsWith('manager-')) return id.slice('manager-'.length);
-        return null;
-    }
 </script>
 
 <div class="agent-grid">
-    {#each entries as [id, agent] (id)}
-        {@const feature_id = extract_feature_id(id)}
-        {@const is_manager = agent.type === 'manager'}
+    {#each agents as agent (agent.id)}
+        {@const is_manager = agent.agent_type === 'manager'}
         <div class="agent-card" class:running={agent.status === 'running'} class:failed={agent.status === 'failed'}>
             <div class="agent-header">
                 <div class="agent-info">
                     <span class="icon agent-icon">{is_manager ? 'assignment' : 'build'}</span>
                     <div>
-                        <span class="agent-type">{agent.type}</span>
-                        <span class="agent-id">{id}</span>
+                        <span class="agent-type">{agent.agent_type}</span>
+                        <span class="agent-id">{agent.id.slice(0, 8)}</span>
                     </div>
                 </div>
                 <Badge
@@ -74,15 +66,15 @@
                 >
             </div>
 
-            {#if is_manager && feature_id}
+            {#if is_manager && agent.feature_id}
                 <nav class="breadcrumb" aria-label="Agent context">
                     <a href={resolve('/projects')} class="breadcrumb-link">
                         <span class="icon" style="font-size:14px">folder</span> Projects
                     </a>
                     <span class="breadcrumb-sep">/</span>
-                    <span class="breadcrumb-item" title={feature_id}>Feature {feature_id.slice(0, 8)}</span>
+                    <span class="breadcrumb-item" title={agent.feature_id}>Feature {agent.feature_id.slice(0, 8)}</span>
                 </nav>
-            {:else if !is_manager}
+            {:else if !is_manager && agent.task_id}
                 <nav class="breadcrumb" aria-label="Agent context">
                     <a href={resolve('/projects')} class="breadcrumb-link">
                         <span class="icon" style="font-size:14px">folder</span> Projects
@@ -107,14 +99,9 @@
             </div>
 
             <div class="agent-actions">
-                <Button variant="secondary" size="sm" onclick={() => on_view_log(id)}>
+                <Button variant="secondary" size="sm" onclick={() => on_view_log(agent.id)}>
                     <span class="icon" style="font-size:14px">description</span> Log
                 </Button>
-                {#if agent.status === 'running'}
-                    <Button variant="danger" size="sm" onclick={() => on_stop_agent(id)}>
-                        <span class="icon" style="font-size:14px">stop</span> Stop
-                    </Button>
-                {/if}
             </div>
         </div>
     {/each}

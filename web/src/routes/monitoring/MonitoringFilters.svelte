@@ -6,11 +6,11 @@
     type SortOption = 'newest' | 'oldest' | 'longest';
 
     let {
-        entries,
-        filtered_entries = $bindable([])
+        agents,
+        filtered_agents = $bindable([])
     }: {
-        entries: [string, AgentProcess][]
-        filtered_entries: [string, AgentProcess][]
+        agents: AgentProcess[]
+        filtered_agents: AgentProcess[]
     } = $props();
 
     let filter_status = $state<StatusFilter>('all');
@@ -25,38 +25,35 @@
     ];
 
     $effect(() => {
-        let result = entries;
+        let result = agents;
 
         if (filter_status !== 'all') {
-            result = result.filter(([, a]) => a.status === filter_status);
+            result = result.filter((a) => a.status === filter_status);
         }
 
         if (search_query.trim()) {
             const query = search_query.trim().toLowerCase();
-            result = result.filter(([id, a]) =>
-                id.toLowerCase().includes(query)
-                || a.type.toLowerCase().includes(query)
-                || a.task_id.toLowerCase().includes(query)
+            result = result.filter((a) =>
+                a.id.toLowerCase().includes(query)
+                || a.agent_type.toLowerCase().includes(query)
+                || (a.task_id ?? '').toLowerCase().includes(query)
             );
         }
 
-        result = [...result].sort((a_entry, b_entry) => {
-            const a_agent = a_entry[1];
-            const b_agent = b_entry[1];
+        result = [...result].sort((a, b) => {
             if (sort_by === 'newest') {
-                return new Date(b_agent.started_at ?? 0).getTime() - new Date(a_agent.started_at ?? 0).getTime();
+                return new Date(b.started_at ?? 0).getTime() - new Date(a.started_at ?? 0).getTime();
             }
             if (sort_by === 'oldest') {
-                return new Date(a_agent.started_at ?? 0).getTime() - new Date(b_agent.started_at ?? 0).getTime();
+                return new Date(a.started_at ?? 0).getTime() - new Date(b.started_at ?? 0).getTime();
             }
-            // longest running — running agents sorted by oldest start (longest first)
-            const a_running = a_agent.status === 'running' ? 1 : 0;
-            const b_running = b_agent.status === 'running' ? 1 : 0;
+            const a_running = a.status === 'running' ? 1 : 0;
+            const b_running = b.status === 'running' ? 1 : 0;
             if (a_running !== b_running) return b_running - a_running;
-            return new Date(a_agent.started_at ?? 0).getTime() - new Date(b_agent.started_at ?? 0).getTime();
+            return new Date(a.started_at ?? 0).getTime() - new Date(b.started_at ?? 0).getTime();
         });
 
-        filtered_entries = result;
+        filtered_agents = result;
     });
 </script>
 

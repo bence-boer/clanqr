@@ -44,8 +44,6 @@ export const chat_api = {
         }
         return response;
     },
-    cancel_chat: async (session_id: string): Promise<{ success: boolean }> =>
-        unwrap(await (await client.api.chat.sessions[':id'].cancel.$post({ param: { id: session_id } })).json()),
     chat_stream_url: (session_id: string): string =>
         `${API_URL}/api/chat/sessions/${encodeURIComponent(session_id)}/stream`
 };

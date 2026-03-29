@@ -62,7 +62,7 @@
                 <div class="prompt-card-header">
                     <div class="prompt-role-info">
                         <span class="icon role-icon">
-                            {prompt.agent_type === 'manager' ? 'assignment' : 'build'}
+                            {prompt.agent_type === 'manager' ? 'assignment' : prompt.agent_type === 'researcher' ? 'search' : 'build'}
                         </span>
                         <div>
                             <h3 class="prompt-role">

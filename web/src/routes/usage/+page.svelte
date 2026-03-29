@@ -1,7 +1,7 @@
 <script lang="ts">
     import { api } from '$lib/api/client';
     import { toast_store } from '$lib/stores/toast.svelte';
-    import type { AgentRun, UsageBreakdown, UsageSummary } from '$lib/types';
+    import type { AgentSession, UsageBreakdown, UsageSummary } from '$lib/types';
     import { onMount } from 'svelte';
     import { SvelteDate } from 'svelte/reactivity';
     import RunHistory from './RunHistory.svelte';
@@ -10,7 +10,7 @@
 
     let summary = $state<UsageSummary | null>(null);
     let breakdown = $state<UsageBreakdown | null>(null);
-    let runs = $state<AgentRun[]>([]);
+    let runs = $state<AgentSession[]>([]);
     let total_pages = $state(1);
     let total_count = $state(0);
     let loading_summary = $state(true);

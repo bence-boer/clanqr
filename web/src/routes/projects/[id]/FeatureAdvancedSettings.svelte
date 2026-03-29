@@ -11,8 +11,6 @@
     }
 
     interface Props {
-        cli: string
-        execution_cli: string
         planning_model: string
         execution_model: string
         on_task_failure: FailureBehavior
@@ -20,8 +18,6 @@
     }
 
     let {
-        cli = $bindable(),
-        execution_cli = $bindable(),
         planning_model = $bindable(),
         execution_model = $bindable(),
         on_task_failure = $bindable(),
@@ -32,8 +28,7 @@
     let execution_models = $state<ModelOption[]>([]);
     let loading_planning = $state(false);
     let loading_execution = $state(false);
-    let last_planning_cli = $state('');
-    let last_execution_cli = $state('');
+    let models_loaded = $state(false);
     let show_advanced = $state(false);
 
     const plan_lbl = $derived(`Planning Model ${loading_planning ? '(loading...)' : ''}`);
@@ -48,37 +43,29 @@
         return execution_model === execution_models[0].value;
     });
 
-    async function load_models_for(target_cli: string, kind: 'planning' | 'execution') {
-        const is_planning = kind === 'planning';
-        const last = is_planning ? last_planning_cli : last_execution_cli;
-        if (target_cli === last) return;
-        if (is_planning) loading_planning = true;
-        else loading_execution = true;
+    async function load_all_models() {
+        if (models_loaded) return;
+        loading_planning = true;
+        loading_execution = true;
         try {
-            const result = await api.list_models(target_cli);
-            if (is_planning) {
-                planning_models = result;
-                last_planning_cli = target_cli;
-                if (!result.find((m) => m.value === planning_model) && result.length > 0) planning_model = result[0].value;
-            }
-            else {
-                execution_models = result;
-                last_execution_cli = target_cli;
-                if (!result.find((m) => m.value === execution_model) && result.length > 0) execution_model = result[0].value;
-            }
+            const result = await api.list_models();
+            planning_models = result;
+            execution_models = result;
+            models_loaded = true;
+            if (!result.find((m) => m.value === planning_model) && result.length > 0) planning_model = result[0].value;
+            if (!result.find((m) => m.value === execution_model) && result.length > 0) execution_model = result[0].value;
         }
         catch {
-            toast_store.error(`Failed to load ${kind} models`);
+            toast_store.error('Failed to load models');
         }
         finally {
-            if (is_planning) loading_planning = false;
-            else loading_execution = false;
+            loading_planning = false;
+            loading_execution = false;
         }
     }
 
     $effect(() => {
-        load_models_for(cli, 'planning');
-        load_models_for(execution_cli, 'execution');
+        if (show_advanced) load_all_models();
     });
 </script>
 
@@ -91,24 +78,12 @@
     <div class="advanced-section">
         <div class="selection-grid">
             <div class="field">
-                <Select id="cli-select" label="Planning CLI" bind:value={cli} class="input select">
-                    <option value="copilot">Copilot CLI</option>
-                    <option value="gemini">Gemini CLI</option>
-                </Select>
-            </div>
-            <div class="field">
                 <Select id="planning-model-select" label={plan_lbl} bind:value={planning_model} disabled={loading_planning}>
                     {#each planning_models as m (m.value)}
                         <option value={m.value}>{m.label}{is_default_planning && m.value === planning_models[0]?.value ? ' (Recommended)' : ''}</option>
                     {/each}
                 </Select>
                 <span class="help-text">The AI model that breaks your feature into tasks</span>
-            </div>
-            <div class="field">
-                <Select id="execution-cli-select" label="Execution CLI" bind:value={execution_cli} class="input select">
-                    <option value="copilot">Copilot CLI</option>
-                    <option value="gemini">Gemini CLI</option>
-                </Select>
             </div>
             <div class="field">
                 <Select id="execution-model-select" label={exec_lbl} bind:value={execution_model} disabled={loading_execution}>

@@ -35,8 +35,8 @@ export const traits_routes = new Hono<AppBindings>()
         const target = context.req.query('target');
 
         let query = supabase.from('traits').select('*').order('name');
-        if (target === 'manager' || target === 'ralph') {
-            query = query.eq('target', target);
+        if (target && ['manager', 'ralph', 'researcher', 'editor', 'chat', 'custom'].includes(target)) {
+            query = query.eq('target', target as Enums<'agent_type'>);
         }
 
         const { data, error } = await query;
