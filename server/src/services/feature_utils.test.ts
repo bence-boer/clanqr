@@ -33,7 +33,7 @@ const check_and_complete_feature = real_check_and_complete_feature;
 const FEATURE_ID = '00000000-0000-0000-0000-000000000010';
 
 describe('check_and_complete_feature', () => {
-    it('completes feature when all tasks are Complete', async () => {
+    it('completes feature when all tasks are complete', async () => {
         const { client, store } = create_mock_supabase({
             tasks: [
                 { id: 't1', feature_id: FEATURE_ID, status: 'complete' },
@@ -49,7 +49,7 @@ describe('check_and_complete_feature', () => {
         expect(store.features[0].status).toBe('done');
     });
 
-    it('completes feature when tasks are Complete or Skipped', async () => {
+    it('completes feature when tasks are complete or skipped', async () => {
         const { client, store } = create_mock_supabase({
             tasks: [
                 { id: 't1', feature_id: FEATURE_ID, status: 'complete' },
@@ -65,7 +65,7 @@ describe('check_and_complete_feature', () => {
         expect(store.features[0].status).toBe('done');
     });
 
-    it('does NOT complete when some tasks are still In_Progress', async () => {
+    it('does NOT complete when some tasks are still in_progress', async () => {
         const { client, store } = create_mock_supabase({
             tasks: [
                 { id: 't1', feature_id: FEATURE_ID, status: 'complete' },
@@ -112,7 +112,7 @@ describe('check_and_complete_feature', () => {
         expect(result).toBe(false);
     });
 
-    it('handles optimistic lock — feature already transitioned to Done', async () => {
+    it('handles optimistic lock — feature already transitioned to done', async () => {
         const { client, store } = create_mock_supabase({
             tasks: [
                 { id: 't1', feature_id: FEATURE_ID, status: 'complete' }
@@ -123,7 +123,6 @@ describe('check_and_complete_feature', () => {
         });
 
         const result = await check_and_complete_feature(FEATURE_ID, client);
-        // Update targets in_progress but feature is already done — no match
         expect(result).toBe(false);
         expect(store.features[0].status).toBe('done');
     });
@@ -143,7 +142,7 @@ describe('check_and_complete_feature', () => {
         expect(store.features[0].status).toBe('draft');
     });
 
-    it('correctly counts Skipped vs Complete — mixed with incomplete', async () => {
+    it('correctly counts skipped vs complete — mixed with incomplete', async () => {
         const { client } = create_mock_supabase({
             tasks: [
                 { id: 't1', feature_id: FEATURE_ID, status: 'complete' },
@@ -175,7 +174,6 @@ describe('check_and_complete_feature', () => {
         const result = await check_and_complete_feature(FEATURE_ID, client);
         expect(result).toBe(true);
         expect(store.features[0].status).toBe('done');
-        // Other feature untouched
         expect(store.features[1].status).toBe('in_progress');
     });
 });

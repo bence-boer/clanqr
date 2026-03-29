@@ -1,7 +1,8 @@
 import { create_supabase_client } from '../db';
 import type { TypedSupabaseClient } from '../db';
 import type { Tables } from '../database.types';
-import { agent_service } from './agent_service';
+import { plan_feature } from './sdk_session_service';
+import { prompt_service } from './prompt_service';
 import { pipeline_service } from './pipeline_service';
 import { logger } from '../utils/logger';
 
@@ -23,7 +24,6 @@ class WatcherService {
             });
         }, POLL_INTERVAL_MS);
 
-        // Run immediately
         this.poll().catch((err) => logger.error('Watcher initial poll error', { service: 'watcher', error: String(err) }));
     }
 
@@ -50,7 +50,6 @@ class WatcherService {
         if (error || !features) return;
 
         for (const feature of features) {
-            // M-6.1: Enforce manager retry cap
             if ((feature.manager_retry_count ?? 0) >= MAX_MANAGER_RETRIES) {
                 await supabase.from('features').update({
                     status: 'draft',
@@ -59,13 +58,7 @@ class WatcherService {
                 continue;
             }
 
-            const process_id = `manager-${feature.id}`;
-            const existing = agent_service.get_all_processes()[process_id];
-
-            // Skip if there's already a running or completed manager process in memory
-            if (existing && existing.status !== 'failed') continue;
-
-            // Check if there's already a recent running manager in the DB (survives restarts)
+            // Check DB for recent running/completed manager
             const { data: recent_run } = await supabase
                 .from('agent_sessions')
                 .select('id, status')
@@ -78,20 +71,30 @@ class WatcherService {
 
             if (recent_run) continue;
 
-            logger.info('Spawning manager for feature', { service: 'watcher', feature_id: feature.id, title: feature.title });
-            this.spawn_manager_and_maybe_auto_approve(feature, supabase).catch(
-                (err) => logger.error('Manager spawn error', { service: 'watcher', feature_id: feature.id, error: String(err) })
+            logger.info('Planning feature via SDK', { service: 'watcher', feature_id: feature.id, title: feature.title });
+            this.plan_and_maybe_auto_approve(feature, supabase).catch(
+                (err) => logger.error('Plan feature error', { service: 'watcher', feature_id: feature.id, error: String(err) })
             );
         }
     }
 
-    private async spawn_manager_and_maybe_auto_approve(
+    private async plan_and_maybe_auto_approve(
         feature: Tables<'features'> & { resources?: { url: string, title: string | null }[], projects?: { name: string } },
         supabase: TypedSupabaseClient
     ) {
-        await agent_service.spawn_manager(feature, supabase);
+        const prompt = await prompt_service.resolve_for_manager(
+            {
+                title: feature.title,
+                description: feature.description,
+                project: feature.projects?.name ?? 'Unknown',
+                resources: (feature.resources ?? []).map((r) => ({ url: r.url, title: r.title }))
+            },
+            feature.id, feature.project_id, supabase
+        );
 
-        // If auto_approve is enabled, approve all created tasks and kick the pipeline
+        const model = feature.planning_model || 'gpt-4.1';
+        await plan_feature(feature.id, model, prompt);
+
         if (feature.auto_approve) {
             const { data: tasks } = await supabase
                 .from('tasks')
@@ -100,15 +103,14 @@ class WatcherService {
                 .eq('status', 'queued');
 
             if (tasks && tasks.length > 0) {
-                await supabase
-                    .from('tasks')
+                await supabase.from('tasks')
                     .update({ status: 'approved' })
                     .eq('feature_id', feature.id)
                     .eq('status', 'queued');
 
-                logger.info('Auto-approved tasks', { service: 'watcher', feature_id: feature.id, count: tasks.length, title: feature.title });
+                logger.info('Auto-approved tasks', { service: 'watcher', feature_id: feature.id, count: tasks.length });
                 pipeline_service.process_next().catch(
-                    (err) => logger.error('Pipeline process_next error after auto-approve', { service: 'watcher', error: String(err) })
+                    (err) => logger.error('Pipeline error after auto-approve', { service: 'watcher', error: String(err) })
                 );
             }
         }

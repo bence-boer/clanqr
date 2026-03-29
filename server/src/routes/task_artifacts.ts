@@ -4,7 +4,7 @@ import { join } from 'path';
 import type { AppBindings } from '../middleware/supabase';
 import { validate_uuid_params } from '../middleware/validate_params';
 import { logger } from '../utils/logger';
-import { PROJECTS_WORKSPACE_DIR } from '../services/container_service';
+import { WORKSPACE_DIR } from '../env';
 import { lookup_mime } from '../services/artifact_service';
 
 export const task_artifact_routes = new Hono<AppBindings>()
@@ -49,7 +49,7 @@ export const task_artifact_routes = new Hono<AppBindings>()
         }
 
         const project_id = (task.features as { project_id: string }).project_id;
-        const file_path = join(PROJECTS_WORKSPACE_DIR, project_id, `ralph-${id}`, 'artifacts', filename);
+        const file_path = join(WORKSPACE_DIR, project_id, `ralph-${id}`, 'artifacts', filename);
 
         if (!existsSync(file_path)) {
             return context.json({ error: 'File not found' }, 404);

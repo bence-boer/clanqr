@@ -48,13 +48,13 @@ export async function catalog_artifacts(
             .upsert(rows, { onConflict: 'task_id,filename' });
 
         if (error) {
-            logger.error('Failed to catalog artifacts', { service: 'spawn_agent', task_id, error: error.message });
+            logger.error('Failed to catalog artifacts', { service: 'artifacts', task_id, error: error.message });
         }
         else {
-            logger.info('Cataloged task artifacts', { service: 'spawn_agent', task_id, count: rows.length });
+            logger.info('Cataloged task artifacts', { service: 'artifacts', task_id, count: rows.length });
         }
     }
     catch (error) {
-        logger.warn('Error scanning artifacts directory', { service: 'spawn_agent', task_id, error: String(error) });
+        logger.warn('Error scanning artifacts directory', { service: 'artifacts', task_id, error: String(error) });
     }
 }

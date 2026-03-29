@@ -1,13 +1,13 @@
 <script lang="ts">
     import { SvelteDate } from 'svelte/reactivity';
-    import type { AgentRun, PipelineStatus } from '$lib/types';
+    import type { AgentSession, PipelineStatus } from '$lib/types';
 
     let {
         pipeline,
         history
     }: {
         pipeline: PipelineStatus | null
-        history: AgentRun[]
+        history: AgentSession[]
     } = $props();
 
     const completed_today = $derived(() => {

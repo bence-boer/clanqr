@@ -1,19 +1,23 @@
 <script lang="ts">
     import { resolve } from '$app/paths';
+    import { CodeBlock } from '$lib/components';
     import { Badge, Button } from '$lib/components/primitives';
-    import type { AgentRun } from '$lib/types';
+    import type { AgentSession } from '$lib/types';
     import { status_icon, status_class } from '$lib/utils/status';
     import { onMount } from 'svelte';
 
     let {
         run,
+        expanded,
+        on_toggle_log,
         onretry
     }: {
-        run: AgentRun & {
+        run: AgentSession & {
             tasks?: {
                 id: string
                 title: string | null
                 feature_id: string
+                agent_log?: string | null
                 features?: {
                     id: string
                     title: string
@@ -26,6 +30,8 @@
         on_toggle_log: (id: string) => void
         onretry?: (task_id: string) => void
     } = $props();
+
+    const log_content = $derived(run.tasks?.agent_log ?? null);
 
     // §15.12 — Flash animation for newly completed items
     let is_new = $state(false);
@@ -132,8 +138,17 @@
             {#if run.status === 'failed' && run.task_id && onretry}
                 <Button variant="secondary" size="sm" icon="replay" onclick={() => onretry(run.task_id ?? '')}>Retry</Button>
             {/if}
+            {#if log_content}
+                <Button variant="ghost" size="sm" icon="terminal" onclick={() => on_toggle_log(run.id)}>
+                    {expanded ? 'Hide Console' : 'View Console'}
+                </Button>
+            {/if}
         </div>
     </div>
+
+    {#if expanded && log_content}
+        <CodeBlock content={log_content} max_height="200px" />
+    {/if}
 </div>
 
 <style>
