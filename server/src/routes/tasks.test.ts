@@ -41,12 +41,12 @@ describe('tasks routes', () => {
 
         it('filters by status', async () => {
             const { app } = setup();
-            const res = await app.request('/api/tasks?status=Pending_Approval', {
+            const res = await app.request('/api/tasks?status=queued', {
                 headers: auth_headers()
             });
             expect(res.status).toBe(200);
             const body = (await res.json()) as Record<string, unknown>[];
-            expect(body.every((t: Record<string, unknown>) => t.status === 'Pending_Approval')).toBe(true);
+            expect(body.every((t: Record<string, unknown>) => t.status === 'queued')).toBe(true);
         });
     });
 
@@ -178,7 +178,7 @@ describe('tasks routes', () => {
 
         it('rejects deletion of in-progress task', async () => {
             const { app, store } = setup();
-            store.tasks[0].status = 'In_Progress';
+            store.tasks[0].status = 'in_progress';
             const res = await app.request(`/api/tasks/${TASK_ID}`, {
                 method: 'DELETE',
                 headers: auth_headers()
@@ -188,7 +188,7 @@ describe('tasks routes', () => {
 
         it('rejects deletion of complete task', async () => {
             const { app, store } = setup();
-            store.tasks[0].status = 'Complete';
+            store.tasks[0].status = 'complete';
             const res = await app.request(`/api/tasks/${TASK_ID}`, {
                 method: 'DELETE',
                 headers: auth_headers()

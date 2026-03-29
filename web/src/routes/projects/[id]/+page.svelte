@@ -5,7 +5,7 @@
     import { LoadingSpinner } from '$lib/components';
     import { Button } from '$lib/components/primitives/button';
     import { toast_store } from '$lib/stores/toast.svelte';
-    import type { Feature, Project, FeatureAgentStatus, AbbreviatedAgentProcess } from '$lib/types';
+    import type { Feature, Project } from '$lib/types';
     import { use_event_stream } from '$lib/utils/event-stream.svelte';
     import { onMount } from 'svelte';
     import { SvelteMap } from 'svelte/reactivity';
@@ -20,7 +20,6 @@
     let show_feature_form = $state(false);
     let selected_feature = $state<Feature | null>(null);
     let show_mobile_detail = $state(false);
-    let agent_info = $state<FeatureAgentStatus | null>(null);
 
     const project_id = $derived(page.params.id);
 
@@ -84,27 +83,8 @@
         }
     }
 
-    async function load_agent_status() {
-        if (!selected_feature) {
-            agent_info = null;
-            return;
-        }
-        try {
-            agent_info = await api.feature_agent_status(selected_feature.id);
-            if (!agent_info) return;
-            const has_running = agent_info?.processes?.some(
-                (p: AbbreviatedAgentProcess) => p.status === 'running'
-            ) || (agent_info.pipeline.is_active_feature && agent_info.pipeline.state === 'running');
-            if (has_running) load_data();
-        }
-        catch (err) {
-            console.error('Failed to load feature agent status:', err);
-        }
-    }
-
     function refresh_all() {
         load_data();
-        if (selected_feature) load_agent_status();
     }
 
     use_event_stream(
@@ -180,7 +160,6 @@
                 {#if selected_feature}
                     <FeatureDetail
                         feature={selected_feature}
-                        {agent_info}
                         on_submit={(id) => actions.submit_feature(get_deps(), id)}
                         on_delete={handle_delete_feature}
                         on_duplicate={handle_duplicate}

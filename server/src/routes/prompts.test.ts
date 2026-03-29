@@ -46,7 +46,7 @@ describe('prompts routes', () => {
     });
 
     describe('GET /api/prompts/:role', () => {
-        it('returns prompt for manager role', async () => {
+        it('returns prompt for manager', async () => {
             const { app } = setup();
             const res = await app.request('/api/prompts/manager', {
                 headers: auth_headers()
@@ -56,7 +56,7 @@ describe('prompts routes', () => {
             expect(body.agent_type).toBe('manager');
         });
 
-        it('returns prompt for ralph role', async () => {
+        it('returns prompt for ralph', async () => {
             const { app } = setup();
             const res = await app.request('/api/prompts/ralph', {
                 headers: auth_headers()

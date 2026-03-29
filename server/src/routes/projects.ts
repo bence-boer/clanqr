@@ -4,7 +4,6 @@ import { z } from 'zod';
 import type { AppBindings } from '../middleware/supabase';
 import { validate_uuid_params } from '../middleware/validate_params';
 import { logger } from '../utils/logger';
-import { container_service } from '../services/container_service';
 
 const create_project_schema = z.object({
     name: z.string().min(1).max(255),
@@ -95,7 +94,7 @@ export const projects_routes = new Hono<AppBindings>()
         return context.json(data);
     })
 
-    // Delete project (with container and workspace cleanup)
+    // Delete project
     .delete('/:id', validate_uuid_params('id'), async (context) => {
         const id = context.req.param('id');
         const supabase = context.get('supabase');
@@ -106,11 +105,6 @@ export const projects_routes = new Hono<AppBindings>()
             logger.error('Failed to delete project', { route: 'DELETE /api/projects/:id', id, error: String(error) });
             return context.json({ error: 'Failed to delete project' }, 500);
         }
-
-        // Clean up container and workspace in the background
-        container_service.remove(id).catch((err) =>
-            logger.error('Failed to clean up project container', { route: 'DELETE /api/projects/:id', id, error: String(err) })
-        );
 
         return context.json({ success: true });
     });

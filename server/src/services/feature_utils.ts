@@ -1,9 +1,9 @@
 import type { TypedSupabaseClient } from '../db';
 
 /**
- * Check if all tasks for a feature are complete (Complete or Skipped).
- * If so, mark the feature as Done. Single source of truth — used by both
- * agent_service and pipeline_service to avoid race conditions.
+ * Check if all tasks for a feature are complete (complete or skipped).
+ * If so, mark the feature as done. Single source of truth — used by both
+ * sdk_session_service and pipeline_service to avoid race conditions.
  */
 export async function check_and_complete_feature(
     feature_id: string,

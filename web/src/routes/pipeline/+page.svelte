@@ -2,7 +2,7 @@
     import { api } from '$lib/api/client';
     import { ErrorBanner, LoadingSpinner, Tabs } from '$lib/components';
     import { toast_store } from '$lib/stores/toast.svelte';
-    import type { AgentRun, PipelineStatus, Task } from '$lib/types';
+    import type { AgentSession, PipelineStatus, Task } from '$lib/types';
     import { use_event_stream } from '$lib/utils/event-stream.svelte';
     import { onMount } from 'svelte';
     import CurrentTask from './CurrentTask.svelte';
@@ -14,7 +14,7 @@
 
     let pipeline = $state<PipelineStatus | null>(null);
     let queue = $state<Task[]>([]);
-    let history = $state<AgentRun[]>([]);
+    let history = $state<AgentSession[]>([]);
     let history_total = $state(0);
     let history_page = $state(1);
     let history_total_pages = $state(1);
@@ -45,7 +45,7 @@
 
     async function load_queue() {
         try {
-            queue = await api.list_tasks(undefined, 'Approved');
+            queue = await api.list_tasks(undefined, 'approved');
         }
         catch (err) {
             console.error('Failed to load queue:', err);

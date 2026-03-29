@@ -2,7 +2,7 @@
     import { ConfirmModal, ErrorBanner } from '$lib/components';
     import { Badge, Button } from '$lib/components/primitives';
     import { toast_store } from '$lib/stores/toast.svelte';
-    import type { Feature, AbbreviatedAgentProcess, TaskRow } from '$lib/types';
+    import type { Feature, TaskRow } from '$lib/types';
     import TaskList from './TaskList.svelte';
     import ResourceList from './ResourceList.svelte';
     import FeatureEditForm from './FeatureEditForm.svelte';
@@ -11,7 +11,6 @@
 
     interface Props {
         feature: Feature
-        agent_info: { processes: AbbreviatedAgentProcess[], pipeline: { state: string, is_active_feature: boolean, current_task_id: string | null } } | null
         on_submit: (feature_id: string) => Promise<void>
         on_delete: (feature_id: string) => Promise<void>
         on_duplicate: () => Promise<void>
@@ -19,7 +18,7 @@
         on_back: () => void
     }
 
-    let { feature, agent_info, on_submit, on_delete, on_duplicate, on_update, on_back }: Props = $props();
+    let { feature, on_submit, on_delete, on_duplicate, on_update, on_back }: Props = $props();
 
     const handlers = create_feature_handlers(() => feature, () => on_update());
 
@@ -28,12 +27,8 @@
     let show_submit_confirm = $state(false);
     let show_delete_confirm = $state(false);
 
-    const procs = $derived(agent_info?.processes ?? []);
-    const is_agent_active = $derived(
-        procs.some((p) => p.status === 'running') || (agent_info?.pipeline.is_active_feature && agent_info?.pipeline.state === 'running')
-    );
-    const agent_label = $derived(procs.some((p) => p.status === 'running' && p.type === 'manager') ? 'Manager Processing' : 'Ralph Working');
     const tasks = $derived<TaskRow[]>(feature.tasks ?? []);
+    const is_agent_active = $derived(feature.status === 'in_progress' && tasks.some((t) => t.status === 'in_progress'));
 
     async function handle_save_edit(data: Parameters<typeof handlers.save_edit>[0]) {
         await handlers.save_edit(data);
@@ -76,7 +71,7 @@
         {#if is_agent_active}
             <div class="agent-running-indicator" role="status" aria-live="polite">
                 <span class="icon spin" style="font-size:12px; color:var(--accent)">progress_activity</span>
-                <span style="font-size:0.65rem; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:0.05em">{agent_label}</span>
+                <span style="font-size:0.65rem; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:0.05em">Agent Working</span>
             </div>
         {/if}
     </div>
@@ -116,6 +111,13 @@
                 <div class="detail-section">
                     <h4><span class="icon" style="font-size:16px">description</span> Description</h4>
                     <div class="description-text">{feature.description ?? 'No description'}</div>
+                </div>
+                <div class="detail-section">
+                    <h4><span class="icon" style="font-size:16px">smart_toy</span> Engine & Model</h4>
+                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap">
+                        <Badge variant="info">Planning: {feature.planning_model || 'Not set'}</Badge>
+                        <Badge variant="info">Execution: {feature.execution_model || 'Not set'}</Badge>
+                    </div>
                 </div>
                 <ResourceList {feature} on_add_resource={handlers.add_resource} on_remove_resource={handlers.remove_resource} />
             </div>

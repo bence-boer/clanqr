@@ -36,6 +36,8 @@ export function create_feature_handlers(get_feature: () => Feature, on_update: (
         save_edit: async (data: {
             title: string
             description?: string | null
+            planning_model: string | null
+            execution_model: string | null
         }) => {
             await safe_call(() => api.update_feature(get_feature().id, data as Partial<Feature>), 'update feature', on_update);
         }

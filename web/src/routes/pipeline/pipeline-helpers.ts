@@ -22,7 +22,7 @@ export async function reorder_queue(task_ids: string[], reload: () => Promise<vo
 
 export async function remove_from_queue(task_id: string, reload: () => Promise<void>): Promise<void> {
     try {
-        await api.update_task(task_id, { status: 'Pending_Approval' } as never);
+        await api.update_task(task_id, { status: 'queued' } as never);
         await reload();
     }
     catch (err) {

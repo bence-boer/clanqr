@@ -8,6 +8,7 @@
         "test": "bun test"
     },
     "dependencies": {
+        "@github/copilot-sdk": "^0.2.0",
         "@hono/zod-validator": "^0.7.6",
         "@supabase/supabase-js": "^2",
         "hono": "^4",
