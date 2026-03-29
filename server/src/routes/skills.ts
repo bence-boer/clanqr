@@ -12,7 +12,7 @@ const link_schema = z.object({
 
 export const skills_routes = new Hono<AppBindings>()
 
-    // List all available Copilot CLI skills (scanned from ~/.copilot/skills/)
+    // List all available Copilot CLI skills (scanned from ~/.agents/skills/)
     .get('/', async (context) => {
         const skills = await skill_service.list_skills();
         // Omit full content from list — content is large
