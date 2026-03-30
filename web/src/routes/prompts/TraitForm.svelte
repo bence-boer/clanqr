@@ -1,6 +1,6 @@
 <script lang="ts">
     import { Button, Input, Select, Textarea } from '$lib/components/primitives';
-    import type { AgentType, TraitTarget } from '$lib/types';
+    import type { TraitTarget } from '$lib/types';
 
     interface TraitFormData {
         name: string

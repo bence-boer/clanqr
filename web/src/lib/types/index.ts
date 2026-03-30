@@ -114,7 +114,8 @@ export type ActivityEvent = ExtractSuccess<InferResponseType<Client['api']['acti
 // ── Chat ──────────────────────────────────────────────────────────────────────
 export type ChatMessage = {
     id: string
-    role: 'user' | 'assistant' | 'system'
+    session_id?: string
+    role: string
     content: string
     created_at: string
 };

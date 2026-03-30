@@ -25,7 +25,6 @@ class PromptService {
             }
 
             const content = readFileSync(file_path, 'utf-8');
-            const agent_type = role as Enums<'agent_type'>;
 
             const { error } = await supabase.from('prompts').upsert(
                 { agent_type: role as Enums<'agent_type'>, content, updated_at: new Date().toISOString() },
