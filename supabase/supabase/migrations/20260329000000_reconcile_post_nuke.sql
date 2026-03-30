@@ -102,7 +102,12 @@ CREATE INDEX IF NOT EXISTS idx_audit_events_type ON audit_events(event_type);
 CREATE INDEX IF NOT EXISTS idx_audit_events_created ON audit_events(created_at);
 
 -- ============================================================================
--- 5. Record this migration in the tracking table
+-- 5. Fix prompts unique constraint for upsert support
+-- ============================================================================
+CREATE UNIQUE INDEX IF NOT EXISTS idx_prompts_agent_type ON prompts(agent_type);
+
+-- ============================================================================
+-- 6. Record this migration in the tracking table
 -- ============================================================================
 INSERT INTO supabase_migrations.schema_migrations (version, name)
 VALUES ('20260329000000', 'reconcile_post_nuke')
