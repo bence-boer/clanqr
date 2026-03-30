@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import type { AppBindings } from '../middleware/supabase';
-import { validate_uuid_params } from '../middleware/validate_params';
+import { validate_uuid_params, require_param } from '../middleware/validate_params';
 import { logger } from '../utils/logger';
 
 const create_project_schema = z.object({
@@ -36,7 +36,7 @@ export const projects_routes = new Hono<AppBindings>()
     // Get single project with features
     .get('/:id', validate_uuid_params('id'), async (context) => {
         const supabase = context.get('supabase');
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
 
         const { data, error } = await supabase
             .from('projects')
@@ -76,7 +76,7 @@ export const projects_routes = new Hono<AppBindings>()
 
     // Update project
     .patch('/:id', validate_uuid_params('id'), zValidator('json', update_project_schema), async (context) => {
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
         const parsed = context.req.valid('json');
 
         const supabase = context.get('supabase');
@@ -96,7 +96,7 @@ export const projects_routes = new Hono<AppBindings>()
 
     // Delete project
     .delete('/:id', validate_uuid_params('id'), async (context) => {
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
         const supabase = context.get('supabase');
 
         const { error } = await supabase.from('projects').delete().eq('id', id);

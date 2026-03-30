@@ -56,12 +56,15 @@ export type Database = {
           id: string
           model: string | null
           prompt_tokens: number
+          sdk_session_id: string | null
           session_id: string | null
           source: string
           started_at: string | null
           status: Database["public"]["Enums"]["agent_session_status"]
           summary: string | null
           task_id: string | null
+          tokens_input: number
+          tokens_output: number
           updated_at: string
           user_id: string | null
         }
@@ -79,12 +82,15 @@ export type Database = {
           id?: string
           model?: string | null
           prompt_tokens?: number
+          sdk_session_id?: string | null
           session_id?: string | null
           source?: string
           started_at?: string | null
           status?: Database["public"]["Enums"]["agent_session_status"]
           summary?: string | null
           task_id?: string | null
+          tokens_input?: number
+          tokens_output?: number
           updated_at?: string
           user_id?: string | null
         }
@@ -102,12 +108,15 @@ export type Database = {
           id?: string
           model?: string | null
           prompt_tokens?: number
+          sdk_session_id?: string | null
           session_id?: string | null
           source?: string
           started_at?: string | null
           status?: Database["public"]["Enums"]["agent_session_status"]
           summary?: string | null
           task_id?: string | null
+          tokens_input?: number
+          tokens_output?: number
           updated_at?: string
           user_id?: string | null
         }
@@ -194,16 +203,108 @@ export type Database = {
           },
         ]
       }
+      audit_events: {
+        Row: {
+          agent_type: string | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          event_type: string
+          id: string
+          payload: Json | null
+          session_id: string
+        }
+        Insert: {
+          agent_type?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          event_type: string
+          id?: string
+          payload?: Json | null
+          session_id: string
+        }
+        Update: {
+          agent_type?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          event_type?: string
+          id?: string
+          payload?: Json | null
+          session_id?: string
+        }
+        Relationships: []
+      }
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          role: string
+          session_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+          session_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          model: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          model?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          model?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       features: {
         Row: {
           auto_approve: boolean
           created_at: string
           created_by: string | null
           description: string | null
+          execution_model: string | null
           id: string
           last_error: string | null
           manager_retry_count: number
+          model: string | null
           on_task_failure: Database["public"]["Enums"]["failure_behavior"]
+          planning_model: string | null
           project_id: string
           status: Database["public"]["Enums"]["feature_status"]
           task_timeout_minutes: number
@@ -215,10 +316,13 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          execution_model?: string | null
           id?: string
           last_error?: string | null
           manager_retry_count?: number
+          model?: string | null
           on_task_failure?: Database["public"]["Enums"]["failure_behavior"]
+          planning_model?: string | null
           project_id: string
           status?: Database["public"]["Enums"]["feature_status"]
           task_timeout_minutes?: number
@@ -230,10 +334,13 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          execution_model?: string | null
           id?: string
           last_error?: string | null
           manager_retry_count?: number
+          model?: string | null
           on_task_failure?: Database["public"]["Enums"]["failure_behavior"]
+          planning_model?: string | null
           project_id?: string
           status?: Database["public"]["Enums"]["feature_status"]
           task_timeout_minutes?: number
@@ -552,12 +659,14 @@ export type Database = {
       }
       tasks: {
         Row: {
+          agent_log: string | null
           created_at: string
           created_by: string | null
           description: string
           feature_id: string
           id: string
           max_retries: number
+          model: string | null
           output: string | null
           retry_count: number
           sort_order: number
@@ -566,12 +675,14 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          agent_log?: string | null
           created_at?: string
           created_by?: string | null
           description: string
           feature_id: string
           id?: string
           max_retries?: number
+          model?: string | null
           output?: string | null
           retry_count?: number
           sort_order?: number
@@ -580,12 +691,14 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          agent_log?: string | null
           created_at?: string
           created_by?: string | null
           description?: string
           feature_id?: string
           id?: string
           max_retries?: number
+          model?: string | null
           output?: string | null
           retry_count?: number
           sort_order?: number

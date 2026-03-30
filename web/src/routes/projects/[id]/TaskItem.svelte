@@ -14,6 +14,7 @@
         editing: boolean
         editing_title: string
         editing_desc: string
+        editing_model: string | null
         saving: boolean
         on_approve: (task_id: string) => Promise<void>
         on_spawn: (task_id: string) => Promise<void>
@@ -62,6 +63,7 @@
             task_id={task.id}
             bind:title={editing_title}
             bind:description={editing_desc}
+            bind:model={editing_model}
             {saving}
             on_save={on_save_edit}
             on_cancel={on_cancel_edit}

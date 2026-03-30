@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import type { AppBindings } from '../middleware/supabase';
-import { validate_uuid_params } from '../middleware/validate_params';
+import { validate_uuid_params, require_param } from '../middleware/validate_params';
 import { pipeline_service } from '../services/pipeline_service';
 import { event_bus } from '../services/event_bus';
 import { logger } from '../utils/logger';
@@ -57,7 +57,7 @@ export const tasks_routes = new Hono<AppBindings>()
     // Get single task
     .get('/:id', validate_uuid_params('id'), async (context) => {
         const supabase = context.get('supabase');
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
 
         const { data, error } = await supabase
             .from('tasks')
@@ -74,7 +74,7 @@ export const tasks_routes = new Hono<AppBindings>()
 
     // Update task
     .patch('/:id', validate_uuid_params('id'), zValidator('json', update_task_schema), async (context) => {
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
         const parsed = context.req.valid('json');
 
         const supabase = context.get('supabase');
@@ -99,7 +99,7 @@ export const tasks_routes = new Hono<AppBindings>()
 
     // Approve task
     .post('/:id/approve', validate_uuid_params('id'), async (context) => {
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
         const supabase = context.get('supabase');
 
         // Check current task state first
@@ -150,7 +150,7 @@ export const tasks_routes = new Hono<AppBindings>()
 
     // Bulk approve all tasks for a feature
     .post('/approve-all/:feature_id', validate_uuid_params('feature_id'), async (context) => {
-        const feature_id = context.req.param('feature_id');
+        const feature_id = require_param(context, 'feature_id');
         const supabase = context.get('supabase');
 
         const { data, error } = await supabase
@@ -211,7 +211,7 @@ export const tasks_routes = new Hono<AppBindings>()
 
     // Delete a task (only if not in-progress or complete)
     .delete('/:id', validate_uuid_params('id'), async (context) => {
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
         const supabase = context.get('supabase');
 
         const { data: task, error: fetch_error } = await supabase
