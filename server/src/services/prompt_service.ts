@@ -3,12 +3,11 @@ import { join } from 'path';
 import { create_supabase_client } from '../db';
 import type { TypedSupabaseClient } from '../db';
 import type { Enums } from '../database.types';
-import { WORKSPACE_DIR } from '../env';
 import { resolve_task_traits, resolve_feature_traits } from './trait_service';
 import { skill_service } from './skill_service';
 import { logger } from '../utils/logger';
 
-const PROMPTS_DIR = join(WORKSPACE_DIR, '..', 'prompts');
+const PROMPTS_DIR = join(import.meta.dir, '../../../agents/prompts');
 
 const PROMPT_FILES: Record<string, string> = {
     manager: join(PROMPTS_DIR, 'manager.md'),

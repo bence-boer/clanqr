@@ -6,23 +6,21 @@ import { TEST_SEED } from '../test-utils';
 function setup() {
     const seed = {
         ...JSON.parse(JSON.stringify(TEST_SEED)),
-        agent_sessions: [
+        chat_sessions: [
             {
                 id: '00000000-0000-0000-0000-000000000030',
-                agent_type: 'chat',
-                summary: 'Test Chat',
+                title: 'Test Chat',
                 model: 'claude-sonnet-4.5',
-                status: 'completed',
                 created_at: '2026-01-01T00:00:00Z',
                 updated_at: '2026-01-01T00:00:00Z'
             }
         ],
-        agent_events: [
+        chat_messages: [
             {
                 id: '00000000-0000-0000-0000-000000000031',
-                agent_session_id: '00000000-0000-0000-0000-000000000030',
-                event_type: 'chat.message',
-                event_data: { role: 'user', content: 'Hello' },
+                session_id: '00000000-0000-0000-0000-000000000030',
+                role: 'user',
+                content: 'Hello',
                 created_at: '2026-01-01T00:00:00Z'
             }
         ]
@@ -117,29 +115,7 @@ describe('chat routes', () => {
                 headers: auth_headers()
             });
             expect(res.status).toBe(200);
-            expect(store.agent_sessions.length).toBe(0);
-        });
-    });
-
-    describe('POST /api/chat/sessions/:id/cancel', () => {
-        it('returns cancel status', async () => {
-            const { app } = setup();
-            const res = await app.request(`/api/chat/sessions/${SESSION_ID}/cancel`, {
-                method: 'POST',
-                headers: auth_headers()
-            });
-            expect(res.status).toBe(200);
-            const body = (await res.json()) as Record<string, unknown>;
-            expect(typeof body.success).toBe('boolean');
-        });
-
-        it('rejects invalid UUID', async () => {
-            const { app } = setup();
-            const res = await app.request(`/api/chat/sessions/${INVALID_UUID}/cancel`, {
-                method: 'POST',
-                headers: auth_headers()
-            });
-            expect(res.status).toBe(400);
+            expect(store.chat_sessions.length).toBe(0);
         });
     });
 

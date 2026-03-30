@@ -1,6 +1,5 @@
 <script lang="ts">
     import { Button, Input, Select, Textarea } from '$lib/components/primitives';
-
     import type { TraitTarget } from '$lib/types';
 
     interface TraitFormData {

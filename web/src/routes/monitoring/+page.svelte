@@ -11,13 +11,13 @@
     import MonitoringFilters from './MonitoringFilters.svelte';
     import { get_empty_state } from './monitoring.utils';
 
-    let agent_status = $state<Record<string, AgentProcess>>({});
+    let agents = $state<AgentProcess[]>([]);
     let pipeline = $state<PipelineStatus | null>(null);
     let selected_log = $state<string | null>(null);
     let log_content = $state('');
     let loading = $state(true);
     let stopping = $state(false);
-    let filtered_entries = $state<[string, AgentProcess][]>([]);
+    let filtered_agents = $state<AgentProcess[]>([]);
 
     async function load_status() {
         try {
@@ -25,7 +25,7 @@
                 api.agent_status(),
                 api.pipeline_status()
             ]);
-            agent_status = status;
+            agents = Array.isArray(status) ? status : [];
             pipeline = pipeline_data;
         }
         catch (error) {
@@ -53,25 +53,11 @@
 
     async function view_log(task_id: string) {
         selected_log = task_id;
-        try {
-            const result = await api.agent_log(task_id);
-            log_content = result.log || 'No log output yet.';
-        }
-        catch {
-            toast_store.error('Failed to load log');
-            log_content = 'Failed to load log.';
-        }
+        log_content = 'Agent logs are now available via task artifacts.';
     }
 
     async function refresh_log() {
         if (!selected_log) return;
-        try {
-            const result = await api.agent_log(selected_log);
-            log_content = result.log || 'No log output yet.';
-        }
-        catch {
-            /* silent — live tail will retry */
-        }
     }
 
     async function stop_all() {
@@ -88,29 +74,18 @@
         }
     }
 
-    async function stop_agent(task_id: string) {
-        try {
-            await api.stop_agent(task_id);
-            await load_status();
-        }
-        catch {
-            toast_store.error('Failed to stop agent');
-        }
-    }
-
     function close_log() {
         selected_log = null;
         log_content = '';
     }
 
-    let entries = $derived(Object.entries(agent_status));
-    let running_count = $derived(entries.filter(([, a]) => a.status === 'running').length);
-    let completed_count = $derived(entries.filter(([, a]) => a.status === 'completed').length);
-    let failed_count = $derived(entries.filter(([, a]) => a.status === 'failed').length);
+    let running_count = $derived(agents.filter((a) => a.status === 'running').length);
+    let completed_count = $derived(agents.filter((a) => a.status === 'completed').length);
+    let failed_count = $derived(agents.filter((a) => a.status === 'failed').length);
     let selected_agent_status = $derived(
-        selected_log ? agent_status[selected_log]?.status ?? null : null
+        selected_log ? agents.find((a) => a.id === selected_log)?.status ?? null : null
     );
-    let empty_state = $derived(entries.length === 0 ? get_empty_state(pipeline) : null);
+    let empty_state = $derived(agents.length === 0 ? get_empty_state(pipeline) : null);
 </script>
 
 <div class="page" aria-busy={loading}>
@@ -134,13 +109,13 @@
         <StatCard icon="error" value={failed_count} label="Failed" />
     </div>
 
-    {#if !loading && entries.length > 0}
-        <MonitoringFilters {entries} bind:filtered_entries />
+    {#if !loading && agents.length > 0}
+        <MonitoringFilters {agents} bind:filtered_agents />
     {/if}
 
     {#if loading}
         <LoadingSpinner label="Loading agent status..." />
-    {:else if entries.length === 0}
+    {:else if agents.length === 0}
         {#if empty_state}
             <EmptyState
                 icon={empty_state.icon}
@@ -150,14 +125,14 @@
                 action_href={empty_state.action_href}
             />
         {/if}
-    {:else if filtered_entries.length === 0}
+    {:else if filtered_agents.length === 0}
         <EmptyState
             icon="filter_alt"
             message="No matching agents."
             detail="Try adjusting your filters or search query."
         />
     {:else}
-        <AgentGrid entries={filtered_entries} on_view_log={view_log} on_stop_agent={stop_agent} />
+        <AgentGrid agents={filtered_agents} on_view_log={view_log} />
     {/if}
 
     {#if selected_log}

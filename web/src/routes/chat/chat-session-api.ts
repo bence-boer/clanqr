@@ -91,11 +91,6 @@ export async function update_session_title(session_id: string, title: string): P
     }
 }
 
-export async function cancel_chat_stream(session_id: string): Promise<void> {
-    try {
-        await api.cancel_chat(session_id);
-    }
-    catch {
-        /* best-effort cancel */
-    }
+export async function cancel_chat_stream(): Promise<void> {
+    // SDK-backed chat doesn't support mid-stream cancellation
 }

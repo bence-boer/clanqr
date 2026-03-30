@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import type { AppBindings } from '../middleware/supabase';
-import { validate_uuid_params } from '../middleware/validate_params';
+import { validate_uuid_params, require_param } from '../middleware/validate_params';
 import { validate_resource_url } from '../utils/ssrf';
 import { event_bus } from '../services/event_bus';
 import { logger } from '../utils/logger';
@@ -11,6 +11,8 @@ const create_feature_schema = z.object({
     project_id: z.string().uuid(),
     title: z.string().min(1).max(200),
     description: z.string().max(10_000).nullable().optional(),
+    planning_model: z.string().min(1).nullable().optional(),
+    execution_model: z.string().min(1).nullable().optional(),
     on_task_failure: z.enum(['stop', 'retry', 'skip']).default('stop'),
     auto_approve: z.boolean().default(false),
     task_timeout_minutes: z.number().int().min(1).max(120).default(30),
@@ -25,6 +27,8 @@ const update_feature_schema = z.object({
     title: z.string().min(1).max(255).optional(),
     description: z.string().nullable().optional(),
     status: z.enum(['draft', 'submitted', 'in_progress', 'done', 'cancelled']).optional(),
+    planning_model: z.string().nullable().optional(),
+    execution_model: z.string().nullable().optional(),
     on_task_failure: z.enum(['stop', 'retry', 'skip']).optional(),
     auto_approve: z.boolean().optional(),
     task_timeout_minutes: z.number().int().min(1).max(120).optional()
@@ -58,7 +62,7 @@ export const features_routes = new Hono<AppBindings>()
     // Get single feature with resources and tasks
     .get('/:id', validate_uuid_params('id'), async (context) => {
         const supabase = context.get('supabase');
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
 
         const { data, error } = await supabase
             .from('features')
@@ -140,7 +144,7 @@ export const features_routes = new Hono<AppBindings>()
 
     // Update feature
     .patch('/:id', validate_uuid_params('id'), zValidator('json', update_feature_schema), async (context) => {
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
         const parsed = context.req.valid('json');
 
         const supabase = context.get('supabase');
@@ -163,7 +167,7 @@ export const features_routes = new Hono<AppBindings>()
 
     // Submit feature for implementation
     .post('/:id/submit', validate_uuid_params('id'), async (context) => {
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
         const supabase = context.get('supabase');
 
         const { data, error } = await supabase
@@ -185,7 +189,7 @@ export const features_routes = new Hono<AppBindings>()
 
     // Delete feature
     .delete('/:id', validate_uuid_params('id'), async (context) => {
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
         const supabase = context.get('supabase');
 
         const { error } = await supabase.from('features').delete().eq('id', id);
@@ -199,7 +203,7 @@ export const features_routes = new Hono<AppBindings>()
 
     // Add resource to feature
     .post('/:id/resources', validate_uuid_params('id'), zValidator('json', z.object({ url: z.string().url(), title: z.string().optional() })), async (context) => {
-        const feature_id = context.req.param('id');
+        const feature_id = require_param(context, 'id');
         const parsed = context.req.valid('json');
 
         if (!validate_resource_url(parsed.url)) {
@@ -222,7 +226,7 @@ export const features_routes = new Hono<AppBindings>()
 
     // Delete resource
     .delete('/:feature_id/resources/:id', validate_uuid_params('feature_id', 'id'), async (context) => {
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
         const supabase = context.get('supabase');
 
         const { error } = await supabase.from('resources').delete().eq('id', id);

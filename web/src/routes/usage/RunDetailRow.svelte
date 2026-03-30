@@ -1,12 +1,12 @@
 <script lang="ts">
     import { resolve } from '$app/paths';
-    import type { AgentRun } from '$lib/types';
+    import type { AgentSession } from '$lib/types';
 
     interface Props {
-        run: AgentRun
+        run: AgentSession
         format_duration: (ms: number | null) => string
         format_datetime: (date_str: string | null) => string
-        get_tokens: (run: AgentRun) => number
+        get_tokens: (run: AgentSession) => number
     }
 
     let { run, format_duration, format_datetime, get_tokens }: Props = $props();

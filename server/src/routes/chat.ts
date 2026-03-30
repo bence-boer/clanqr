@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppBindings } from '../middleware/supabase';
-import { validate_uuid_params } from '../middleware/validate_params';
-import { chat_service } from '../services/chat_service';
+import { validate_uuid_params, require_param } from '../middleware/validate_params';
+import { chat_send } from '../services/sdk_session_service';
 import { logger } from '../utils/logger';
 
 const create_session_schema = z.object({
@@ -21,21 +21,17 @@ const send_message_schema = z.object({
 
 export const chat_routes = new Hono<AppBindings>()
 
-    // List chat sessions (agent_sessions with agent_type='chat')
     .get('/sessions', async (context) => {
         const supabase = context.get('supabase');
         const { data, error } = await supabase
-            .from('agent_sessions')
-            .select('id, summary, model, created_at, updated_at')
-            .eq('agent_type', 'chat')
+            .from('chat_sessions')
+            .select('id, title, model, created_at, updated_at')
             .order('updated_at', { ascending: false });
 
         if (error) return context.json({ error: 'Failed to fetch sessions' }, 500);
-        // Map summary → title for backward compatibility
-        return context.json((data ?? []).map((s) => ({ ...s, title: s.summary })));
+        return context.json(data ?? []);
     })
 
-    // Create chat session
     .post('/sessions', async (context) => {
         const body = await context.req.json();
         const result = create_session_schema.safeParse(body);
@@ -43,10 +39,9 @@ export const chat_routes = new Hono<AppBindings>()
 
         const supabase = context.get('supabase');
         const { data, error } = await supabase
-            .from('agent_sessions')
+            .from('chat_sessions')
             .insert({
-                agent_type: 'chat',
-                summary: result.data.title ?? null,
+                title: result.data.title ?? null,
                 model: result.data.model ?? 'claude-sonnet-4.5'
             })
             .select()
@@ -56,53 +51,41 @@ export const chat_routes = new Hono<AppBindings>()
             logger.error('Failed to create session', { route: 'POST /api/chat/sessions', error: String(error) });
             return context.json({ error: 'Failed to create session' }, 500);
         }
-        return context.json({ ...data, title: data.summary }, 201);
+        return context.json(data, 201);
     })
 
-    // Get session with messages (agent_events with event_type='chat.message')
     .get('/sessions/:id', validate_uuid_params('id'), async (context) => {
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
         const supabase = context.get('supabase');
 
         const { data: session, error } = await supabase
-            .from('agent_sessions')
+            .from('chat_sessions')
             .select('*')
             .eq('id', id)
-            .eq('agent_type', 'chat')
             .single();
 
         if (error || !session) return context.json({ error: 'Session not found' }, 404);
 
         const { data: messages } = await supabase
-            .from('agent_events')
+            .from('chat_messages')
             .select('*')
-            .eq('agent_session_id', id)
-            .eq('event_type', 'chat.message')
+            .eq('session_id', id)
             .order('created_at', { ascending: true });
 
-        const formatted_messages = (messages ?? []).map((m) => ({
-            id: m.id,
-            session_id: id,
-            role: ((m.event_data as Record<string, unknown>)?.role as string) ?? 'user',
-            content: ((m.event_data as Record<string, unknown>)?.content as string) ?? '',
-            created_at: m.created_at
-        }));
-        return context.json({ ...session, title: session.summary, chat_messages: formatted_messages });
+        return context.json({ ...session, chat_messages: messages ?? [] });
     })
 
-    // Update session (rename)
     .patch('/sessions/:id', validate_uuid_params('id'), async (context) => {
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
         const body = await context.req.json();
         const result = update_session_schema.safeParse(body);
         if (!result.success) return context.json({ error: result.error.format() }, 400);
 
         const supabase = context.get('supabase');
         const { data, error } = await supabase
-            .from('agent_sessions')
-            .update({ summary: result.data.title })
+            .from('chat_sessions')
+            .update({ title: result.data.title })
             .eq('id', id)
-            .eq('agent_type', 'chat')
             .select()
             .single();
 
@@ -113,16 +96,15 @@ export const chat_routes = new Hono<AppBindings>()
         return context.json(data);
     })
 
-    // Delete session
     .delete('/sessions/:id', validate_uuid_params('id'), async (context) => {
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
         const supabase = context.get('supabase');
 
         const { error } = await supabase
-            .from('agent_sessions')
+            .from('chat_sessions')
             .delete()
-            .eq('id', id)
-            .eq('agent_type', 'chat');
+            .eq('id', id);
+
         if (error) {
             logger.error('Failed to delete session', { route: 'DELETE /api/chat/sessions/:id', id, error: String(error) });
             return context.json({ error: 'Failed to delete session' }, 500);
@@ -130,23 +112,17 @@ export const chat_routes = new Hono<AppBindings>()
         return context.json({ success: true });
     })
 
-    // Send message (SSE streaming response)
     .post('/sessions/:id/send', validate_uuid_params('id'), async (context) => {
-        const session_id = context.req.param('id');
+        const session_id = require_param(context, 'id');
         const supabase = context.get('supabase');
 
         const { data: session } = await supabase
-            .from('agent_sessions')
+            .from('chat_sessions')
             .select('id, model')
             .eq('id', session_id)
-            .eq('agent_type', 'chat')
             .single();
 
         if (!session) return context.json({ error: 'Session not found' }, 404);
-
-        if (chat_service.is_busy(session_id)) {
-            return context.json({ error: 'This chat session is already processing a message' }, 409);
-        }
 
         const body = await context.req.json();
         const result = send_message_schema.safeParse(body);
@@ -158,19 +134,26 @@ export const chat_routes = new Hono<AppBindings>()
             new ReadableStream({
                 async start(controller) {
                     const encoder = new TextEncoder();
-
                     try {
-                        await chat_service.send_message(
-                            session_id,
-                            content,
-                            model ?? session.model ?? 'claude-sonnet-4.5',
-                            supabase,
-                            (chunk) => {
-                                controller.enqueue(
-                                    encoder.encode(`data: ${JSON.stringify({ chunk })}\n\n`)
-                                );
-                            }
+                        const sdk_result = await chat_send(session_id, model ?? session.model, content);
+                        controller.enqueue(
+                            encoder.encode(`data: ${JSON.stringify({ chunk: sdk_result.content })}\n\n`)
                         );
+
+                        await supabase.from('chat_messages').insert({
+                            session_id,
+                            role: 'user',
+                            content
+                        });
+                        await supabase.from('chat_messages').insert({
+                            session_id,
+                            role: 'assistant',
+                            content: sdk_result.content
+                        });
+                        await supabase.from('chat_sessions').update({
+                            updated_at: new Date().toISOString()
+                        }).eq('id', session_id);
+
                         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
                     }
                     catch (err) {
@@ -192,11 +175,4 @@ export const chat_routes = new Hono<AppBindings>()
                 }
             }
         );
-    })
-
-    // Cancel active chat in a session
-    .post('/sessions/:id/cancel', validate_uuid_params('id'), async (context) => {
-        const session_id = context.req.param('id');
-        const cancelled = chat_service.cancel(session_id);
-        return context.json({ success: cancelled });
     });

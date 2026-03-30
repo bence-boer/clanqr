@@ -23,6 +23,7 @@
     let editing_task_id = $state<string | null>(null);
     let editing_task_title = $state('');
     let editing_task_desc = $state('');
+    let editing_task_model = $state<string | null>(null);
     let saving_task = $state(false);
     let managing_task_id: string | null = $state(null);
     const auto_approve = $derived(feature.auto_approve ?? false);
@@ -46,6 +47,7 @@
         editing_task_id = task.id;
         editing_task_title = task.title || '';
         editing_task_desc = task.description;
+        editing_task_model = task.model ?? null;
     }
 
     async function save_edit() {
@@ -139,6 +141,7 @@
                     editing={editing_task_id === task.id}
                     bind:editing_title={editing_task_title}
                     bind:editing_desc={editing_task_desc}
+                    bind:editing_model={editing_task_model}
                     saving={saving_task}
                     on_approve={handle_guarded_approve}
                     {on_spawn}

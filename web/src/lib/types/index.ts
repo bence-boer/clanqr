@@ -51,7 +51,7 @@ export type InviteStatus = {
 
 // ── Pipeline / Agents ─────────────────────────────────────────────────────────
 export type PipelineStatus = ExtractSuccess<InferResponseType<Client['api']['agents']['queue']['$get']>>;
-export type AgentProcess = ExtractSuccess<InferResponseType<Client['api']['agents']['status']['$get']>>[string];
+export type AgentProcess = ExtractSuccess<InferResponseType<Client['api']['agents']['status']['$get']>>[number];
 
 // Agents/Feature returns abbreviated processes
 export type AbbreviatedAgentProcess = {
@@ -114,7 +114,8 @@ export type ActivityEvent = ExtractSuccess<InferResponseType<Client['api']['acti
 // ── Chat ──────────────────────────────────────────────────────────────────────
 export type ChatMessage = {
     id: string
-    role: 'user' | 'assistant' | 'system'
+    session_id?: string
+    role: string
     content: string
     created_at: string
 };

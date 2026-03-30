@@ -123,7 +123,7 @@
 
     async function stop_generating() {
         if (!active_session || !is_streaming) return;
-        await cancel_chat_stream(active_session.id);
+        await cancel_chat_stream();
         if (streaming_content) {
             messages = [...messages, build_message('assistant', streaming_content + '\n\n*(generation stopped)*')];
         }

@@ -95,6 +95,9 @@
                     {feature.tasks?.length ?? 0}
                     <span class="icon" style="font-size:12px;margin-left:0.5rem">link</span>
                     {feature.resources?.length ?? 0}
+                    {#if feature.execution_model}
+                        <Badge variant="info" style="margin-left:0.5rem; transform: scale(0.9)">{feature.execution_model}</Badge>
+                    {/if}
                 </div>
             </button>
         {/each}

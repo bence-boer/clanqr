@@ -1,7 +1,7 @@
 <script lang="ts">
     import { EmptyState } from '$lib/components';
     import { Badge, Pagination, Select } from '$lib/components/primitives';
-    import type { AgentRun } from '$lib/types';
+    import type { AgentSession } from '$lib/types';
     import HistoryItem from './HistoryItem.svelte';
 
     let {
@@ -14,7 +14,7 @@
         onpage_change,
         onretry
     }: {
-        history: AgentRun[]
+        history: AgentSession[]
         history_total: number
         history_page: number
         history_total_pages: number
