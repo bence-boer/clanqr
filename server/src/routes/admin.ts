@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { admin_middleware } from '../middleware/auth';
 import { get_metrics } from '../middleware/metrics';
 import type { AppBindings } from '../middleware/supabase';
-import { validate_uuid_params } from '../middleware/validate_params';
+import { validate_uuid_params, require_param } from '../middleware/validate_params';
 import { check_last_admin, get_users } from '../services/admin_service';
 import { logger } from '../utils/logger';
 
@@ -30,7 +30,7 @@ export const admin_routes = new Hono<AppBindings>()
 
     // Update a user's role
     .patch('/:id', validate_uuid_params('id'), zValidator('json', update_role_schema), async (context) => {
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
         const current_user_id = context.get('user_id');
 
         const { role } = context.req.valid('json');
@@ -64,7 +64,7 @@ export const admin_routes = new Hono<AppBindings>()
 
     // Revoke all sessions for a user
     .delete('/:id/sessions', validate_uuid_params('id'), async (context) => {
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
         const current_user_id = context.get('user_id');
 
         if (id === current_user_id) {
@@ -82,7 +82,7 @@ export const admin_routes = new Hono<AppBindings>()
 
     // Delete a user
     .delete('/:id', validate_uuid_params('id'), async (context) => {
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
         const current_user_id = context.get('user_id');
 
         if (id === current_user_id) {

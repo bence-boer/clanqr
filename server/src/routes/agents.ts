@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import type { AppBindings } from '../middleware/supabase';
-import { validate_uuid_params } from '../middleware/validate_params';
+import { validate_uuid_params, require_param } from '../middleware/validate_params';
 import { pipeline_service } from '../services/pipeline_service';
 import { get_session_concurrency } from '../services/session_pool_service';
 import { plan_feature } from '../services/sdk_session_service';
@@ -90,7 +90,7 @@ export const agents_routes = new Hono<AppBindings>()
     })
 
     .post('/plan/:feature_id', validate_uuid_params('feature_id'), async (context) => {
-        const feature_id = context.req.param('feature_id');
+        const feature_id = require_param(context, 'feature_id');
         const supabase = context.get('supabase');
 
         const { data: feature, error } = await supabase
