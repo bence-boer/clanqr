@@ -1,21 +1,5 @@
 import { test, expect } from "@playwright/test";
-
-/**
- * E2E tests for agent execution flow.
- * Tests the complete interaction between backend and agent CLIs:
- * 1. Direct task pipeline: create task → approve → execute → verify
- * 2. Full manager flow: submit feature → manager creates tasks → auto-approve → execute → verify
- *
- * These tests require:
- * - Running server (port 3001) and web (port 5173)
- * - Docker daemon running (for agent containers)
- * - GitHub CLI authenticated (`gh auth status`)
- * - Uses gpt-4.1 for copilot CLI
- */
-
-const API = "http://localhost:3001";
-const DEV_SESSION_COOKIE = "dev-admin-session-token";
-const AUTH = { Cookie: `session=${DEV_SESSION_COOKIE}` };
+import { API_URL, ADMIN_AUTH_HEADERS as AUTH, DEV_ADMIN_SESSION_COOKIE } from "./helpers";
 
 // Long timeouts for agent execution
 const AGENT_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
@@ -39,6 +23,8 @@ async function poll_until(
 // ── 1. Direct task pipeline: create → approve → execute → verify ──────────────
 
 test.describe.serial("agent execution: direct task pipeline", () => {
+    test.skip(!!process.env.CI, "Agent execution tests require Docker + Copilot CLI + long timeouts");
+
     let project_id: string;
     let feature_id: string;
     let task_id: string;
@@ -46,12 +32,12 @@ test.describe.serial("agent execution: direct task pipeline", () => {
     test.afterAll(async ({ request }) => {
         // Clean up test data
         if (project_id) {
-            await request.delete(`${API}/api/projects/${project_id}`, { headers: AUTH }).catch(() => {});
+            await request.delete(`${API_URL}/api/projects/${project_id}`, { headers: AUTH }).catch(() => {});
         }
     });
 
     test("1. create test project", async ({ request }) => {
-        const res = await request.post(`${API}/api/projects`, {
+        const res = await request.post(`${API_URL}/api/projects`, {
             headers: AUTH,
             data: {
                 name: "E2E Agent Execution Test",
@@ -65,7 +51,7 @@ test.describe.serial("agent execution: direct task pipeline", () => {
     });
 
     test("2. create feature with gpt-4.1 model", async ({ request }) => {
-        const res = await request.post(`${API}/api/features`, {
+        const res = await request.post(`${API_URL}/api/features`, {
             headers: AUTH,
             data: {
                 project_id,
@@ -84,7 +70,7 @@ test.describe.serial("agent execution: direct task pipeline", () => {
     });
 
     test("3. create task directly via API", async ({ request }) => {
-        const res = await request.post(`${API}/api/tasks`, {
+        const res = await request.post(`${API_URL}/api/tasks`, {
             headers: AUTH,
             data: {
                 feature_id,
@@ -104,7 +90,7 @@ test.describe.serial("agent execution: direct task pipeline", () => {
     });
 
     test("4. approve task and trigger pipeline", async ({ request }) => {
-        const res = await request.post(`${API}/api/tasks/${task_id}/approve`, {
+        const res = await request.post(`${API_URL}/api/tasks/${task_id}/approve`, {
             headers: AUTH,
         });
         expect(res.ok()).toBeTruthy();
@@ -117,7 +103,7 @@ test.describe.serial("agent execution: direct task pipeline", () => {
 
         await poll_until(
             async () => {
-                const res = await request.get(`${API}/api/tasks/${task_id}`, {
+                const res = await request.get(`${API_URL}/api/tasks/${task_id}`, {
                     headers: AUTH,
                 });
                 if (!res.ok()) return false;
@@ -132,7 +118,7 @@ test.describe.serial("agent execution: direct task pipeline", () => {
         );
 
         // Verify final state
-        const res = await request.get(`${API}/api/tasks/${task_id}`, {
+        const res = await request.get(`${API_URL}/api/tasks/${task_id}`, {
             headers: AUTH,
         });
         expect(res.ok()).toBeTruthy();
@@ -141,7 +127,7 @@ test.describe.serial("agent execution: direct task pipeline", () => {
     });
 
     test("6. verify agent_runs record exists", async ({ request }) => {
-        const res = await request.get(`${API}/api/usage/history?type=ralph&per_page=50`, {
+        const res = await request.get(`${API_URL}/api/usage/history?type=ralph&per_page=50`, {
             headers: AUTH,
         });
         expect(res.ok()).toBeTruthy();
@@ -159,7 +145,7 @@ test.describe.serial("agent execution: direct task pipeline", () => {
     });
 
     test("7. verify feature can be retrieved with completed task", async ({ request }) => {
-        const res = await request.get(`${API}/api/features/${feature_id}`, {
+        const res = await request.get(`${API_URL}/api/features/${feature_id}`, {
             headers: AUTH,
         });
         expect(res.ok()).toBeTruthy();
@@ -174,17 +160,19 @@ test.describe.serial("agent execution: direct task pipeline", () => {
 // ── 2. Full manager flow: submit → manager creates tasks → execute ────────────
 
 test.describe.serial("agent execution: full manager flow", () => {
+    test.skip(!!process.env.CI, "Agent execution tests require Docker + Copilot CLI + long timeouts");
+
     let project_id: string;
     let feature_id: string;
 
     test.afterAll(async ({ request }) => {
         if (project_id) {
-            await request.delete(`${API}/api/projects/${project_id}`, { headers: AUTH }).catch(() => {});
+            await request.delete(`${API_URL}/api/projects/${project_id}`, { headers: AUTH }).catch(() => {});
         }
     });
 
     test("1. create project for manager flow", async ({ request }) => {
-        const res = await request.post(`${API}/api/projects`, {
+        const res = await request.post(`${API_URL}/api/projects`, {
             headers: AUTH,
             data: {
                 name: "E2E Manager Flow Test",
@@ -197,7 +185,7 @@ test.describe.serial("agent execution: full manager flow", () => {
     });
 
     test("2. create feature with auto_approve enabled", async ({ request }) => {
-        const res = await request.post(`${API}/api/features`, {
+        const res = await request.post(`${API_URL}/api/features`, {
             headers: AUTH,
             data: {
                 project_id,
@@ -221,7 +209,7 @@ test.describe.serial("agent execution: full manager flow", () => {
     });
 
     test("3. submit feature to trigger manager", async ({ request }) => {
-        const res = await request.post(`${API}/api/features/${feature_id}/submit`, {
+        const res = await request.post(`${API_URL}/api/features/${feature_id}/submit`, {
             headers: AUTH,
         });
         expect(res.ok()).toBeTruthy();
@@ -234,7 +222,7 @@ test.describe.serial("agent execution: full manager flow", () => {
 
         await poll_until(
             async () => {
-                const res = await request.get(`${API}/api/features/${feature_id}`, {
+                const res = await request.get(`${API_URL}/api/features/${feature_id}`, {
                     headers: AUTH,
                 });
                 if (!res.ok()) return false;
@@ -250,7 +238,7 @@ test.describe.serial("agent execution: full manager flow", () => {
             "manager to create tasks"
         );
 
-        const res = await request.get(`${API}/api/features/${feature_id}`, {
+        const res = await request.get(`${API_URL}/api/features/${feature_id}`, {
             headers: AUTH,
         });
         const feature = await res.json();
@@ -262,7 +250,7 @@ test.describe.serial("agent execution: full manager flow", () => {
 
         await poll_until(
             async () => {
-                const res = await request.get(`${API}/api/features/${feature_id}`, {
+                const res = await request.get(`${API_URL}/api/features/${feature_id}`, {
                     headers: AUTH,
                 });
                 if (!res.ok()) return false;
@@ -281,7 +269,7 @@ test.describe.serial("agent execution: full manager flow", () => {
     });
 
     test("6. verify feature reached Done or has completed tasks", async ({ request }) => {
-        const res = await request.get(`${API}/api/features/${feature_id}`, {
+        const res = await request.get(`${API_URL}/api/features/${feature_id}`, {
             headers: AUTH,
         });
         expect(res.ok()).toBeTruthy();
@@ -295,7 +283,7 @@ test.describe.serial("agent execution: full manager flow", () => {
     });
 
     test("7. verify agent_runs records for manager and ralph", async ({ request }) => {
-        const res = await request.get(`${API}/api/usage/history?per_page=50`, {
+        const res = await request.get(`${API_URL}/api/usage/history?per_page=50`, {
             headers: AUTH,
         });
         expect(res.ok()).toBeTruthy();

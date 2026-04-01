@@ -1,60 +1,59 @@
-name: Deploy to Pi
+name: Deploy Production
 
 on:
   push:
     branches: ['main']
   workflow_dispatch:
 
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  APP_DIR: /home/scoy/Developer/repositories/ralph-agent-workspace
+  BUN_INSTALL: /home/scoy/.bun
+
 jobs:
   sanity-checks:
     runs-on: [self-hosted, pi]
-    env:
-      APP_DIR: /home/scoy/Developer/repositories/ralph-agent-workspace
-      BUN_INSTALL: /home/scoy/.bun
     steps:
       - name: Pull latest code
         run: |
-          git config --global --add safe.directory $APP_DIR
           cd $APP_DIR
-          git fetch https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/bence-boer/ralph-agent-workspace.git main
+          git fetch https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git main
           git reset --hard FETCH_HEAD
 
       - name: Install dependencies
         run: |
           export PATH="$BUN_INSTALL/bin:$PATH"
-          cd $APP_DIR
-          cd server && bun install --frozen-lockfile
-          cd ../web && bun install --frozen-lockfile
+          cd $APP_DIR/server && bun install --frozen-lockfile
+          cd $APP_DIR/web && bun install --frozen-lockfile
 
       - name: Type-check server
         run: |
           export PATH="$BUN_INSTALL/bin:$PATH"
-          cd $APP_DIR/server
-          bun run --bun tsc --noEmit
+          cd $APP_DIR/server && bun run --bun tsc --noEmit
 
       - name: Type-check web
         run: |
           export PATH="$BUN_INSTALL/bin:$PATH"
-          cd $APP_DIR/web
-          bun run --bun check
+          cd $APP_DIR/web && bun run --bun check
 
       - name: Run unit tests
         run: |
           export PATH="$BUN_INSTALL/bin:$PATH"
-          cd $APP_DIR/server
-          bun test
+          cd $APP_DIR/server && bun test
 
   deploy:
     needs: sanity-checks
     runs-on: [self-hosted, pi]
+    environment: production
     env:
-      APP_DIR: /home/scoy/Developer/repositories/ralph-agent-workspace
-      BUN_INSTALL: /home/scoy/.bun
       ENV_FILE: /etc/ralph-api.env
     steps:
       - name: Setup environment
         run: |
-          cat > /tmp/ralph-api.env << EOF
+          cat > /tmp/ralph-api-prod.env << 'ENVEOF'
           SUPABASE_URL=http://172.17.0.1:54321
           SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
           GITHUB_CLIENT_ID=${{ secrets.GITHUB_CLIENT_ID }}
@@ -62,12 +61,14 @@ jobs:
           GITHUB_CALLBACK_URL=${{ secrets.GITHUB_CALLBACK_URL }}
           ADMIN_GITHUB_IDS=${{ secrets.ADMIN_GITHUB_IDS }}
           SESSION_SECRET=${{ secrets.SESSION_SECRET }}
+          ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
           FRONTEND_URL=${{ secrets.FRONTEND_URL }}
           NODE_ENV=production
           PORT=3001
-          EOF
-          sudo cp /tmp/ralph-api.env $ENV_FILE
+          ENVEOF
+          sudo cp /tmp/ralph-api-prod.env $ENV_FILE
           sudo chmod 600 $ENV_FILE
+          rm -f /tmp/ralph-api-prod.env
 
       - name: Build agent base image
         run: |
@@ -81,21 +82,20 @@ jobs:
           for f in supabase/supabase/migrations/*.sql; do
             version=$(basename "$f" | cut -d_ -f1)
             name=$(basename "${f%.sql}" | sed 's/^[0-9]*_//')
-            already=$(docker exec supabase_db_supabase psql -U postgres -d postgres -tAc \
+            already=$(docker exec ralph_dev_db psql -U postgres -d postgres -tAc \
               "SELECT 1 FROM supabase_migrations.schema_migrations WHERE version='$version'" 2>/dev/null)
             if [ "$already" != "1" ]; then
               echo "Applying migration: $(basename "$f")"
-              # Wrap migration + version record in a single transaction for atomicity
               if ! {
                 echo "BEGIN;"
                 sed '/^BEGIN;$/d; /^COMMIT;$/d' "$f"
                 echo "INSERT INTO supabase_migrations.schema_migrations (version, name) VALUES ('${version}', '${name}');"
                 echo "COMMIT;"
-              } | docker exec -i supabase_db_supabase psql -U postgres -d postgres --set ON_ERROR_STOP=1; then
-                echo "❌ Migration failed: $(basename "$f") — transaction rolled back"
+              } | docker exec -i ralph_dev_db psql -U postgres -d postgres --set ON_ERROR_STOP=1; then
+                echo "::error::Migration failed: $(basename "$f")"
                 exit 1
               fi
-              echo "✅ Applied: $(basename "$f")"
+              echo "Applied: $(basename "$f")"
             fi
           done
 
@@ -106,41 +106,31 @@ jobs:
           PUBLIC_API_URL= bun --bun run build
 
       - name: Trigger service restart
-        run: |
-          touch $APP_DIR/.deploy-trigger
+        run: touch $APP_DIR/.deploy-trigger
 
       - name: Verify deployment
         run: |
           echo "Waiting for services to restart..."
           sleep 10
-
-          # The CI runner is containerized, so "localhost" refers to the container,
-          # not the host where services run. Use --network host to reach host ports.
           CURL="docker run --rm --network host curlimages/curl --max-time 5"
-
-          # Check API health
           for i in 1 2 3 4 5 6; do
             if $CURL -sf http://localhost:3001/health > /dev/null 2>&1; then
               echo "✅ API is healthy"
               break
             fi
             if [ "$i" -eq 6 ]; then
-              echo "❌ API health check failed after 30 seconds"
-              $CURL -s http://localhost:3001/health || true
+              echo "::error::API health check failed after 30 seconds"
               exit 1
             fi
             sleep 5
           done
-
-          # Check web health
           for i in 1 2 3 4 5 6; do
             if $CURL -sf http://localhost:3002 > /dev/null 2>&1; then
               echo "✅ Web is healthy"
               break
             fi
             if [ "$i" -eq 6 ]; then
-              echo "❌ Web health check failed after 30 seconds"
-              $CURL -s http://localhost:3002 || true
+              echo "::error::Web health check failed after 30 seconds"
               exit 1
             fi
             sleep 5
@@ -150,15 +140,11 @@ jobs:
         if: failure()
         run: |
           cd $APP_DIR
-          echo "⚠️ Deploy failed, rolling back to previous commit..."
+          echo "::warning::Rolling back to previous commit"
           git reset --hard HEAD~1
-
           export PATH="$BUN_INSTALL/bin:$PATH"
           cd server && bun install --frozen-lockfile
           cd ../web && bun install --frozen-lockfile
-          PUBLIC_API_URL="" bun --bun run build
-
-          # Restart services with previous version
-          touch $APP_DIR/.deploy-trigger
-
-          echo "Rollback complete. Note: database migrations cannot be automatically rolled back."
+          PUBLIC_API_URL= bun --bun run build
+          cd ..
+          touch .deploy-trigger
