@@ -136,6 +136,7 @@ export const login_routes = new Hono<AppBindings>()
                     return context.redirect(`${env.FRONTEND_URL}?auth_error=registration_required`);
                 }
 
+                // Validate invite exists, is unused, and not expired
                 const { data: invite } = await db
                     .from('invite_tokens')
                     .select('id, used_by, expires_at')
@@ -172,12 +173,23 @@ export const login_routes = new Hono<AppBindings>()
             return context.redirect(`${env.FRONTEND_URL}?auth_error=user_creation_failed`);
         }
 
-        // Mark invite as used if this was an invited registration
+        // Mark invite as used atomically with optimistic locking
         if (invite_token_value && !existing_user) {
-            await db
+            const { data: claimed, error: claim_error } = await db
                 .from('invite_tokens')
                 .update({ used_by: user.id, used_at: new Date().toISOString() })
-                .eq('token', invite_token_value);
+                .eq('token', invite_token_value)
+                .is('used_by', null)
+                .select('id')
+                .single();
+
+            if (claim_error || !claimed) {
+                // Race condition: invite was claimed by another user between validation and now
+                // Roll back: delete the just-created user since they shouldn't exist without a valid invite
+                await db.from('sessions').delete().eq('user_id', user.id);
+                await db.from('users').delete().eq('id', user.id);
+                return context.redirect(`${env.FRONTEND_URL}?auth_error=registration_required`);
+            }
         }
 
         // Create session with encrypted token

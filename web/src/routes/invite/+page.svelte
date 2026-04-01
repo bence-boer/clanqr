@@ -17,13 +17,26 @@
         expired: 'This invite link has expired.'
     };
 
-    function start_login() {
+    async function start_login() {
         const token = $page.url.searchParams.get('token');
         if (!token) return;
 
-        // Store invite token in cookie so the OAuth callback can find it
-        document.cookie = `invite_token=${encodeURIComponent(token)}; path=/; max-age=600; SameSite=Lax`;
         invite_state = 'redirecting';
+
+        // Set invite token via server-side endpoint (HttpOnly cookie)
+        const resp = await fetch(`${BASE_URL}/api/auth/invite/accept`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ token })
+        });
+
+        if (!resp.ok) {
+            invite_state = 'error';
+            error_reason = 'not_found';
+            return;
+        }
+
         window.location.href = `${BASE_URL}/api/auth/login/github`;
     }
 
