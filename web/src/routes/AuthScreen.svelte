@@ -30,6 +30,9 @@
         if (err.includes('user_creation_failed') || err.includes('session_creation_failed')) {
             return { title: 'Server Error', message: 'Could not create your account. Please try again.' };
         }
+        if (err.includes('registration_required')) {
+            return { title: 'Invite Required', message: 'You need an invite to join. Ask an admin for an invite link.' };
+        }
         if (err.includes('network') || err.includes('fetch') || err.includes('failed to fetch')) {
             return { title: 'Network Error', message: 'Could not reach the server. Check your connection and try again.' };
         }

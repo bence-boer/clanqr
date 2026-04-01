@@ -7,6 +7,7 @@ import type { AppBindings } from '../middleware/supabase';
 import { validate_uuid_params, require_param } from '../middleware/validate_params';
 import { check_last_admin, get_users } from '../services/admin_service';
 import { logger } from '../utils/logger';
+import { invite_routes } from './admin_invites';
 
 const update_role_schema = z.object({
     role: z.enum(['admin', 'member'])
@@ -14,6 +15,7 @@ const update_role_schema = z.object({
 
 export const admin_routes = new Hono<AppBindings>()
     .use('*', admin_middleware())
+    .route('/invites', invite_routes)
 
     // List all users
     .get('/', async (context) => {
