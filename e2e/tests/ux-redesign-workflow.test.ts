@@ -1,25 +1,5 @@
-import { test, expect, type Page } from "@playwright/test";
-
-/**
- * Comprehensive E2E workflow test for the UX redesign.
- * Validates: project → feature → resource → submit → monitoring.
- * Uses gpt-4.1 model and dev-admin-session-token for auth.
- */
-
-const API = "http://localhost:3001";
-const DEV_SESSION_COOKIE = "dev-admin-session-token";
-const AUTH = { Cookie: `session=${DEV_SESSION_COOKIE}` };
-
-async function authenticate(page: Page) {
-    await page.context().addCookies([
-        {
-            name: "session",
-            value: DEV_SESSION_COOKIE,
-            domain: "localhost",
-            path: "/",
-        },
-    ]);
-}
+import { test, expect } from "@playwright/test";
+import { API_URL, ADMIN_AUTH_HEADERS as AUTH, DEV_ADMIN_SESSION_COOKIE as DEV_SESSION_COOKIE, authenticate } from "./helpers";
 
 const cleanup_project_ids: string[] = [];
 
@@ -30,7 +10,7 @@ test.describe.serial("complete project→feature→resource workflow (API)", () 
     let feature_id: string;
 
     test("1. create project", async ({ request }) => {
-        const res = await request.post(`${API}/api/projects`, {
+        const res = await request.post(`${API_URL}/api/projects`, {
             headers: AUTH,
             data: {
                 name: "E2E UX Redesign Test",
@@ -45,7 +25,7 @@ test.describe.serial("complete project→feature→resource workflow (API)", () 
     });
 
     test("2. create feature with gpt-4.1 model", async ({ request }) => {
-        const res = await request.post(`${API}/api/features`, {
+        const res = await request.post(`${API_URL}/api/features`, {
             headers: AUTH,
             data: {
                 project_id,
@@ -64,7 +44,7 @@ test.describe.serial("complete project→feature→resource workflow (API)", () 
     });
 
     test("3. add resource to feature", async ({ request }) => {
-        const res = await request.post(`${API}/api/features/${feature_id}/resources`, {
+        const res = await request.post(`${API_URL}/api/features/${feature_id}/resources`, {
             headers: AUTH,
             data: {
                 url: "https://example.com/test-resource",
@@ -75,7 +55,7 @@ test.describe.serial("complete project→feature→resource workflow (API)", () 
     });
 
     test("4. verify feature has resource", async ({ request }) => {
-        const res = await request.get(`${API}/api/features/${feature_id}`, {
+        const res = await request.get(`${API_URL}/api/features/${feature_id}`, {
             headers: AUTH,
         });
         expect(res.ok()).toBeTruthy();
@@ -85,7 +65,7 @@ test.describe.serial("complete project→feature→resource workflow (API)", () 
     });
 
     test("5. submit feature", async ({ request }) => {
-        const res = await request.post(`${API}/api/features/${feature_id}/submit`, {
+        const res = await request.post(`${API_URL}/api/features/${feature_id}/submit`, {
             headers: AUTH,
         });
         expect(res.ok()).toBeTruthy();
@@ -94,7 +74,7 @@ test.describe.serial("complete project→feature→resource workflow (API)", () 
     });
 
     test("6. verify activity feed returns data", async ({ request }) => {
-        const res = await request.get(`${API}/api/activity/feed?limit=10`, {
+        const res = await request.get(`${API_URL}/api/activity/feed?limit=10`, {
             headers: AUTH,
         });
         expect(res.ok()).toBeTruthy();
@@ -103,7 +83,7 @@ test.describe.serial("complete project→feature→resource workflow (API)", () 
     });
 
     test("7. verify agent status endpoint", async ({ request }) => {
-        const res = await request.get(`${API}/api/agents/status`, {
+        const res = await request.get(`${API_URL}/api/agents/status`, {
             headers: AUTH,
         });
         expect(res.ok()).toBeTruthy();
@@ -112,7 +92,7 @@ test.describe.serial("complete project→feature→resource workflow (API)", () 
     });
 
     test("8. update feature config", async ({ request }) => {
-        const res = await request.patch(`${API}/api/features/${feature_id}`, {
+        const res = await request.patch(`${API_URL}/api/features/${feature_id}`, {
             headers: AUTH,
             data: { description: "Updated description for E2E test" },
         });
@@ -122,14 +102,14 @@ test.describe.serial("complete project→feature→resource workflow (API)", () 
     });
 
     test("9. delete feature", async ({ request }) => {
-        const res = await request.delete(`${API}/api/features/${feature_id}`, {
+        const res = await request.delete(`${API_URL}/api/features/${feature_id}`, {
             headers: AUTH,
         });
         expect(res.ok()).toBeTruthy();
     });
 
     test("10. delete project", async ({ request }) => {
-        const res = await request.delete(`${API}/api/projects/${project_id}`, {
+        const res = await request.delete(`${API_URL}/api/projects/${project_id}`, {
             headers: AUTH,
         });
         expect(res.ok()).toBeTruthy();
@@ -144,12 +124,12 @@ test.describe("UI workflow: dashboard → projects → pipeline → monitoring �
     let cleanup_project_id: string | null = null;
 
     test.beforeEach(async ({ page }) => {
-        await authenticate(page);
+        await authenticate(page, true);
     });
 
     test.afterAll(async ({ request }) => {
         if (cleanup_project_id) {
-            await request.delete(`${API}/api/projects/${cleanup_project_id}`, { headers: AUTH });
+            await request.delete(`${API_URL}/api/projects/${cleanup_project_id}`, { headers: AUTH });
         }
     });
 
@@ -181,7 +161,7 @@ test.describe("UI workflow: dashboard → projects → pipeline → monitoring �
 
     test("create project via API, verify UI shows it", async ({ page, request }) => {
         test.setTimeout(60_000);
-        const res = await request.post(`${API}/api/projects`, {
+        const res = await request.post(`${API_URL}/api/projects`, {
             headers: AUTH,
             data: { name: "E2E UI Test Project", description: "Created for UI verification" },
         });
@@ -248,7 +228,7 @@ test.describe("UI workflow: dashboard → projects → pipeline → monitoring �
 
 test.describe("UX redesign feature validation", () => {
     test.beforeEach(async ({ page }) => {
-        await authenticate(page);
+        await authenticate(page, true);
     });
 
     test("dashboard has collapsible system health", async ({ page }) => {
@@ -290,14 +270,14 @@ test.describe("UX redesign feature validation", () => {
 
 test.describe("new API endpoints", () => {
     test("activity feed endpoint works", async ({ request }) => {
-        const res = await request.get(`${API}/api/activity/feed`, { headers: AUTH });
+        const res = await request.get(`${API_URL}/api/activity/feed`, { headers: AUTH });
         expect(res.ok()).toBeTruthy();
         const events = await res.json();
         expect(Array.isArray(events)).toBeTruthy();
     });
 
     test("activity feed respects limit", async ({ request }) => {
-        const res = await request.get(`${API}/api/activity/feed?limit=5`, { headers: AUTH });
+        const res = await request.get(`${API_URL}/api/activity/feed?limit=5`, { headers: AUTH });
         expect(res.ok()).toBeTruthy();
         const events = await res.json();
         expect(Array.isArray(events)).toBeTruthy();
@@ -305,14 +285,14 @@ test.describe("new API endpoints", () => {
     });
 
     test("chat session creation and rename", async ({ request }) => {
-        const create_res = await request.post(`${API}/api/chat/sessions`, {
+        const create_res = await request.post(`${API_URL}/api/chat/sessions`, {
             headers: AUTH,
             data: { title: "Rename Test" },
         });
         expect(create_res.ok()).toBeTruthy();
         const session = await create_res.json();
 
-        const rename_res = await request.patch(`${API}/api/chat/sessions/${session.id}`, {
+        const rename_res = await request.patch(`${API_URL}/api/chat/sessions/${session.id}`, {
             headers: AUTH,
             data: { title: "Renamed Session" },
         });
@@ -320,11 +300,11 @@ test.describe("new API endpoints", () => {
         const renamed = await rename_res.json();
         expect(renamed.title).toBe("Renamed Session");
 
-        await request.delete(`${API}/api/chat/sessions/${session.id}`, { headers: AUTH });
+        await request.delete(`${API_URL}/api/chat/sessions/${session.id}`, { headers: AUTH });
     });
 
     test("admin metrics endpoint works", async ({ request }) => {
-        const res = await request.get(`${API}/api/admin/metrics`, { headers: AUTH });
+        const res = await request.get(`${API_URL}/api/admin/metrics`, { headers: AUTH });
         expect(res.ok()).toBeTruthy();
         const metrics = await res.json();
         expect(typeof metrics).toBe("object");
@@ -335,6 +315,6 @@ test.describe("new API endpoints", () => {
 
 test.afterAll(async ({ request }) => {
     for (const id of cleanup_project_ids) {
-        await request.delete(`${API}/api/projects/${id}`, { headers: AUTH }).catch(() => {});
+        await request.delete(`${API_URL}/api/projects/${id}`, { headers: AUTH }).catch(() => {});
     }
 });

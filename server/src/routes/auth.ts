@@ -13,7 +13,7 @@ export const auth_routes = new Hono<AppBindings>()
         const token = getCookie(context, 'session');
         if (!token) return context.json({ authenticated: false, user: null });
 
-        if (env.NODE_ENV !== 'development' && is_dev_session_token(token)) {
+        if (env.NODE_ENV === 'production' && is_dev_session_token(token)) {
             deleteCookie(context, 'session', { path: '/' });
             return context.json({ authenticated: false, user: null });
         }
@@ -30,7 +30,7 @@ export const auth_routes = new Hono<AppBindings>()
             return context.json({ authenticated: false, user: null });
         }
 
-        if (env.NODE_ENV !== 'development' && is_dev_user_id(session.user_id)) {
+        if (env.NODE_ENV === 'production' && is_dev_user_id(session.user_id)) {
             deleteCookie(context, 'session', { path: '/' });
             return context.json({ authenticated: false, user: null });
         }
@@ -58,7 +58,7 @@ export const auth_routes = new Hono<AppBindings>()
             .select('*', { count: 'exact', head: true });
         const is_setup = (count ?? 0) > 0;
 
-        if (token && env.NODE_ENV !== 'development' && is_dev_session_token(token)) {
+        if (token && env.NODE_ENV === 'production' && is_dev_session_token(token)) {
             deleteCookie(context, 'session', { path: '/' });
             return context.json({ is_setup, authenticated: false, user: null });
         }
@@ -71,7 +71,7 @@ export const auth_routes = new Hono<AppBindings>()
                 .gt('expires_at', new Date().toISOString())
                 .single();
             if (data) {
-                if (env.NODE_ENV !== 'development' && is_dev_user_id(data.user_id)) {
+                if (env.NODE_ENV === 'production' && is_dev_user_id(data.user_id)) {
                     deleteCookie(context, 'session', { path: '/' });
                     return context.json({ is_setup, authenticated: false, user: null });
                 }

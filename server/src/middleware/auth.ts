@@ -18,7 +18,7 @@ export function auth_middleware() {
             return context.json({ error: 'Authentication required' }, 401);
         }
 
-        if (env.NODE_ENV !== 'development' && is_dev_session_token(token)) {
+        if (env.NODE_ENV === 'production' && is_dev_session_token(token)) {
             deleteCookie(context, 'session', { path: '/' });
             return context.json({ error: 'Session expired' }, 401);
         }
@@ -37,7 +37,7 @@ export function auth_middleware() {
             return context.json({ error: 'Session expired' }, 401);
         }
 
-        if (env.NODE_ENV !== 'development' && is_dev_user_id(session.user_id)) {
+        if (env.NODE_ENV === 'production' && is_dev_user_id(session.user_id)) {
             deleteCookie(context, 'session', { path: '/' });
             return context.json({ error: 'Session expired' }, 401);
         }

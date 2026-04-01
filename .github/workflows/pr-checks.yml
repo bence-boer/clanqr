@@ -1,0 +1,51 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: ['develop', 'main']
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  BUN_INSTALL: /home/scoy/.bun
+
+jobs:
+  checks:
+    runs-on: [self-hosted, pi]
+    steps:
+      - name: Checkout PR code
+        run: |
+          WORK_DIR="/tmp/ralph-pr-${{ github.run_id }}"
+          mkdir -p "$WORK_DIR"
+          cd "$WORK_DIR"
+          git init
+          git fetch --depth=1 https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git ${{ github.event.pull_request.head.sha }}
+          git checkout FETCH_HEAD
+          echo "WORK_DIR=$WORK_DIR" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: |
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          cd $WORK_DIR/server && bun install --frozen-lockfile
+          cd $WORK_DIR/web && bun install --frozen-lockfile
+
+      - name: Type-check server
+        run: |
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          cd $WORK_DIR/server && bun run --bun tsc --noEmit
+
+      - name: Type-check web
+        run: |
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          cd $WORK_DIR/web && bun run --bun check
+
+      - name: Run unit tests
+        run: |
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          cd $WORK_DIR/server && bun test
+
+      - name: Cleanup
+        if: always()
+        run: rm -rf "/tmp/ralph-pr-${{ github.run_id }}"
