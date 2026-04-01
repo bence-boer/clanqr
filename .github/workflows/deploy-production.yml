@@ -99,6 +99,18 @@ jobs:
             fi
           done
 
+      - name: Ensure database roles and permissions
+        run: |
+          DB_EXEC="docker exec ralph_dev_db psql -U postgres -d postgres"
+          # Create service_role if it doesn't exist (needed for PostgREST JWT)
+          $DB_EXEC -c "CREATE ROLE service_role NOLOGIN BYPASSRLS;" 2>/dev/null || true
+          $DB_EXEC -c "GRANT ALL ON SCHEMA public TO service_role;"
+          $DB_EXEC -c "GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;"
+          $DB_EXEC -c "GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;"
+          $DB_EXEC -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO service_role;"
+          $DB_EXEC -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO service_role;"
+          $DB_EXEC -c "NOTIFY pgrst, 'reload schema';"
+
       - name: Build web
         run: |
           export PATH="$BUN_INSTALL/bin:$PATH"
