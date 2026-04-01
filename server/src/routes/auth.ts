@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { deleteCookie, getCookie } from 'hono/cookie';
+import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { env } from '../env';
 import type { AppBindings } from '../middleware/supabase';
 import { is_dev_session_token, is_dev_user_id } from '../utils/dev_sessions';
@@ -114,6 +114,36 @@ export const auth_routes = new Hono<AppBindings>()
         }
 
         return context.json({ valid: true, expires_at: invite.expires_at });
+    })
+
+    // Server-side invite cookie setter (sets HttpOnly cookie the frontend can't)
+    .post('/invite/accept', async (context) => {
+        const body = await context.req.json().catch(() => null);
+        const token = body?.token;
+        if (!token || typeof token !== 'string') {
+            return context.json({ error: 'missing_token' }, 400);
+        }
+
+        const db = context.get('supabase');
+        const { data: invite, error } = await db
+            .from('invite_tokens')
+            .select('id, used_by, expires_at')
+            .eq('token', token)
+            .single();
+
+        if (error || !invite || invite.used_by || new Date(invite.expires_at) < new Date()) {
+            return context.json({ error: 'invalid_token' }, 400);
+        }
+
+        setCookie(context, 'invite_token', token, {
+            httpOnly: true,
+            secure: env.NODE_ENV === 'production',
+            sameSite: 'Lax',
+            path: '/',
+            maxAge: 600
+        });
+
+        return context.json({ ok: true });
     })
 
     // Mount registration and login sub-routes

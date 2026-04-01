@@ -82,6 +82,7 @@ const app = new Hono<AppBindings>()
     // Status check uses global rate limit only (called on every page load)
     .use('/api/auth/register/*', rate_limit(10, 60_000))
     .use('/api/auth/login/*', rate_limit(10, 60_000))
+    .use('/api/auth/invite/*', rate_limit(10, 60_000))
     .route('/api/auth', auth_routes)
     // Protected API routes
     .use('/api/*', auth_middleware())
