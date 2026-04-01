@@ -120,6 +120,11 @@ export class MockQueryBuilder {
         return this;
     }
 
+    returns() {
+        // Runtime no-op — Supabase uses this for TypeScript type narrowing only
+        return this;
+    }
+
     single(): Promise<QueryResult> {
         this.single_mode = true;
         return this.execute();

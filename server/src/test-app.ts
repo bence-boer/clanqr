@@ -48,11 +48,11 @@ export function create_test_app(seed?: MockStore): {
                 return context.json({ error: 'Session expired' }, 401);
             }
 
-            const passkeys = store.passkeys ?? [];
-            const passkey = passkeys.find((p) => p.id === session.passkey_id);
+            const users = store.users ?? [];
+            const user = users.find((u) => u.id === session.user_id);
 
-            context.set('passkey_id', session.passkey_id as string);
-            context.set('role', (passkey?.role as string) ?? 'user');
+            context.set('user_id', session.user_id as string);
+            context.set('role', (user?.role as string) ?? 'member');
             await next();
         })
     );

@@ -1,0 +1,144 @@
+name: Deploy Test
+
+on:
+  push:
+    branches: ['develop']
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-test
+  cancel-in-progress: false
+
+env:
+  APP_DIR: /home/scoy/Developer/repositories/ralph-test
+  BUN_INSTALL: /home/scoy/.bun
+
+jobs:
+  sanity-checks:
+    runs-on: [self-hosted, pi]
+    steps:
+      - name: Pull latest code
+        run: |
+          cd $APP_DIR
+          git fetch https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git develop
+          git reset --hard FETCH_HEAD
+
+      - name: Install dependencies
+        run: |
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          cd $APP_DIR/server && bun install --frozen-lockfile
+          cd $APP_DIR/web && bun install --frozen-lockfile
+
+      - name: Type-check server
+        run: |
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          cd $APP_DIR/server && bun run --bun tsc --noEmit
+
+      - name: Type-check web
+        run: |
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          cd $APP_DIR/web && bun run --bun check
+
+      - name: Run unit tests
+        run: |
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          cd $APP_DIR/server && bun test
+
+  deploy:
+    needs: sanity-checks
+    runs-on: [self-hosted, pi]
+    environment: test
+    env:
+      ENV_FILE: /etc/ralph-api-test.env
+    steps:
+      - name: Ensure test database is running
+        run: |
+          cd $APP_DIR
+          docker compose -f docker-compose.test.yml up -d
+          for i in $(seq 1 30); do
+            if docker exec ralph_test_db pg_isready -U postgres > /dev/null 2>&1; then
+              echo "✅ Test database is ready"
+              break
+            fi
+            if [ "$i" -eq 30 ]; then
+              echo "::error::Test database failed to start"
+              exit 1
+            fi
+            sleep 1
+          done
+
+      - name: Setup environment
+        run: |
+          cat > /tmp/ralph-api-test.env << 'ENVEOF'
+          SUPABASE_URL=http://172.17.0.1:54331
+          SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
+          GITHUB_CLIENT_ID=${{ secrets.GITHUB_CLIENT_ID }}
+          GITHUB_CLIENT_SECRET=${{ secrets.GITHUB_CLIENT_SECRET }}
+          GITHUB_CALLBACK_URL=${{ secrets.GITHUB_CALLBACK_URL }}
+          ADMIN_GITHUB_IDS=${{ secrets.ADMIN_GITHUB_IDS }}
+          SESSION_SECRET=${{ secrets.SESSION_SECRET }}
+          ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
+          FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+          NODE_ENV=test
+          PORT=3011
+          LOG_LEVEL=debug
+          ENVEOF
+          sudo cp /tmp/ralph-api-test.env $ENV_FILE
+          sudo chmod 600 $ENV_FILE
+          rm -f /tmp/ralph-api-test.env
+
+      - name: Reset and seed test database
+        run: |
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          cd $APP_DIR
+          chmod +x scripts/test-db-reset.sh
+          ./scripts/test-db-reset.sh
+
+      - name: Build web
+        run: |
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          cd $APP_DIR/web
+          PUBLIC_API_URL= bun --bun run build
+
+      - name: Trigger service restart
+        run: touch $APP_DIR/.deploy-trigger-test
+
+      - name: Verify deployment
+        run: |
+          echo "Waiting for services to restart..."
+          sleep 10
+          CURL="docker run --rm --network host curlimages/curl --max-time 5"
+          for i in 1 2 3 4 5 6; do
+            if $CURL -sf http://localhost:3011/health > /dev/null 2>&1; then
+              echo "✅ Test API is healthy"
+              break
+            fi
+            if [ "$i" -eq 6 ]; then
+              echo "::error::Test API health check failed"
+              exit 1
+            fi
+            sleep 5
+          done
+          for i in 1 2 3 4 5 6; do
+            if $CURL -sf http://localhost:3012 > /dev/null 2>&1; then
+              echo "✅ Test Web is healthy"
+              break
+            fi
+            if [ "$i" -eq 6 ]; then
+              echo "::error::Test Web health check failed"
+              exit 1
+            fi
+            sleep 5
+          done
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          cd $APP_DIR
+          git reset --hard HEAD~1
+          cd server && bun install --frozen-lockfile
+          cd ../web && bun install --frozen-lockfile
+          PUBLIC_API_URL= bun --bun run build
+          cd ..
+          touch .deploy-trigger-test

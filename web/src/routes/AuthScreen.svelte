@@ -1,84 +1,68 @@
 <script lang="ts">
     import { Button } from '$lib/components/primitives/button';
-    import { Input } from '$lib/components/primitives';
     import AuthFeedback from './AuthFeedback.svelte';
     let {
         auth_state,
         error = null,
         pending = false,
-        onregister,
         onlogin
     }: {
         auth_state: string
         error?: string | null
         pending?: boolean
-        onregister: (name: string) => void
         onlogin: () => void
     } = $props();
 
-    let setup_name: string = $state('');
-    let show_timeout_hint = $state(false);
-    let timeout_timer: ReturnType<typeof setTimeout> | null = $state(null);
-
-    function classify_error(err: string | null): { message: string, icon: string } {
-        if (!err) return { message: '', icon: 'error' };
-        const lower = err.toLowerCase();
-        if (lower.includes('notallowed') || lower.includes('not allowed') || lower.includes('cancelled') || lower.includes('canceled') || lower.includes('abort')) {
-            return { message: 'Passkey request was cancelled. Try again when ready.', icon: 'cancel' };
+    function classify_error(err: string | null): { title: string, message: string } | null {
+        if (!err) return null;
+        if (err.includes('invalid_state')) {
+            return { title: 'Session Expired', message: 'Your login session expired. Please try again.' };
         }
-        if (lower.includes('not supported') || lower.includes('webauthn') || lower.includes('credential')) {
-            return { message: 'WebAuthn is not supported in this browser. Use Chrome, Safari, or Edge.', icon: 'browser_not_supported' };
+        if (err.includes('token_exchange_failed') || err.includes('no_access_token')) {
+            return { title: 'Authentication Failed', message: 'Could not complete GitHub authentication. Please try again.' };
         }
-        if (lower.includes('network') || lower.includes('fetch') || lower.includes('failed to fetch')) {
-            return { message: 'Network error — check your connection and try again.', icon: 'wifi_off' };
+        if (err.includes('profile_fetch_failed')) {
+            return { title: 'Profile Error', message: 'Could not fetch your GitHub profile. Please try again.' };
         }
-        if (lower.includes('401') || lower.includes('unauthorized') || lower.includes('invalid')) {
-            return { message: 'Authentication failed — passkey not recognized.', icon: 'lock' };
+        if (err.includes('access_denied')) {
+            return { title: 'Access Denied', message: 'You denied the authorization request. Click below to try again.' };
         }
-        if (lower.includes('500') || lower.includes('server')) {
-            return { message: 'Server error — please try again in a moment.', icon: 'cloud_off' };
+        if (err.includes('user_creation_failed') || err.includes('session_creation_failed')) {
+            return { title: 'Server Error', message: 'Could not create your account. Please try again.' };
         }
-        return { message: err, icon: 'error' };
+        if (err.includes('registration_required')) {
+            return { title: 'Invite Required', message: 'You need an invite to join. Ask an admin for an invite link.' };
+        }
+        if (err.includes('network') || err.includes('fetch') || err.includes('failed to fetch')) {
+            return { title: 'Network Error', message: 'Could not reach the server. Check your connection and try again.' };
+        }
+        return { title: 'Error', message: err };
     }
 
     let classified_error = $derived(classify_error(error ?? null));
 
-    function start_timeout() {
-        show_timeout_hint = false;
-        if (timeout_timer) clearTimeout(timeout_timer);
-        timeout_timer = setTimeout(() => {
-            show_timeout_hint = true;
-        }, 10000);
-    }
-
-    function handle_login() {
-        start_timeout();
-        onlogin();
-    }
-
-    function handle_register(name: string) {
-        start_timeout();
-        onregister(name);
-    }
-
-    $effect(() => {
-        if (!pending) {
-            show_timeout_hint = false;
-            if (timeout_timer) {
-                clearTimeout(timeout_timer);
-                timeout_timer = null;
-            }
-        }
-    });
+    const gh_d = [
+        'M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205',
+        '11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795',
+        '-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015',
+        '-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105',
+        '-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385',
+        '1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27',
+        '1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24',
+        '2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475',
+        '5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0',
+        '.315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z'
+    ].join(' ');
 </script>
 
-{#if auth_state === 'loading'}
+{#if auth_state === 'loading' || auth_state === 'redirecting'}
     <div class="auth-screen">
         <div class="auth-card">
             <span class="icon spin">progress_activity</span>
+            <p class="auth-subtitle">{auth_state === 'redirecting' ? 'Redirecting to GitHub...' : 'Checking authentication...'}</p>
         </div>
     </div>
-{:else if auth_state === 'error'}
+{:else if auth_state === 'error' && !error}
     <div class="auth-screen">
         <div class="auth-card">
             <span class="icon large">cloud_off</span>
@@ -90,36 +74,32 @@
             </Button>
         </div>
     </div>
-{:else if auth_state === 'setup'}
+{:else}
     <div class="auth-screen">
         <div class="auth-card">
-            <span class="icon large">passkey</span>
+            <svg class="github-logo" viewBox="0 0 24 24" width="48" height="48">
+                <path fill="currentColor" d={gh_d}/>
+            </svg>
             <h1>Ralph Agent Workspace</h1>
-            <p class="auth-subtitle">Set up a passkey to secure your workspace.</p>
-            <Input type="text" bind:value={setup_name} placeholder="Display name" class="auth-input" />
-            <Button variant="primary" onclick={() => handle_register(setup_name || 'Admin')} disabled={pending}>
-                <span class="icon">{pending ? 'progress_activity' : 'fingerprint'}</span>
-                {pending ? 'Creating…' : 'Create Passkey'}
+            {#if classified_error}
+                <AuthFeedback error={error} error_icon="error" error_message={classified_error.message} />
+            {/if}
+            <Button variant="primary" onclick={onlogin} disabled={pending}>
+                <svg viewBox="0 0 24 24" width="18" height="18" style="margin-right: 0.4rem;">
+                    <path fill="currentColor" d={gh_d}/>
+                </svg>
+                Sign in with GitHub
             </Button>
-            <AuthFeedback {pending} {show_timeout_hint} {error} error_icon={classified_error.icon} error_message={classified_error.message} />
-        </div>
-    </div>
-{:else if auth_state === 'login'}
-    <div class="auth-screen">
-        <div class="auth-card">
-            <span class="icon large">lock</span>
-            <h1>Ralph Agent Workspace</h1>
-            <p class="auth-subtitle">Authenticate with your passkey to continue.</p>
-            <Button variant="primary" onclick={handle_login} disabled={pending}>
-                <span class="icon">{pending ? 'progress_activity' : 'fingerprint'}</span>
-                {pending ? 'Authenticating…' : 'Sign in with Passkey'}
-            </Button>
-            <AuthFeedback {pending} {show_timeout_hint} {error} error_icon={classified_error.icon} error_message={classified_error.message} />
         </div>
     </div>
 {/if}
 
 <style>
+    .github-logo {
+        color: var(--accent);
+        margin-bottom: 1rem;
+    }
+
     .icon.large {
         font-size: 48px;
         color: var(--accent);
@@ -159,10 +139,5 @@
         color: var(--fg-muted);
         font-size: 0.875rem;
         margin-bottom: 1.5rem;
-    }
-
-    :global(.auth-input) {
-        padding: 0.65rem 0.85rem;
-        margin-bottom: 1rem;
     }
 </style>

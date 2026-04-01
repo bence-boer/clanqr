@@ -1,24 +1,5 @@
-import { test, expect, type Page } from "@playwright/test";
-
-/**
- * UI workflow E2E tests for Ralph Agent Workspace.
- * Covers critical navigation and page rendering after stabilization.
- *
- * Requires the dev stack (server, web, DB) to be running.
- */
-
-const DEV_SESSION_COOKIE = "dev-session-token";
-
-async function authenticate(page: Page) {
-    await page.context().addCookies([
-        {
-            name: "session",
-            value: DEV_SESSION_COOKIE,
-            domain: "localhost",
-            path: "/",
-        },
-    ]);
-}
+import { test, expect } from "@playwright/test";
+import { API_URL, AUTH_HEADERS, DEV_SESSION_COOKIE, authenticate } from "./helpers";
 
 test.describe("navigation and page rendering", () => {
     test.beforeEach(async ({ page }) => {
@@ -87,7 +68,7 @@ test.describe("project detail page (decomposed components)", () => {
 
     test("project detail renders feature list and detail panels", async ({ page, request }) => {
         // Create a test project first
-        const proj_res = await request.post("http://localhost:3001/api/projects", {
+        const proj_res = await request.post(`${API_URL}/api/projects`, {
             headers: { Cookie: `session=${DEV_SESSION_COOKIE}` },
             data: { name: "UI E2E Project", description: "For UI tests" },
         });
@@ -113,7 +94,7 @@ test.describe("project detail page (decomposed components)", () => {
             }
         } finally {
             // Clean up
-            await request.delete(`http://localhost:3001/api/projects/${project.id}`, {
+            await request.delete(`${API_URL}/api/projects/${project.id}`, {
                 headers: { Cookie: `session=${DEV_SESSION_COOKIE}` },
             });
         }

@@ -119,28 +119,6 @@ describe('chat routes', () => {
         });
     });
 
-    describe('POST /api/chat/sessions/:id/cancel', () => {
-        it('returns cancel status', async () => {
-            const { app } = setup();
-            const res = await app.request(`/api/chat/sessions/${SESSION_ID}/cancel`, {
-                method: 'POST',
-                headers: auth_headers()
-            });
-            expect(res.status).toBe(200);
-            const body = (await res.json()) as Record<string, unknown>;
-            expect(typeof body.success).toBe('boolean');
-        });
-
-        it('rejects invalid UUID', async () => {
-            const { app } = setup();
-            const res = await app.request(`/api/chat/sessions/${INVALID_UUID}/cancel`, {
-                method: 'POST',
-                headers: auth_headers()
-            });
-            expect(res.status).toBe(400);
-        });
-    });
-
     describe('POST /api/chat/sessions/:id/send', () => {
         it('returns 404 for non-existent session', async () => {
             const { app } = setup();

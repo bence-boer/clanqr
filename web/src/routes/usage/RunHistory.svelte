@@ -1,7 +1,7 @@
 <script lang="ts">
     import { EmptyState, LoadingSpinner, StatusBadge } from '$lib/components';
     import { Badge, Pagination } from '$lib/components/primitives';
-    import type { AgentRun } from '$lib/types';
+    import type { AgentSession } from '$lib/types';
     import RunDetailRow from './RunDetailRow.svelte';
     import RunHistoryFilters from './RunHistoryFilters.svelte';
 
@@ -21,7 +21,7 @@
         onpage_change,
         ondate_range_change
     }: {
-        runs: AgentRun[]
+        runs: AgentSession[]
         total_pages: number
         total_count: number
         loading: boolean
@@ -57,7 +57,7 @@
         return sort_dir === 'asc' ? ' ▲' : ' ▼';
     }
 
-    function get_tokens(run: AgentRun): number {
+    function get_tokens(run: AgentSession): number {
         return (run.prompt_tokens ?? 0) + (run.completion_tokens ?? 0);
     }
 
@@ -66,7 +66,7 @@
         const dir = sort_dir === 'asc' ? 1 : -1;
         arr.sort((a, b) => {
             switch (sort_field) {
-                case 'type': return dir * (a.type ?? '').localeCompare(b.type ?? '');
+                case 'type': return dir * (a.agent_type ?? '').localeCompare(b.agent_type ?? '');
                 case 'model': return dir * (a.model ?? '').localeCompare(b.model ?? '');
                 case 'status': return dir * (a.status ?? '').localeCompare(b.status ?? '');
                 case 'duration': return dir * ((a.duration_ms ?? 0) - (b.duration_ms ?? 0));
@@ -154,7 +154,7 @@
                             class:expanded={expanded_row === run.id}
                             onclick={() => expanded_row = expanded_row === run.id ? null : run.id}
                         >
-                            <td><Badge variant={run.type === 'manager' ? 'info' : run.type === 'chat' ? 'success' : 'warning'}>{run.type}</Badge></td>
+                            <td><Badge variant={run.agent_type === 'manager' ? 'info' : run.agent_type === 'chat' ? 'success' : 'warning'}>{run.agent_type}</Badge></td>
                             <td class="model-col">{run.model ?? 'default'}</td>
                             <td><StatusBadge status={run.status} /></td>
                             <td class="mono">{format_duration(run.duration_ms)}</td>

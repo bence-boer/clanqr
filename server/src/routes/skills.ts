@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppBindings } from '../middleware/supabase';
-import { validate_uuid_params } from '../middleware/validate_params';
+import { validate_uuid_params, require_param } from '../middleware/validate_params';
 import { skill_service } from '../services/skill_service';
 import { logger } from '../utils/logger';
 
@@ -12,7 +12,7 @@ const link_schema = z.object({
 
 export const skills_routes = new Hono<AppBindings>()
 
-    // List all available Copilot CLI skills (scanned from ~/.copilot/skills/)
+    // List all available Copilot CLI skills (scanned from ~/.agents/skills/)
     .get('/', async (context) => {
         const skills = await skill_service.list_skills();
         // Omit full content from list — content is large
@@ -33,7 +33,7 @@ export const skills_routes = new Hono<AppBindings>()
 
     // Get skills linked to a specific task — must come before /:name to avoid conflict
     .get('/task/:task_id', validate_uuid_params('task_id'), async (context) => {
-        const task_id = context.req.param('task_id');
+        const task_id = require_param(context, 'task_id');
         const supabase = context.get('supabase');
 
         const { data, error } = await supabase
@@ -80,7 +80,7 @@ export const skills_routes = new Hono<AppBindings>()
 
     // Unlink a skill from a task
     .delete('/link/:id', validate_uuid_params('id'), async (context) => {
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
         const supabase = context.get('supabase');
 
         const { error } = await supabase.from('skill_links').delete().eq('id', id);

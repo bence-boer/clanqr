@@ -7,8 +7,8 @@ import { logger } from '../utils/logger';
 const history_query_schema = z.object({
     page: z.coerce.number().int().min(1).default(1),
     per_page: z.coerce.number().int().min(1).max(100).default(20),
-    type: z.enum(['manager', 'ralph', 'chat']).optional(),
-    status: z.enum(['completed', 'failed', 'running']).optional()
+    type: z.enum(['manager', 'ralph', 'researcher', 'editor', 'chat', 'custom']).optional(),
+    status: z.enum(['pending', 'running', 'paused', 'completed', 'failed', 'cancelled']).optional()
 });
 
 export const usage_routes = new Hono<AppBindings>()
@@ -44,12 +44,12 @@ export const usage_routes = new Hono<AppBindings>()
         const offset = (page - 1) * per_page;
 
         let query = supabase
-            .from('agent_runs')
+            .from('agent_sessions')
             .select('*, tasks(id, title, feature_id, features(id, title, project_id, projects(id, name)))', { count: 'exact' })
             .order('created_at', { ascending: false })
             .range(offset, offset + per_page - 1);
 
-        if (type_filter) query = query.eq('type', type_filter);
+        if (type_filter) query = query.eq('agent_type', type_filter);
         if (status_filter) query = query.eq('status', status_filter);
 
         const { data, count, error } = await query;

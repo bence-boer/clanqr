@@ -49,7 +49,7 @@
     }
 
     function get_pending_approval_count(feature: Feature): number {
-        return feature.tasks?.filter((t: TaskRow) => t.status === 'Pending_Approval').length ?? 0;
+        return feature.tasks?.filter((t: TaskRow) => t.status === 'queued').length ?? 0;
     }
 </script>
 
@@ -95,9 +95,8 @@
                     {feature.tasks?.length ?? 0}
                     <span class="icon" style="font-size:12px;margin-left:0.5rem">link</span>
                     {feature.resources?.length ?? 0}
-                    <Badge variant="muted" style="margin-left:0.5rem; transform: scale(0.9)">{feature.cli || 'copilot'}</Badge>
                     {#if feature.execution_model}
-                        <Badge variant="info" style="margin-left:0.25rem; transform: scale(0.9)">{feature.execution_model}</Badge>
+                        <Badge variant="info" style="margin-left:0.5rem; transform: scale(0.9)">{feature.execution_model}</Badge>
                     {/if}
                 </div>
             </button>

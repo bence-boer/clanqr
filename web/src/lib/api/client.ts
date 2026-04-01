@@ -52,18 +52,12 @@ export const api = {
         unwrap(await (await client.api.tasks[':id'].$delete({ param: { id } })).json()),
 
     // ── Agents / Pipeline ─────────────────────────────────────────────────────
-    agent_status: async (): Promise<Record<string, Types.AgentProcess>> =>
+    agent_status: async () =>
         unwrap(await (await client.api.agents.status.$get()).json()),
-    feature_agent_status: async (feature_id: string): Promise<Types.FeatureAgentStatus> =>
-        unwrap(await (await client.api.agents.feature[':feature_id'].$get({ param: { feature_id } })).json()),
-    agent_log: async (task_id: string): Promise<{ task_id: string, log: string }> =>
-        unwrap(await (await client.api.agents.log[':task_id'].$get({ param: { task_id } })).json()),
-    spawn_manager: async (feature_id: string): Promise<{ success: boolean, message: string }> =>
-        unwrap(await (await client.api.agents.spawn.manager[':feature_id'].$post({ param: { feature_id } })).json()),
+    plan_feature: async (feature_id: string): Promise<{ success: boolean, message: string }> =>
+        unwrap(await (await client.api.agents.plan[':feature_id'].$post({ param: { feature_id } })).json()),
     stop_all_agents: async (): Promise<{ success: boolean, message: string }> =>
         unwrap(await (await client.api.agents['stop-all'].$post()).json()),
-    stop_agent: async (task_id: string): Promise<{ success: boolean, message: string }> =>
-        unwrap(await (await client.api.agents.stop[':task_id'].$post({ param: { task_id } })).json()),
     pipeline_status: async (): Promise<Types.PipelineStatus> =>
         unwrap(await (await client.api.agents.queue.$get()).json()),
     pipeline_log: async (): Promise<{ log: string }> =>
@@ -96,11 +90,11 @@ export const api = {
         unwrap(await (await client.api.prompts.sync.$post()).json()),
 
     // ── Traits ────────────────────────────────────────────────────────────────
-    list_traits: async (target?: 'manager' | 'ralph'): Promise<Types.Trait[]> =>
+    list_traits: async (target?: Types.TraitTarget): Promise<Types.Trait[]> =>
         unwrap(await (await client.api.traits.$get({ query: { target: target ?? '' } })).json()),
     get_trait: async (id: string): Promise<Types.Trait> =>
         unwrap(await (await client.api.traits[':id'].$get({ param: { id } })).json()),
-    create_trait: async (data: { name: string, description?: string, target: Types.TraitTarget, content: string, is_global?: boolean }): Promise<Types.Trait> =>
+    create_trait: async (data: { name: string, description?: string, target: Types.AgentType, content: string, is_global?: boolean }): Promise<Types.Trait> =>
         unwrap(await (await client.api.traits.$post({ json: data })).json()),
     update_trait: async (id: string, data: Record<string, unknown>): Promise<Types.Trait> =>
         unwrap(await (await client.api.traits[':id'].$patch({ param: { id }, json: data })).json()),
@@ -136,13 +130,15 @@ export const api = {
         unwrap(await (await client.api.system.stats.$get()).json()),
     system_alerts: async (): Promise<Types.SystemAlerts> =>
         unwrap(await (await client.api.system.alerts.$get()).json()),
-    list_models: async (cli = 'copilot'): Promise<Types.ModelOption[]> =>
-        unwrap(await (await client.api.system.models.$get({ query: { cli } } as never)).json()),
+    list_models: async (): Promise<Types.ModelOption[]> =>
+        unwrap(await (await client.api.system.models.$get()).json()),
 
     // ── Usage ─────────────────────────────────────────────────────────────────
     usage_summary: async (): Promise<Types.UsageSummary> =>
         unwrap(await (await client.api.usage.summary.$get()).json()),
-    usage_history: async (page = 1, per_page = 20, type?: string, status?: string): Promise<{ runs: Types.AgentRun[], total: number, total_pages: number }> =>
+    usage_history: async (
+        page = 1, per_page = 20, type?: string, status?: string
+    ): Promise<{ runs: Types.AgentSession[], total: number, total_pages: number }> =>
         unwrap(await (await client.api.usage.history.$get({
             query: {
                 page: String(page),
@@ -175,27 +171,37 @@ export const api = {
     // ── Admin ─────────────────────────────────────────────────────────────────
     list_users: async (): Promise<Types.User[]> =>
         unwrap(await (await client.api.admin.$get()).json()),
-    update_user_role: async (id: string, role: 'admin' | 'user') =>
+    update_user_role: async (id: string, role: 'admin' | 'member') =>
         unwrap(await (await client.api.admin[':id'].$patch({ param: { id }, json: { role } })).json()),
     delete_user: async (id: string): Promise<{ success: boolean }> =>
         unwrap(await (await client.api.admin[':id'].$delete({ param: { id } })).json()),
-    list_invites: async (): Promise<Types.InviteToken[]> =>
-        unwrap(await (await client.api.admin.invites.$get()).json()),
-    create_invite: async (data: { role: string, expires_at: string, label?: string }) =>
-        unwrap(await (await client.api.admin.invites.$post({ json: data as never })).json()),
-    revoke_invite: async (id: string): Promise<{ success: boolean }> =>
-        unwrap(await (await client.api.admin.invites[':id'].$delete({ param: { id } })).json()),
     revoke_user_sessions: async (id: string): Promise<{ success: boolean }> =>
         unwrap(await (await client.api.admin[':id'].sessions.$delete({ param: { id } })).json()),
-    clear_old_invites: async () =>
-        unwrap(await (await client.api.admin.invites['bulk-clear'].$delete()).json()),
-    get_invite_status: async (token: string): Promise<Types.InviteStatus> => {
-        const response = await fetch(`${API_URL}/api/auth/invite/status?token=${encodeURIComponent(token)}`, {
+
+    // ── Invites ──────────────────────────────────────────────────────────────
+    create_invite: async (expires_in_days?: number) => {
+        const response = await fetch(`${API_URL}/api/admin/invites`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(expires_in_days ? { expires_in_days } : {})
+        });
+        if (!response.ok) throw new Error('Failed to create invite');
+        return response.json();
+    },
+    list_invites: async () => {
+        const response = await fetch(`${API_URL}/api/admin/invites`, {
             credentials: 'include'
         });
-        if (!response.ok) {
-            throw new Error(`Failed to check invite status: ${response.status}`);
-        }
+        if (!response.ok) throw new Error('Failed to list invites');
+        return response.json();
+    },
+    revoke_invite: async (id: string): Promise<{ success: boolean }> => {
+        const response = await fetch(`${API_URL}/api/admin/invites/${encodeURIComponent(id)}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Failed to revoke invite');
         return response.json();
     }
 };

@@ -7,10 +7,10 @@ export function create_notification_stream(): EventSource {
     es.addEventListener('features:update', (e: MessageEvent) => {
         try {
             const data = JSON.parse(e.data);
-            if (data.status === 'Complete') {
+            if (data.status === 'complete') {
                 notification_store.add({ type: 'success', message: 'Feature completed', link: `/projects?feature=${data.feature_id}` });
             }
-            if (data.status === 'Failed') {
+            if (data.status === 'failed') {
                 notification_store.add({ type: 'danger', message: 'Feature failed', link: `/projects?feature=${data.feature_id}` });
             }
         }
@@ -22,7 +22,7 @@ export function create_notification_stream(): EventSource {
     es.addEventListener('tasks:update', (e: MessageEvent) => {
         try {
             const data = JSON.parse(e.data);
-            if (data.status === 'Failed') {
+            if (data.status === 'failed') {
                 notification_store.add({ type: 'danger', message: 'Task failed', link: `/projects?feature=${data.feature_id}` });
             }
         }

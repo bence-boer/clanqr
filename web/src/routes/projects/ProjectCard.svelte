@@ -26,7 +26,7 @@
     let saving_edit = $state(false);
 
     const feature_count = $derived(features.length);
-    const completed_count = $derived(features.filter((f) => f.status === 'Done').length);
+    const completed_count = $derived(features.filter((f) => f.status === 'done').length);
     const last_updated = $derived.by(() => {
         if (features.length === 0) return null;
         const dates = features.map((f) => new Date(f.updated_at ?? f.created_at).getTime());
@@ -44,7 +44,7 @@
         return `${days}d ago`;
     }
 
-    const is_archived = $derived(project.status === 'Archived');
+    const is_archived = $derived(project.status === 'archived');
 
     function start_edit(event: MouseEvent) {
         event.preventDefault();

@@ -2,16 +2,16 @@ import { Hono } from 'hono';
 import { existsSync, statSync } from 'fs';
 import { join } from 'path';
 import type { AppBindings } from '../middleware/supabase';
-import { validate_uuid_params } from '../middleware/validate_params';
+import { validate_uuid_params, require_param } from '../middleware/validate_params';
 import { logger } from '../utils/logger';
-import { PROJECTS_WORKSPACE_DIR } from '../services/container_service';
+import { WORKSPACE_DIR } from '../env';
 import { lookup_mime } from '../services/artifact_service';
 
 export const task_artifact_routes = new Hono<AppBindings>()
 
     // List file artifacts for a task
     .get('/:id/files', validate_uuid_params('id'), async (context) => {
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
         const supabase = context.get('supabase');
 
         const { data, error } = await supabase
@@ -29,7 +29,7 @@ export const task_artifact_routes = new Hono<AppBindings>()
 
     // Download a specific artifact file
     .get('/:id/files/:filename', validate_uuid_params('id'), async (context) => {
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
         const filename = context.req.param('filename');
 
         if (!filename || filename.includes('..') || filename.includes('/')) {
@@ -49,7 +49,7 @@ export const task_artifact_routes = new Hono<AppBindings>()
         }
 
         const project_id = (task.features as { project_id: string }).project_id;
-        const file_path = join(PROJECTS_WORKSPACE_DIR, project_id, `ralph-${id}`, 'artifacts', filename);
+        const file_path = join(WORKSPACE_DIR, project_id, `ralph-${id}`, 'artifacts', filename);
 
         if (!existsSync(file_path)) {
             return context.json({ error: 'File not found' }, 404);

@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import type { AppBindings } from '../middleware/supabase';
-import { validate_uuid_params } from '../middleware/validate_params';
+import { validate_uuid_params, require_param } from '../middleware/validate_params';
 import { resolve_task_traits, resolve_scope_traits } from '../services/trait_service';
 import { logger } from '../utils/logger';
 import type { Enums } from '../database.types';
@@ -10,7 +10,7 @@ import type { Enums } from '../database.types';
 const create_trait_schema = z.object({
     name: z.string().min(1),
     description: z.string().optional(),
-    target: z.enum(['manager', 'ralph']),
+    target: z.enum(['manager', 'ralph', 'researcher', 'editor', 'chat', 'custom']),
     content: z.string().min(1),
     is_global: z.boolean().default(false)
 });
@@ -35,8 +35,8 @@ export const traits_routes = new Hono<AppBindings>()
         const target = context.req.query('target');
 
         let query = supabase.from('traits').select('*').order('name');
-        if (target === 'manager' || target === 'ralph') {
-            query = query.eq('target', target);
+        if (target && ['manager', 'ralph', 'researcher', 'editor', 'chat', 'custom'].includes(target)) {
+            query = query.eq('target', target as Enums<'agent_type'>);
         }
 
         const { data, error } = await query;
@@ -130,7 +130,7 @@ export const traits_routes = new Hono<AppBindings>()
 
     // Resolve effective traits for a task (walks inheritance chain)
     .get('/resolve/:task_id', validate_uuid_params('task_id'), async (context) => {
-        const task_id = context.req.param('task_id');
+        const task_id = require_param(context, 'task_id');
         const supabase = context.get('supabase');
 
         const resolved = await resolve_task_traits(supabase, task_id, 'ralph');
@@ -139,7 +139,7 @@ export const traits_routes = new Hono<AppBindings>()
 
     // Resolve effective traits for a feature
     .get('/resolve/feature/:id', validate_uuid_params('id'), async (context) => {
-        const feature_id = context.req.param('id');
+        const feature_id = require_param(context, 'id');
         const supabase = context.get('supabase');
 
         const { data: feature, error } = await supabase
@@ -161,7 +161,7 @@ export const traits_routes = new Hono<AppBindings>()
 
     // Get trait by ID
     .get('/:id', validate_uuid_params('id'), async (context) => {
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
         const supabase = context.get('supabase');
 
         const { data, error } = await supabase
@@ -176,7 +176,7 @@ export const traits_routes = new Hono<AppBindings>()
 
     // Update trait
     .patch('/:id', validate_uuid_params('id'), zValidator('json', update_trait_schema), async (context) => {
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
         const result = context.req.valid('json');
 
         const supabase = context.get('supabase');
@@ -193,7 +193,7 @@ export const traits_routes = new Hono<AppBindings>()
 
     // Delete trait
     .delete('/:id', validate_uuid_params('id'), async (context) => {
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
         const supabase = context.get('supabase');
 
         const { error } = await supabase.from('traits').delete().eq('id', id);
@@ -206,7 +206,7 @@ export const traits_routes = new Hono<AppBindings>()
 
     // Remove assignment
     .delete('/assign/:id', validate_uuid_params('id'), async (context) => {
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
         const supabase = context.get('supabase');
 
         const { error } = await supabase.from('trait_assignments').delete().eq('id', id);

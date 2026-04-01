@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Accordion, CodeBlock } from '$lib/components';
+    import { Accordion } from '$lib/components';
     import { Badge, Button } from '$lib/components/primitives';
     import { toast_store } from '$lib/stores/toast.svelte';
     import type { TaskRow as Task } from '$lib/types';
@@ -11,7 +11,6 @@
     interface Props {
         task: Task
         auto_approve: boolean
-        feature_cli: string
         editing: boolean
         editing_title: string
         editing_desc: string
@@ -28,7 +27,7 @@
     }
 
     let {
-        task, auto_approve, feature_cli, editing, editing_title = $bindable(), editing_desc = $bindable(),
+        task, auto_approve, editing, editing_title = $bindable(), editing_desc = $bindable(),
         editing_model = $bindable(), saving, on_approve, on_spawn, on_start_edit, on_save_edit,
         on_cancel_edit, on_delete, on_toggle_artifacts, show_artifacts
     }: Props = $props();
@@ -38,7 +37,7 @@
 
     async function handle_approve() {
         const prev_status = task.status;
-        optimistic_status = 'Approved';
+        optimistic_status = 'approved';
         try {
             await on_approve(task.id);
             toast_store.info('Task approved. It will run when the pipeline reaches it.');
@@ -62,7 +61,6 @@
     {#if editing}
         <TaskEditForm
             task_id={task.id}
-            {feature_cli}
             bind:title={editing_title}
             bind:description={editing_desc}
             bind:model={editing_model}
@@ -76,28 +74,25 @@
                 <span class="task-title">{get_task_title(task)}</span>
             </div>
             <div class="task-badges">
-                {#if task.model}
-                    <Badge variant="info" style="transform: scale(0.85)">{task.model}</Badge>
-                {/if}
                 <Badge variant={status_class(display_status) as 'success' | 'danger' | 'muted' | 'info' | 'warning'} icon={status_icon(display_status)}>
                     {display_status.replace(/_/g, ' ')}
                 </Badge>
             </div>
         </div>
-        {#if task.status === 'Failed' && task.output}
+        {#if task.status === 'failed' && task.output}
             <div class="task-failure-reason">
                 <span class="icon" style="font-size:12px">error</span>
                 {task.output.length > 120 ? `${task.output.slice(0, 120)}…` : task.output}
             </div>
         {/if}
         <div class="task-actions">
-            {#if task.status === 'Pending_Approval' && !auto_approve}
+            {#if task.status === 'queued' && !auto_approve}
                 <Button variant="primary" size="sm" icon="thumb_up" onclick={handle_approve}>Approve</Button>
             {/if}
-            {#if task.status === 'Approved'}
+            {#if task.status === 'approved'}
                 <Button variant="secondary" size="sm" icon="play_arrow" onclick={() => on_spawn(task.id)}>Run Ralph</Button>
             {/if}
-            {#if ['Pending_Approval', 'Approved'].includes(task.status)}
+            {#if ['queued', 'approved'].includes(task.status)}
                 <Button variant="ghost" size="sm" icon="edit" title="Edit" onclick={() => on_start_edit(task)} />
                 <Button variant="danger" size="sm" icon="delete" title="Delete" onclick={() => on_delete(task.id)} />
             {/if}
@@ -108,21 +103,14 @@
                 <div class="task-prompt">{task.description}</div>
             </Accordion>
         </div>
-        {#if task.agent_log}
-            <div class="task-accordion">
-                <Accordion label="Console log">
-                    <CodeBlock content={task.agent_log} max_height="300px" />
-                </Accordion>
-            </div>
-        {/if}
         {#if task.output}
             <div class="task-accordion">
-                <Accordion label="Result summary">
+                <Accordion label="Output">
                     <div class="task-prompt">{task.output}</div>
                 </Accordion>
             </div>
         {/if}
-        {#if task.status === 'Complete' || task.status === 'Failed'}
+        {#if task.status === 'complete' || task.status === 'failed'}
             <TaskFiles task_id={task.id} />
         {/if}
         {#if show_artifacts}

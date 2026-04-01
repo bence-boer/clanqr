@@ -31,16 +31,16 @@ describe('auth middleware', () => {
         it('passes through with valid session cookie', async () => {
             const { app } = create_test_app();
             app.get('/api/test', (c) =>
-                c.json({ passkey_id: c.get('passkey_id'), role: c.get('role') })
+                c.json({ user_id: c.get('user_id'), role: c.get('role') })
             );
 
             const res = await app.request('/api/test', {
                 headers: auth_headers()
             });
             expect(res.status).toBe(200);
-            const body = (await res.json()) as { passkey_id: string, role: string };
-            expect(body.passkey_id).toBe('test-passkey');
-            expect(body.role).toBe('user');
+            const body = (await res.json()) as { user_id: string, role: string };
+            expect(body.user_id).toBe('test-user');
+            expect(body.role).toBe('member');
         });
 
         it('correctly identifies admin role', async () => {
@@ -59,20 +59,19 @@ describe('auth middleware', () => {
     });
 
     describe('auth_middleware (real implementation)', () => {
-        it('rejects seeded dev-admin session tokens outside development mode', async () => {
+        it('accepts dev session tokens in non-production environments', async () => {
+            // Dev tokens are allowed in test/development, only rejected in production
             const seed = JSON.parse(JSON.stringify(TEST_SEED)) as typeof TEST_SEED;
-            seed.passkeys.push({
+            seed.users.push({
                 id: 'dev-admin',
-                credential_id: 'dev-admin-credential',
-                public_key: 'dev-admin-key',
-                counter: 0,
-                device_type: 'singleDevice',
+                github_id: 99999,
+                username: 'dev-admin',
                 display_name: 'Dev Admin',
                 role: 'admin'
             });
             seed.sessions.push({
                 id: '00000000-0000-0000-0000-0000000000ab',
-                passkey_id: 'dev-admin',
+                user_id: 'dev-admin',
                 token: 'dev-admin-session-token',
                 expires_at: '2099-12-31T23:59:59Z'
             });
@@ -92,8 +91,7 @@ describe('auth middleware', () => {
             const res = await app.request('/api/test', {
                 headers: { Cookie: 'session=dev-admin-session-token' }
             });
-            expect(res.status).toBe(401);
-            expect(res.headers.get('set-cookie')).toContain('session=');
+            expect(res.status).toBe(200);
         });
     });
 

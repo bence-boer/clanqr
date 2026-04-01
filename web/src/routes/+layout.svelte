@@ -25,6 +25,18 @@
     async function do_auth_check() {
         if (auth_check_done) return;
         auth_check_done = true;
+
+        // Check URL params for auth errors from OAuth callback
+        const url_params = new URLSearchParams(window.location.search);
+        const auth_error = url_params.get('auth_error');
+        if (auth_error) {
+            auth_store.error = auth_error;
+            auth_store.state = 'unauthenticated';
+            // Clean URL without reload
+            window.history.replaceState({}, '', window.location.pathname);
+            return;
+        }
+
         await auth_store.check();
         if (auth_store.state === 'authenticated') {
             load_system_stats();
@@ -63,12 +75,8 @@
         }
     }
 
-    async function handle_register(name: string) {
-        await auth_store.register(name);
-    }
-
-    async function handle_login() {
-        await auth_store.login();
+    function handle_login() {
+        auth_store.login();
     }
 
     async function handle_logout() {
@@ -99,7 +107,7 @@
 {#if current_path.startsWith('/invite')}
     {@render children()}
 {:else if auth_store.state !== 'authenticated'}
-    <AuthScreen auth_state={auth_store.state} error={auth_store.error} pending={auth_store.pending} onregister={handle_register} onlogin={handle_login} />
+    <AuthScreen auth_state={auth_store.state} error={auth_store.error} pending={auth_store.pending} onlogin={handle_login} />
 {:else}
     <div class="app" class:sidebar-open={sidebar_open} class:sidebar-collapsed={sidebar_collapsed}>
         <button class="mobile-toggle" onclick={() => (sidebar_open = !sidebar_open)}>

@@ -6,7 +6,7 @@
     import { onMount } from 'svelte';
     import UserTable from './UserTable.svelte';
 
-    let self_id = $derived(auth_store.passkey_id);
+    let self_id = $derived(auth_store.user_id);
 
     let users: User[] = $state([]);
     let users_loading = $state(true);
@@ -30,7 +30,7 @@
     }
 
     async function toggle_role(user: User) {
-        const new_role = user.role === 'admin' ? 'user' : 'admin';
+        const new_role = user.role === 'admin' ? 'member' : 'admin';
         const prev_role = user.role;
 
         // Optimistic update

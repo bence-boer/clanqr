@@ -29,21 +29,21 @@
         });
     }
 
-    function start_edit(role: string, current_content: string) {
-        edit_state[role] = { editing: true, content: current_content, saving: false };
+    function start_edit(agent_type: string, current_content: string) {
+        edit_state[agent_type] = { editing: true, content: current_content, saving: false };
     }
 
-    function cancel_edit(role: string, original_content: string) {
-        edit_state[role] = { editing: false, content: original_content, saving: false };
+    function cancel_edit(agent_type: string, original_content: string) {
+        edit_state[agent_type] = { editing: false, content: original_content, saving: false };
     }
 
-    async function save_prompt(role: string) {
-        const state = edit_state[role];
+    async function save_prompt(agent_type: string) {
+        const state = edit_state[agent_type];
         if (!state) return;
         state.saving = true;
         try {
-            await api.update_prompt(role, state.content);
-            edit_state[role] = { editing: false, content: state.content, saving: false };
+            await api.update_prompt(agent_type, state.content);
+            edit_state[agent_type] = { editing: false, content: state.content, saving: false };
             on_updated();
         }
         catch {
@@ -56,17 +56,17 @@
     <EmptyState icon="description" message="No prompts found." detail='Click "Sync from Repo" to load prompts from the agents/prompts/ directory.' />
 {:else}
     <div class="prompts-grid">
-        {#each prompts as prompt (prompt.role)}
-            {@const role_state = edit_state[prompt.role]}
+        {#each prompts as prompt (prompt.agent_type)}
+            {@const role_state = edit_state[prompt.agent_type]}
             <div class="prompt-card" class:editing={role_state?.editing}>
                 <div class="prompt-card-header">
                     <div class="prompt-role-info">
                         <span class="icon role-icon">
-                            {prompt.role === 'manager' ? 'assignment' : 'build'}
+                            {prompt.agent_type === 'manager' ? 'assignment' : prompt.agent_type === 'researcher' ? 'search' : 'build'}
                         </span>
                         <div>
                             <h3 class="prompt-role">
-                                {prompt.role === 'manager' ? 'Manager' : 'Ralph'} Prompt
+                                {prompt.agent_type.charAt(0).toUpperCase() + prompt.agent_type.slice(1)} Prompt
                             </h3>
                             <span class="prompt-meta">
                                 v{prompt.version} · Updated {format_date(prompt.updated_at)}
@@ -74,7 +74,7 @@
                         </div>
                     </div>
                     {#if !role_state?.editing}
-                        <Button variant="secondary" size="sm" onclick={() => start_edit(prompt.role, prompt.content)}>
+                        <Button variant="secondary" size="sm" onclick={() => start_edit(prompt.agent_type, prompt.content)}>
                             <span class="icon" style="font-size:16px">edit</span>
                             Edit
                         </Button>
@@ -93,13 +93,13 @@
 
                 {#if role_state?.editing}
                     <div class="prompt-actions">
-                        <Button variant="primary" onclick={() => save_prompt(prompt.role)} disabled={role_state.saving}>
+                        <Button variant="primary" onclick={() => save_prompt(prompt.agent_type)} disabled={role_state.saving}>
                             <span class="icon" style="font-size:16px" class:spin={role_state.saving}>
                                 {role_state.saving ? 'progress_activity' : 'save'}
                             </span>
                             {role_state.saving ? 'Saving…' : 'Save'}
                         </Button>
-                        <Button variant="secondary" onclick={() => cancel_edit(prompt.role, prompt.content)} disabled={role_state.saving}>Cancel</Button>
+                        <Button variant="secondary" onclick={() => cancel_edit(prompt.agent_type, prompt.content)} disabled={role_state.saving}>Cancel</Button>
                     </div>
                 {/if}
             </div>

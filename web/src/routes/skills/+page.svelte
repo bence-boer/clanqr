@@ -99,7 +99,7 @@
     {:else if error}
         <ErrorBanner message={error} />
     {:else if skills.length === 0}
-        <EmptyState icon="extension" message="No skills found." detail="Add skill directories to ~/.copilot/skills/" />
+        <EmptyState icon="extension" message="No skills found." detail="Add skill directories to ~/.agents/skills/" />
     {:else}
         <div class="search-bar">
             <span class="icon search-icon">search</span>

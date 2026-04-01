@@ -15,8 +15,6 @@
 
     let title = $state('');
     let description = $state('');
-    let cli = $state('copilot');
-    let execution_cli = $state('copilot');
     let planning_model = $state('');
     let execution_model = $state('');
     let on_task_failure = $state<FailureBehavior>('stop');
@@ -41,14 +39,12 @@
             const clean_resources = resources.filter((r) => r.url.trim()).map((r) => ({ url: r.url.trim(), title: r.title.trim() || undefined }));
             await on_create({
                 title: title.trim(), description: description.trim() || undefined,
-                cli, execution_cli, planning_model: planning_model || null,
+                planning_model: planning_model || null,
                 execution_model: execution_model || null, on_task_failure, task_timeout_minutes,
                 resources: clean_resources
             });
             title = '';
             description = '';
-            cli = 'copilot';
-            execution_cli = 'copilot';
             planning_model = '';
             execution_model = '';
             on_task_failure = 'stop';
@@ -97,8 +93,6 @@
     </div>
 
     <FeatureAdvancedSettings
-        bind:cli
-        bind:execution_cli
         bind:planning_model
         bind:execution_model
         bind:on_task_failure

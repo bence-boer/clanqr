@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import type { AppBindings } from '../middleware/supabase';
-import { validate_uuid_params } from '../middleware/validate_params';
+import { validate_uuid_params, require_param } from '../middleware/validate_params';
 import { validate_resource_url } from '../utils/ssrf';
 import { event_bus } from '../services/event_bus';
 import { logger } from '../utils/logger';
@@ -11,15 +11,13 @@ const create_feature_schema = z.object({
     project_id: z.string().uuid(),
     title: z.string().min(1).max(200),
     description: z.string().max(10_000).nullable().optional(),
-    cli: z.string().default('copilot'),
-    execution_cli: z.string().default('copilot'),
     planning_model: z.string().min(1).nullable().optional(),
     execution_model: z.string().min(1).nullable().optional(),
     on_task_failure: z.enum(['stop', 'retry', 'skip']).default('stop'),
     auto_approve: z.boolean().default(false),
     task_timeout_minutes: z.number().int().min(1).max(120).default(30),
     manager_retry_count: z.number().int().min(0).max(10).default(0),
-    status: z.enum(['Draft', 'Submitted', 'In_Progress', 'Done']).default('Draft'),
+    status: z.enum(['draft', 'submitted', 'in_progress', 'done', 'cancelled']).default('draft'),
     resources: z
         .array(z.object({ url: z.string().url(), title: z.string().optional() }))
         .optional()
@@ -28,9 +26,7 @@ const create_feature_schema = z.object({
 const update_feature_schema = z.object({
     title: z.string().min(1).max(255).optional(),
     description: z.string().nullable().optional(),
-    status: z.enum(['Draft', 'Submitted', 'In_Progress', 'Done']).optional(),
-    cli: z.string().optional(),
-    execution_cli: z.string().optional(),
+    status: z.enum(['draft', 'submitted', 'in_progress', 'done', 'cancelled']).optional(),
     planning_model: z.string().nullable().optional(),
     execution_model: z.string().nullable().optional(),
     on_task_failure: z.enum(['stop', 'retry', 'skip']).optional(),
@@ -66,7 +62,7 @@ export const features_routes = new Hono<AppBindings>()
     // Get single feature with resources and tasks
     .get('/:id', validate_uuid_params('id'), async (context) => {
         const supabase = context.get('supabase');
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
 
         const { data, error } = await supabase
             .from('features')
@@ -96,7 +92,7 @@ export const features_routes = new Hono<AppBindings>()
         // Ensure all required fields are present for DB insert
         const db_feature_data = {
             ...feature_data,
-            status: feature_data.status ?? 'Draft',
+            status: feature_data.status ?? 'draft',
             task_timeout_minutes: feature_data.task_timeout_minutes ?? 30,
             manager_retry_count: feature_data.manager_retry_count ?? 0,
             on_task_failure: feature_data.on_task_failure ?? 'stop',
@@ -148,7 +144,7 @@ export const features_routes = new Hono<AppBindings>()
 
     // Update feature
     .patch('/:id', validate_uuid_params('id'), zValidator('json', update_feature_schema), async (context) => {
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
         const parsed = context.req.valid('json');
 
         const supabase = context.get('supabase');
@@ -171,18 +167,12 @@ export const features_routes = new Hono<AppBindings>()
 
     // Submit feature for implementation
     .post('/:id/submit', validate_uuid_params('id'), async (context) => {
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
         const supabase = context.get('supabase');
-
-        // Validate that models are set before allowing submission
-        const { data: feature_check } = await supabase.from('features').select('planning_model, execution_model').eq('id', id).single();
-        if (!feature_check?.planning_model || !feature_check?.execution_model) {
-            return context.json({ error: 'Planning model and execution model must be set before submitting' }, 400);
-        }
 
         const { data, error } = await supabase
             .from('features')
-            .update({ status: 'Submitted' })
+            .update({ status: 'submitted' })
             .eq('id', id)
             .select('*, resources(*), tasks(*)')
             .single();
@@ -192,14 +182,14 @@ export const features_routes = new Hono<AppBindings>()
             return context.json({ error: 'Failed to submit feature' }, 500);
         }
         if (data) {
-            event_bus.emit({ type: 'features:update', data: { feature_id: id, status: 'Submitted', project_id: data.project_id } });
+            event_bus.emit({ type: 'features:update', data: { feature_id: id, status: 'submitted', project_id: data.project_id } });
         }
         return context.json(data);
     })
 
     // Delete feature
     .delete('/:id', validate_uuid_params('id'), async (context) => {
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
         const supabase = context.get('supabase');
 
         const { error } = await supabase.from('features').delete().eq('id', id);
@@ -213,7 +203,7 @@ export const features_routes = new Hono<AppBindings>()
 
     // Add resource to feature
     .post('/:id/resources', validate_uuid_params('id'), zValidator('json', z.object({ url: z.string().url(), title: z.string().optional() })), async (context) => {
-        const feature_id = context.req.param('id');
+        const feature_id = require_param(context, 'id');
         const parsed = context.req.valid('json');
 
         if (!validate_resource_url(parsed.url)) {
@@ -236,7 +226,7 @@ export const features_routes = new Hono<AppBindings>()
 
     // Delete resource
     .delete('/:feature_id/resources/:id', validate_uuid_params('feature_id', 'id'), async (context) => {
-        const id = context.req.param('id');
+        const id = require_param(context, 'id');
         const supabase = context.get('supabase');
 
         const { error } = await supabase.from('resources').delete().eq('id', id);

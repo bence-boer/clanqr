@@ -1,9 +1,9 @@
 import type { TypedSupabaseClient } from '../db';
 
 /**
- * Check if all tasks for a feature are complete (Complete or Skipped).
- * If so, mark the feature as Done. Single source of truth — used by both
- * agent_service and pipeline_service to avoid race conditions.
+ * Check if all tasks for a feature are complete (complete or skipped).
+ * If so, mark the feature as done. Single source of truth — used by both
+ * sdk_session_service and pipeline_service to avoid race conditions.
  */
 export async function check_and_complete_feature(
     feature_id: string,
@@ -13,15 +13,15 @@ export async function check_and_complete_feature(
         .from('tasks')
         .select('id', { count: 'exact', head: true })
         .eq('feature_id', feature_id)
-        .not('status', 'in', '("Complete","Skipped")');
+        .not('status', 'in', '("complete","skipped")');
 
     if (count === 0) {
-        // Only update if still In_Progress (prevents double-completion race)
+        // Only update if still in_progress (prevents double-completion race)
         const { data } = await supabase
             .from('features')
-            .update({ status: 'Done' })
+            .update({ status: 'done' })
             .eq('id', feature_id)
-            .eq('status', 'In_Progress')
+            .eq('status', 'in_progress')
             .select('id')
             .single();
         return !!data;

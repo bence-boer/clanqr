@@ -4,7 +4,6 @@
 
     interface Props {
         task_id: string
-        feature_cli: string
         title: string
         description: string
         model: string | null
@@ -14,20 +13,20 @@
     }
 
     let {
-        task_id, feature_cli, title = $bindable(), description = $bindable(),
+        task_id, title = $bindable(), description = $bindable(),
         model = $bindable(), saving, on_save, on_cancel
     }: Props = $props();
 
     let model_options = $state<{ value: string, label: string }[]>([]);
     let loading_models = $state(false);
-    let last_loaded_cli = $state('');
+    let models_loaded = $state(false);
 
     async function load_models() {
-        if (feature_cli === last_loaded_cli) return;
+        if (models_loaded) return;
         loading_models = true;
         try {
-            model_options = await api.list_models(feature_cli);
-            last_loaded_cli = feature_cli;
+            model_options = await api.list_models();
+            models_loaded = true;
         }
         catch {
             model_options = [];

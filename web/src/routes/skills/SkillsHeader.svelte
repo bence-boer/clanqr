@@ -13,7 +13,7 @@
 <div class="page-header">
     <div class="header-left">
         <h2>Skills</h2>
-        <p class="subtitle">Copilot CLI skills available on this system (from ~/.copilot/skills/)</p>
+        <p class="subtitle">Copilot CLI skills available on this system (from ~/.agents/skills/)</p>
     </div>
     <div class="header-right">
         {#if refresh_message}

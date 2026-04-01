@@ -3,8 +3,8 @@ const dev_session_tokens = new Set([
     'dev-admin-session-token'
 ]);
 
-const dev_passkey_ids = new Set([
-    'dev-passkey',
+const dev_user_ids = new Set([
+    'dev-user',
     'dev-admin'
 ]);
 
@@ -12,6 +12,6 @@ export function is_dev_session_token(token: string): boolean {
     return dev_session_tokens.has(token);
 }
 
-export function is_dev_passkey_id(passkey_id: string): boolean {
-    return dev_passkey_ids.has(passkey_id);
+export function is_dev_user_id(user_id: string): boolean {
+    return dev_user_ids.has(user_id);
 }

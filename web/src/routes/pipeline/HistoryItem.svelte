@@ -2,7 +2,7 @@
     import { resolve } from '$app/paths';
     import { CodeBlock } from '$lib/components';
     import { Badge, Button } from '$lib/components/primitives';
-    import type { AgentRun } from '$lib/types';
+    import type { AgentSession } from '$lib/types';
     import { status_icon, status_class } from '$lib/utils/status';
     import { onMount } from 'svelte';
 
@@ -12,11 +12,12 @@
         on_toggle_log,
         onretry
     }: {
-        run: AgentRun & {
+        run: AgentSession & {
             tasks?: {
                 id: string
                 title: string | null
                 feature_id: string
+                agent_log?: string | null
                 features?: {
                     id: string
                     title: string
@@ -29,6 +30,8 @@
         on_toggle_log: (id: string) => void
         onretry?: (task_id: string) => void
     } = $props();
+
+    const log_content = $derived(run.tasks?.agent_log ?? null);
 
     // §15.12 — Flash animation for newly completed items
     let is_new = $state(false);
@@ -51,8 +54,8 @@
         if (r.tasks?.title) return r.tasks.title;
         if (r.tasks?.id) return `Task · ${r.tasks.id.slice(0, 12)}`;
         const ref_id = r.feature_id ?? r.task_id ?? r.session_id;
-        if (!ref_id) return r.type;
-        const kind = r.type === 'manager' ? 'Feature' : r.type === 'ralph' ? 'Task' : 'Chat';
+        if (!ref_id) return r.agent_type;
+        const kind = r.agent_type === 'manager' ? 'Feature' : r.agent_type === 'ralph' ? 'Task' : 'Chat';
         return `${kind} · ${ref_id.slice(0, 12)}`;
     }
 
@@ -135,7 +138,7 @@
             {#if run.status === 'failed' && run.task_id && onretry}
                 <Button variant="secondary" size="sm" icon="replay" onclick={() => onretry(run.task_id ?? '')}>Retry</Button>
             {/if}
-            {#if run.log}
+            {#if log_content}
                 <Button variant="ghost" size="sm" icon="terminal" onclick={() => on_toggle_log(run.id)}>
                     {expanded ? 'Hide Console' : 'View Console'}
                 </Button>
@@ -143,8 +146,8 @@
         </div>
     </div>
 
-    {#if expanded && run.log}
-        <CodeBlock content={run.log} max_height="200px" />
+    {#if expanded && log_content}
+        <CodeBlock content={log_content} max_height="200px" />
     {/if}
 </div>
 

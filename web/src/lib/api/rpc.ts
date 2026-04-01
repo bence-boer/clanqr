@@ -25,9 +25,7 @@ const custom_fetch = async (endpoint: RequestInfo | URL, init?: RequestInit): Pr
 
     if (!response.ok) {
         if (response.status === 401) {
-            auth_store.state = 'login';
-            auth_store.role = null;
-            auth_store.passkey_id = null;
+            auth_store.reset();
             toast_store.error('Session expired — please sign in again');
             throw new Error('Session expired');
         }

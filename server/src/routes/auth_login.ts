@@ -1,124 +1,222 @@
-import {
-    generateAuthenticationOptions,
-    verifyAuthenticationResponse
-} from '@simplewebauthn/server';
 import { Hono } from 'hono';
-import { setCookie } from 'hono/cookie';
+import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import type { AppBindings } from '../middleware/supabase';
-import { logger } from '../utils/logger';
-import { challenge_store, generate_session_token, RP_ID, RP_ORIGIN } from './auth_shared';
+import { env } from '../env';
+import { generate_session_token } from './auth_shared';
+import { encrypt_token } from '../utils/token_encryption';
+
+const GITHUB_AUTHORIZE_URL = 'https://github.com/login/oauth/authorize';
+const GITHUB_TOKEN_URL = 'https://github.com/login/oauth/access_token';
+const GITHUB_USER_URL = 'https://api.github.com/user';
+
+function get_admin_github_ids(): Set<number> {
+    return new Set(
+        (env.ADMIN_GITHUB_IDS ?? '').split(',').filter(Boolean).map(Number)
+    );
+}
 
 export const login_routes = new Hono<AppBindings>()
 
-    // Generate authentication options (login)
-    .post('/options', async (context) => {
-        const db = context.get('supabase');
-        const { data: passkeys, count } = await db
-            .from('passkeys')
-            .select('credential_id, transports', { count: 'exact' });
-
-        if (!count || count === 0) {
-            return context.json({ error: 'No passkeys registered' }, 403);
-        }
-
-        const allow = (passkeys ?? []).map((p) => ({
-            id: p.credential_id,
-            transports: (p.transports ?? []) as import('@simplewebauthn/server').AuthenticatorTransportFuture[]
-        }));
-
-        const options = await generateAuthenticationOptions({
-            rpID: RP_ID,
-            allowCredentials: allow,
-            userVerification: 'preferred'
+    // GET /api/auth/login/github → Redirect to GitHub authorization
+    .get('/github', async (context) => {
+        const state = generate_session_token();
+        setCookie(context, 'oauth_state', state, {
+            httpOnly: true,
+            secure: env.NODE_ENV === 'production',
+            sameSite: 'Lax',
+            path: '/',
+            maxAge: 600
         });
-
-        // Store challenge keyed by itself — each challenge is unique, enabling concurrent logins
-        challenge_store.set(`auth:${options.challenge}`, options.challenge);
-        setTimeout(() => challenge_store.delete(`auth:${options.challenge}`), 120000);
-
-        return context.json(options);
+        const params = new URLSearchParams({
+            client_id: env.GITHUB_CLIENT_ID,
+            redirect_uri: env.GITHUB_CALLBACK_URL,
+            scope: 'read:user user:email',
+            state
+        });
+        return context.redirect(`${GITHUB_AUTHORIZE_URL}?${params}`);
     })
 
-    // Verify authentication response (login)
-    .post('/verify', async (context) => {
+    // GET /api/auth/login/callback → Exchange code, create session, redirect
+    .get('/callback', async (context) => {
         const db = context.get('supabase');
-        const body = await context.req.json();
+        const code = context.req.query('code');
+        const state = context.req.query('state');
+        const stored_state = getCookie(context, 'oauth_state');
+        const oauth_error = context.req.query('error');
 
-        // Extract challenge from the credential's clientDataJSON to support concurrent logins
-        let expected_challenge: string | undefined;
+        // GitHub sends ?error=access_denied when user declines
+        if (oauth_error) {
+            setCookie(context, 'oauth_state', '', { maxAge: 0, path: '/' });
+            return context.redirect(`${env.FRONTEND_URL}?auth_error=${encodeURIComponent(oauth_error)}`);
+        }
+
+        // Validate state parameter (CSRF protection)
+        if (!state || !stored_state || state !== stored_state) {
+            return context.redirect(`${env.FRONTEND_URL}?auth_error=invalid_state`);
+        }
+
+        // Clear state cookie
+        setCookie(context, 'oauth_state', '', { maxAge: 0, path: '/' });
+
+        if (!code) {
+            return context.redirect(`${env.FRONTEND_URL}?auth_error=missing_code`);
+        }
+
+        // Exchange code for access token
+        let token_data: { access_token?: string, token_type?: string, scope?: string, error?: string };
         try {
-            const client_data_raw = Buffer.from(body.credential?.response?.clientDataJSON ?? '', 'base64url').toString();
-            const client_data = JSON.parse(client_data_raw);
-            const sent_challenge = client_data.challenge as string;
-            expected_challenge = challenge_store.get(`auth:${sent_challenge}`);
+            const token_response = await fetch(GITHUB_TOKEN_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    client_id: env.GITHUB_CLIENT_ID,
+                    client_secret: env.GITHUB_CLIENT_SECRET,
+                    code,
+                    redirect_uri: env.GITHUB_CALLBACK_URL
+                })
+            });
+            token_data = await token_response.json() as typeof token_data;
         }
         catch {
-            // Fall through to challenge expired error
+            return context.redirect(`${env.FRONTEND_URL}?auth_error=token_exchange_failed`);
         }
 
-        if (!expected_challenge) {
-            return context.json({ error: 'Authentication challenge expired' }, 400);
+        if (!token_data.access_token) {
+            return context.redirect(`${env.FRONTEND_URL}?auth_error=no_access_token`);
         }
 
-        // Find the passkey by credential ID
-        const credential_id = body.credential.id;
-        const { data: passkey } = await db
-            .from('passkeys')
-            .select('*')
-            .eq('credential_id', credential_id)
+        // Fetch GitHub user profile
+        let github_user: {
+            id: number
+            login: string
+            name: string | null
+            avatar_url: string
+            email: string | null
+        };
+        try {
+            const user_response = await fetch(GITHUB_USER_URL, {
+                headers: { Authorization: `Bearer ${token_data.access_token}` }
+            });
+            if (!user_response.ok) {
+                return context.redirect(`${env.FRONTEND_URL}?auth_error=profile_fetch_failed`);
+            }
+            github_user = await user_response.json() as typeof github_user;
+        }
+        catch {
+            return context.redirect(`${env.FRONTEND_URL}?auth_error=profile_fetch_failed`);
+        }
+
+        // Determine role
+        const role = get_admin_github_ids().has(github_user.id) ? 'admin' : 'member';
+
+        // Check if user already exists (returning login vs new registration)
+        const { data: existing_user } = await db
+            .from('users')
+            .select('id')
+            .eq('github_id', github_user.id)
             .single();
 
-        if (!passkey) {
-            return context.json({ error: 'Passkey not found' }, 400);
-        }
+        let invite_token_value: string | undefined;
 
-        try {
-            const verification = await verifyAuthenticationResponse({
-                response: body.credential,
-                expectedChallenge: expected_challenge,
-                expectedOrigin: RP_ORIGIN.split(',').map((o: string) => o.trim()),
-                expectedRPID: RP_ID,
-                credential: {
-                    id: passkey.credential_id,
-                    publicKey: Buffer.from(passkey.public_key, 'base64url'),
-                    counter: Number(passkey.counter),
-                    transports: (passkey.transports ?? []) as import('@simplewebauthn/server').AuthenticatorTransportFuture[]
+        if (!existing_user) {
+            // New user — check if this is the first user (setup) or if invite is required
+            const { count } = await db
+                .from('users')
+                .select('*', { count: 'exact', head: true });
+
+            if ((count ?? 0) > 0) {
+                // Users exist — require an invite token
+                invite_token_value = getCookie(context, 'invite_token');
+                deleteCookie(context, 'invite_token', { path: '/' });
+
+                if (!invite_token_value) {
+                    return context.redirect(`${env.FRONTEND_URL}?auth_error=registration_required`);
                 }
-            });
 
-            if (!verification.verified) {
-                return context.json({ error: 'Verification failed' }, 400);
+                // Validate invite exists, is unused, and not expired
+                const { data: invite } = await db
+                    .from('invite_tokens')
+                    .select('id, used_by, expires_at')
+                    .eq('token', invite_token_value)
+                    .single();
+
+                if (!invite || invite.used_by || new Date(invite.expires_at) < new Date()) {
+                    return context.redirect(`${env.FRONTEND_URL}?auth_error=registration_required`);
+                }
             }
-
-            // Update counter
-            await db
-                .from('passkeys')
-                .update({ counter: verification.authenticationInfo.newCounter })
-                .eq('id', passkey.id);
-
-            challenge_store.delete(`auth:${expected_challenge}`);
-
-            // Create session
-            const session_token = generate_session_token();
-            const expires_at = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-            await db.from('sessions').insert({
-                passkey_id: passkey.id,
-                token: session_token,
-                expires_at: expires_at.toISOString()
-            });
-
-            setCookie(context, 'session', session_token, {
-                httpOnly: true,
-                secure: RP_ID !== 'localhost',
-                sameSite: 'Lax',
-                path: '/',
-                expires: expires_at
-            });
-
-            return context.json({ verified: true });
+            // else: no users → first user setup, no invite needed
         }
-        catch (err) {
-            logger.error('Auth login/verify error', { route: 'POST /api/auth/login/verify', error: String(err) });
-            return context.json({ error: 'Authentication failed' }, 400);
+
+        // Upsert user
+        const { data: user, error: upsert_error } = await db
+            .from('users')
+            .upsert(
+                {
+                    github_id: github_user.id,
+                    username: github_user.login,
+                    display_name: github_user.name ?? github_user.login,
+                    avatar_url: github_user.avatar_url,
+                    email: github_user.email,
+                    role,
+                    updated_at: new Date().toISOString()
+                },
+                { onConflict: 'github_id' }
+            )
+            .select('id')
+            .single();
+
+        if (upsert_error || !user) {
+            console.error('User upsert failed:', upsert_error);
+            return context.redirect(`${env.FRONTEND_URL}?auth_error=user_creation_failed`);
         }
+
+        // Mark invite as used atomically with optimistic locking
+        if (invite_token_value && !existing_user) {
+            const { data: claimed, error: claim_error } = await db
+                .from('invite_tokens')
+                .update({ used_by: user.id, used_at: new Date().toISOString() })
+                .eq('token', invite_token_value)
+                .is('used_by', null)
+                .select('id')
+                .single();
+
+            if (claim_error || !claimed) {
+                // Race condition: invite was claimed by another user between validation and now
+                // Roll back: delete the just-created user since they shouldn't exist without a valid invite
+                await db.from('sessions').delete().eq('user_id', user.id);
+                await db.from('users').delete().eq('id', user.id);
+                return context.redirect(`${env.FRONTEND_URL}?auth_error=registration_required`);
+            }
+        }
+
+        // Create session with encrypted token
+        const session_token = generate_session_token();
+        const encrypted_access_token = encrypt_token(token_data.access_token, env.SESSION_SECRET);
+        const expires_at = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+
+        const { error: session_error } = await db.from('sessions').insert({
+            user_id: user.id,
+            token: session_token,
+            github_access_token: encrypted_access_token,
+            expires_at: expires_at.toISOString()
+        });
+
+        if (session_error) {
+            console.error('Session creation failed:', session_error);
+            return context.redirect(`${env.FRONTEND_URL}?auth_error=session_creation_failed`);
+        }
+
+        // Set session cookie
+        setCookie(context, 'session', session_token, {
+            httpOnly: true,
+            secure: env.NODE_ENV === 'production',
+            sameSite: 'Lax',
+            path: '/',
+            maxAge: 30 * 24 * 60 * 60
+        });
+
+        return context.redirect(env.FRONTEND_URL);
     });

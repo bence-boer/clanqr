@@ -12,8 +12,6 @@ export interface FeatureActionDeps {
 export interface CreateFeatureData {
     title: string
     description?: string
-    cli: string
-    execution_cli: string
     planning_model: string | null
     execution_model: string | null
     on_task_failure: FailureBehavior
@@ -31,8 +29,6 @@ export async function create_feature(
             project_id: deps.project_id,
             title: data.title,
             description: data.description,
-            cli: data.cli,
-            execution_cli: data.execution_cli,
             planning_model: data.planning_model,
             execution_model: data.execution_model,
             on_task_failure: data.on_task_failure,
@@ -90,8 +86,6 @@ export async function duplicate_feature(
     source: {
         title: string
         description?: string | null
-        cli?: string | null
-        execution_cli?: string | null
         planning_model?: string | null
         execution_model?: string | null
         on_task_failure?: FailureBehavior | null
@@ -108,8 +102,6 @@ export async function duplicate_feature(
             project_id: deps.project_id,
             title: `${source.title} (copy)`,
             description: source.description ?? undefined,
-            cli: source.cli ?? 'copilot',
-            execution_cli: source.execution_cli ?? source.cli ?? 'copilot',
             planning_model: source.planning_model ?? null,
             execution_model: source.execution_model ?? null,
             on_task_failure: source.on_task_failure ?? 'stop',

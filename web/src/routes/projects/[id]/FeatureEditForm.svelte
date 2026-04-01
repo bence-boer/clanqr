@@ -9,8 +9,6 @@
         on_save: (data: {
             title: string
             description: string | null
-            cli: string
-            execution_cli: string
             planning_model: string | null
             execution_model: string | null
         }) => Promise<void>
@@ -22,53 +20,37 @@
     type ModelOpt = { value: string, label: string };
     let edit_title = $state(feature.title);
     let edit_description = $state(feature.description ?? '');
-    let edit_cli = $state(feature.cli ?? 'copilot');
-    let edit_execution_cli = $state(feature.execution_cli ?? feature.cli ?? 'copilot');
     let edit_planning_model = $state(feature.planning_model ?? '');
     let edit_execution_model = $state(feature.execution_model ?? '');
-    let edit_planning_models = $state<ModelOpt[]>([]);
-    let edit_execution_models = $state<ModelOpt[]>([]);
-    let loading_planning = $state(false);
-    let loading_execution = $state(false);
+    let model_options = $state<ModelOpt[]>([]);
+    let loading_models = $state(false);
     let saving = $state(false);
-    let last_plan_cli = $state('');
-    let last_exec_cli = $state('');
+    let models_loaded = $state(false);
     let started_at = feature.updated_at;
 
-    const plan_label = $derived(`Planning Model ${loading_planning ? '(...)' : ''}`);
-    const exec_label = $derived(`Execution Model ${loading_execution ? '(...)' : ''}`);
+    const plan_label = $derived(`Planning Model ${loading_models ? '(...)' : ''}`);
+    const exec_label = $derived(`Execution Model ${loading_models ? '(...)' : ''}`);
     const save_disabled = $derived(saving || !edit_title.trim() || !edit_planning_model || !edit_execution_model);
 
-    async function load_models(cli_val: string, kind: 'planning' | 'execution') {
-        const is_plan = kind === 'planning';
-        if (cli_val === (is_plan ? last_plan_cli : last_exec_cli)) return;
-        if (is_plan) loading_planning = true;
-        else loading_execution = true;
+    async function load_models() {
+        if (models_loaded) return;
+        loading_models = true;
         try {
-            const result = await api.list_models(cli_val);
-            if (is_plan) {
-                edit_planning_models = result;
-                last_plan_cli = cli_val;
-                if (!result.find((m) => m.value === edit_planning_model) && result.length > 0) edit_planning_model = result[0].value;
-            }
-            else {
-                edit_execution_models = result;
-                last_exec_cli = cli_val;
-                if (!result.find((m) => m.value === edit_execution_model) && result.length > 0) edit_execution_model = result[0].value;
-            }
+            model_options = await api.list_models();
+            models_loaded = true;
+            if (!model_options.find((m) => m.value === edit_planning_model) && model_options.length > 0) edit_planning_model = model_options[0].value;
+            if (!model_options.find((m) => m.value === edit_execution_model) && model_options.length > 0) edit_execution_model = model_options[0].value;
         }
         catch {
-            toast_store.error(`Failed to load ${kind} models`);
+            toast_store.error('Failed to load models');
         }
         finally {
-            if (is_plan) loading_planning = false;
-            else loading_execution = false;
+            loading_models = false;
         }
     }
 
     $effect(() => {
-        load_models(edit_cli, 'planning');
-        load_models(edit_execution_cli, 'execution');
+        load_models();
     });
 
     async function handle_save(e?: Event) {
@@ -81,7 +63,6 @@
         try {
             await on_save({
                 title: edit_title.trim(), description: edit_description.trim() || null,
-                cli: edit_cli, execution_cli: edit_execution_cli,
                 planning_model: edit_planning_model || null, execution_model: edit_execution_model || null
             });
         }
@@ -95,19 +76,13 @@
     <Input id="edit-title" type="text" bind:value={edit_title} label="Title" required />
     <Textarea id="edit-desc" bind:value={edit_description} label="Description" rows={4} />
     <div class="selection-grid">
-        <div class="field"><Select id="edit-cli" label="Planning CLI" bind:value={edit_cli} class="input select">
-            <option value="copilot">Copilot CLI</option><option value="gemini">Gemini CLI</option>
+        <div class="field">
+        <Select id="edit-planning-model" label={plan_label} bind:value={edit_planning_model} disabled={loading_models}>
+            {#each model_options as m (m.value)}<option value={m.value}>{m.label}</option>{/each}
         </Select></div>
         <div class="field">
-        <Select id="edit-planning-model" label={plan_label} bind:value={edit_planning_model} disabled={loading_planning}>
-            {#each edit_planning_models as m (m.value)}<option value={m.value}>{m.label}</option>{/each}
-        </Select></div>
-        <div class="field"><Select id="edit-execution-cli" label="Execution CLI" bind:value={edit_execution_cli} class="input select">
-            <option value="copilot">Copilot CLI</option><option value="gemini">Gemini CLI</option>
-        </Select></div>
-        <div class="field">
-        <Select id="edit-execution-model" label={exec_label} bind:value={edit_execution_model} disabled={loading_execution}>
-            {#each edit_execution_models as m (m.value)}<option value={m.value}>{m.label}</option>{/each}
+        <Select id="edit-execution-model" label={exec_label} bind:value={edit_execution_model} disabled={loading_models}>
+            {#each model_options as m (m.value)}<option value={m.value}>{m.label}</option>{/each}
         </Select></div>
     </div>
     <div class="form-actions">
