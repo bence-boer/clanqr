@@ -34,6 +34,10 @@ CREATE TABLE IF NOT EXISTS supabase_migrations.schema_migrations (
 );
 "
 
+echo "==> Creating service_role for PostgREST..."
+docker exec "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -c "CREATE ROLE service_role NOLOGIN BYPASSRLS;" 2>/dev/null || true
+run_sql "GRANT ALL ON SCHEMA public TO service_role;"
+
 echo "==> Applying migrations..."
 for migration in "$MIGRATIONS_DIR"/*.sql; do
   filename="$(basename "$migration")"
@@ -62,6 +66,14 @@ VALUES
 -- Test project
 INSERT INTO projects (name, description, status, created_by)
 VALUES ('Test Project', 'Seeded by test-db-reset.sh', 'active', 'aaaaaaaa-0000-0000-0000-000000000002');
+"
+
+echo "==> Granting service_role table access..."
+run_sql "
+GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO service_role;
 "
 
 echo "==> Done. Test database is ready."

@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { getCookie, setCookie } from 'hono/cookie';
+import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import type { AppBindings } from '../middleware/supabase';
 import { env } from '../env';
 import { generate_session_token } from './auth_shared';
@@ -112,6 +112,43 @@ export const login_routes = new Hono<AppBindings>()
         // Determine role
         const role = get_admin_github_ids().has(github_user.id) ? 'admin' : 'member';
 
+        // Check if user already exists (returning login vs new registration)
+        const { data: existing_user } = await db
+            .from('users')
+            .select('id')
+            .eq('github_id', github_user.id)
+            .single();
+
+        let invite_token_value: string | undefined;
+
+        if (!existing_user) {
+            // New user — check if this is the first user (setup) or if invite is required
+            const { count } = await db
+                .from('users')
+                .select('*', { count: 'exact', head: true });
+
+            if ((count ?? 0) > 0) {
+                // Users exist — require an invite token
+                invite_token_value = getCookie(context, 'invite_token');
+                deleteCookie(context, 'invite_token', { path: '/' });
+
+                if (!invite_token_value) {
+                    return context.redirect(`${env.FRONTEND_URL}?auth_error=registration_required`);
+                }
+
+                const { data: invite } = await db
+                    .from('invite_tokens')
+                    .select('id, used_by, expires_at')
+                    .eq('token', invite_token_value)
+                    .single();
+
+                if (!invite || invite.used_by || new Date(invite.expires_at) < new Date()) {
+                    return context.redirect(`${env.FRONTEND_URL}?auth_error=registration_required`);
+                }
+            }
+            // else: no users → first user setup, no invite needed
+        }
+
         // Upsert user
         const { data: user, error: upsert_error } = await db
             .from('users')
@@ -133,6 +170,14 @@ export const login_routes = new Hono<AppBindings>()
         if (upsert_error || !user) {
             console.error('User upsert failed:', upsert_error);
             return context.redirect(`${env.FRONTEND_URL}?auth_error=user_creation_failed`);
+        }
+
+        // Mark invite as used if this was an invited registration
+        if (invite_token_value && !existing_user) {
+            await db
+                .from('invite_tokens')
+                .update({ used_by: user.id, used_at: new Date().toISOString() })
+                .eq('token', invite_token_value);
         }
 
         // Create session with encrypted token

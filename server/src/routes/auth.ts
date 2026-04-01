@@ -89,6 +89,33 @@ export const auth_routes = new Hono<AppBindings>()
         return context.json({ is_setup, authenticated: false, user: null });
     })
 
+    // Public invite status check (no auth required)
+    .get('/invite/status', async (context) => {
+        const token = context.req.query('token');
+        if (!token) {
+            return context.json({ valid: false, error: 'missing_token' });
+        }
+
+        const db = context.get('supabase');
+        const { data: invite, error } = await db
+            .from('invite_tokens')
+            .select('id, used_by, used_at, expires_at')
+            .eq('token', token)
+            .single();
+
+        if (error || !invite) {
+            return context.json({ valid: false, error: 'not_found' });
+        }
+        if (invite.used_by) {
+            return context.json({ valid: false, error: 'used' });
+        }
+        if (new Date(invite.expires_at) < new Date()) {
+            return context.json({ valid: false, error: 'expired' });
+        }
+
+        return context.json({ valid: true, expires_at: invite.expires_at });
+    })
+
     // Mount registration and login sub-routes
     .route('/register', register_routes)
     .route('/login', login_routes)

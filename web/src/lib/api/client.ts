@@ -176,5 +176,32 @@ export const api = {
     delete_user: async (id: string): Promise<{ success: boolean }> =>
         unwrap(await (await client.api.admin[':id'].$delete({ param: { id } })).json()),
     revoke_user_sessions: async (id: string): Promise<{ success: boolean }> =>
-        unwrap(await (await client.api.admin[':id'].sessions.$delete({ param: { id } })).json())
+        unwrap(await (await client.api.admin[':id'].sessions.$delete({ param: { id } })).json()),
+
+    // ── Invites ──────────────────────────────────────────────────────────────
+    create_invite: async (expires_in_days?: number) => {
+        const response = await fetch(`${API_URL}/api/admin/invites`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(expires_in_days ? { expires_in_days } : {})
+        });
+        if (!response.ok) throw new Error('Failed to create invite');
+        return response.json();
+    },
+    list_invites: async () => {
+        const response = await fetch(`${API_URL}/api/admin/invites`, {
+            credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Failed to list invites');
+        return response.json();
+    },
+    revoke_invite: async (id: string): Promise<{ success: boolean }> => {
+        const response = await fetch(`${API_URL}/api/admin/invites/${encodeURIComponent(id)}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Failed to revoke invite');
+        return response.json();
+    }
 };
