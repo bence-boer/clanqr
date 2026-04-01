@@ -76,4 +76,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO service_role;
 "
 
+echo "==> Reloading PostgREST schema cache..."
+run_sql "NOTIFY pgrst, 'reload schema';"
+
 echo "==> Done. Test database is ready."
