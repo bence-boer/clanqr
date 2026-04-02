@@ -90,18 +90,18 @@ jobs:
           sudo chmod 600 $ENV_FILE
           rm -f /tmp/ralph-api-test.env
 
-      - name: Ensure Copilot CLI is running
+      - name: Verify Copilot CLI is reachable
         run: |
-          if ! systemctl is-active ralph-copilot-cli.service > /dev/null 2>&1; then
-            echo "Starting Copilot CLI headless server..."
-            sudo systemctl start ralph-copilot-cli.service
-            sleep 3
-          fi
-          if ! systemctl is-active ralph-copilot-cli.service > /dev/null 2>&1; then
-            echo "::warning::Copilot CLI service is not running — agent dispatch will be unavailable"
-          else
-            echo "✅ Copilot CLI is running on port 4321"
-          fi
+          # The Copilot CLI headless server uses TCP (not HTTP) on port 4321.
+          for i in 1 2 3; do
+            if nc -z -w 2 localhost 4321 2>/dev/null; then
+              echo "✅ Copilot CLI is reachable on port 4321"
+              exit 0
+            fi
+            echo "Attempt $i: Copilot CLI not yet reachable, waiting 2s..."
+            sleep 2
+          done
+          echo "::warning::Copilot CLI is not reachable on port 4321 — agent dispatch will be unavailable"
 
       - name: Reset and seed test database
         run: |
