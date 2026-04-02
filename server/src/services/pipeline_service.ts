@@ -4,7 +4,7 @@ import { prompt_service } from './prompt_service';
 import { check_and_complete_feature } from './feature_utils';
 import { execute_task as sdk_execute_task } from './sdk_session_service';
 import { logger } from '../utils/logger';
-import { can_start_session, increment_session_count, decrement_session_count, set_on_session_freed } from './session_pool_service';
+import { can_start_session, set_on_session_freed } from './session_pool_service';
 import { event_bus } from './event_bus';
 import { handle_task_failure, type PipelineTask } from './pipeline_failure';
 
@@ -145,9 +145,9 @@ class PipelineService {
         const model = task.model || task.features?.execution_model || 'gpt-4.1';
 
         this.active_run = { task_id, run_id: '', feature_id };
-        increment_session_count();
 
         try {
+            // Session count is managed inside sdk_execute_task (single owner)
             const result = await sdk_execute_task(task_id, feature_id, model, prompt);
             this.active_run.run_id = result.session_id;
 
@@ -181,7 +181,6 @@ class PipelineService {
             }
         }
         finally {
-            decrement_session_count();
             this.active_run = null;
         }
 

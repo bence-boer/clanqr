@@ -122,13 +122,15 @@ export const login_routes = new Hono<AppBindings>()
         let invite_token_value: string | undefined;
 
         if (!existing_user) {
-            // New user — check if this is the first user (setup) or if invite is required
+            const is_admin_id = get_admin_github_ids().has(github_user.id);
+
+            // New user — check if this is the first user (setup), admin, or if invite is required
             const { count } = await db
                 .from('users')
                 .select('*', { count: 'exact', head: true });
 
-            if ((count ?? 0) > 0) {
-                // Users exist — require an invite token
+            if ((count ?? 0) > 0 && !is_admin_id) {
+                // Users exist and this is not a configured admin — require an invite token
                 invite_token_value = getCookie(context, 'invite_token');
                 deleteCookie(context, 'invite_token', { path: '/' });
 
@@ -147,7 +149,7 @@ export const login_routes = new Hono<AppBindings>()
                     return context.redirect(`${env.FRONTEND_URL}?auth_error=registration_required`);
                 }
             }
-            // else: no users → first user setup, no invite needed
+            // else: no users (first setup) or admin GitHub ID — no invite needed
         }
 
         // Upsert user
