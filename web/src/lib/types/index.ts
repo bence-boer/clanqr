@@ -102,6 +102,7 @@ export type SystemAlert = SystemAlerts['alerts'][number];
 export type ModelOption = {
     value: string
     label: string
+    billing_multiplier?: number
 };
 
 // ── Usage ─────────────────────────────────────────────────────────────────────

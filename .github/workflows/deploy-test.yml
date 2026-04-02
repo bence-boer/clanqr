@@ -69,7 +69,7 @@ jobs:
 
       - name: Setup environment
         run: |
-          cat > /tmp/ralph-api-test.env << 'ENVEOF'
+          cat > /tmp/ralph-api-test.env << ENVEOF
           SUPABASE_URL=http://172.17.0.1:54331
           SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
           GITHUB_CLIENT_ID=${{ secrets.GITHUB_CLIENT_ID }}
@@ -82,10 +82,26 @@ jobs:
           NODE_ENV=test
           PORT=3011
           LOG_LEVEL=debug
+          CLI_URL=localhost:4321
           ENVEOF
+          # Strip leading whitespace from heredoc indentation
+          sed -i 's/^[[:space:]]*//' /tmp/ralph-api-test.env
           sudo cp /tmp/ralph-api-test.env $ENV_FILE
           sudo chmod 600 $ENV_FILE
           rm -f /tmp/ralph-api-test.env
+
+      - name: Ensure Copilot CLI is running
+        run: |
+          if ! systemctl is-active ralph-copilot-cli.service > /dev/null 2>&1; then
+            echo "Starting Copilot CLI headless server..."
+            sudo systemctl start ralph-copilot-cli.service
+            sleep 3
+          fi
+          if ! systemctl is-active ralph-copilot-cli.service > /dev/null 2>&1; then
+            echo "::warning::Copilot CLI service is not running — agent dispatch will be unavailable"
+          else
+            echo "✅ Copilot CLI is running on port 4321"
+          fi
 
       - name: Reset and seed test database
         run: |
