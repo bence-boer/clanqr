@@ -2,6 +2,7 @@
     import type { Snippet } from 'svelte';
     import type { HTMLSelectAttributes } from 'svelte/elements';
     import { Label, type LabelProperties } from '../label';
+    import { generate_id } from '$lib/utils/id';
 
     export type SelectProperties = HTMLSelectAttributes & {
         ref?: HTMLSelectElement | null
@@ -24,7 +25,7 @@
         ...rest_props
     }: SelectProperties = $props();
 
-    const fallback_id = `select-${crypto.randomUUID().slice(0, 8)}`;
+    const fallback_id = `select-${generate_id().slice(0, 8)}`;
     const select_id = $derived(id || fallback_id);
 </script>
 
