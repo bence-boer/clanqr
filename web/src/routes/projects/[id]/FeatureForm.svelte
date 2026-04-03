@@ -1,10 +1,15 @@
 <script lang="ts">
+    import { onMount } from 'svelte';
+    import { api } from '$lib/api/client';
     import { Button } from '$lib/components/primitives/button';
     import { Input } from '$lib/components/primitives/input';
+    import { Select } from '$lib/components/primitives/select';
     import { Textarea } from '$lib/components/primitives/textarea';
+    import { toast_store } from '$lib/stores/toast.svelte';
     import type { FailureBehavior } from '$lib/types';
     import type { CreateFeatureData } from './feature_actions';
     import FeatureAdvancedSettings from './FeatureAdvancedSettings.svelte';
+    import FeatureResources from './FeatureResources.svelte';
 
     interface Props {
         on_create: (data: CreateFeatureData) => Promise<void>
@@ -12,6 +17,8 @@
     }
 
     let { on_create, on_cancel }: Props = $props();
+
+    type ModelOpt = { value: string, label: string };
 
     let title = $state('');
     let description = $state('');
@@ -22,43 +29,64 @@
     let resources = $state<{ url: string, title: string }[]>([]);
     let creating = $state(false);
     let form_error = $state<string | null>(null);
+    let model_options = $state<ModelOpt[]>([]);
+    let loading_models = $state(true);
 
-    function add_resource_field() {
-        resources = [...resources, { url: '', title: '' }];
-    }
-
-    function remove_resource(index: number) {
-        resources = resources.filter((_, i) => i !== index);
-    }
+    onMount(async () => {
+        try {
+            model_options = await api.list_models();
+            if (model_options.length > 0) {
+                const default_model = model_options.find((m) => m.value === 'gpt-4.1');
+                planning_model = default_model?.value ?? model_options[0].value;
+                execution_model = default_model?.value ?? model_options[0].value;
+            }
+        }
+        catch {
+            toast_store.error('Failed to load models');
+        }
+        finally {
+            loading_models = false;
+        }
+    });
 
     async function handle_submit() {
         if (!title.trim()) return;
         creating = true;
         form_error = null;
         try {
-            const clean_resources = resources.filter((r) => r.url.trim()).map((r) => ({ url: r.url.trim(), title: r.title.trim() || undefined }));
+            const clean_resources = resources
+                .filter((r) => r.url.trim())
+                .map((r) => ({ url: r.url.trim(), title: r.title.trim() || undefined }));
             await on_create({
-                title: title.trim(), description: description.trim() || undefined,
+                title: title.trim(),
+                description: description.trim() || undefined,
                 planning_model: planning_model || null,
-                execution_model: execution_model || null, on_task_failure, task_timeout_minutes,
+                execution_model: execution_model || null,
+                on_task_failure,
+                task_timeout_minutes,
                 resources: clean_resources
             });
             title = '';
             description = '';
-            planning_model = '';
-            execution_model = '';
+            planning_model = model_options[0]?.value ?? '';
+            execution_model = model_options[0]?.value ?? '';
             on_task_failure = 'stop';
             task_timeout_minutes = 10;
             resources = [];
             form_error = null;
         }
         catch (error) {
-            form_error = error instanceof Error ? error.message : 'Failed to create feature. Please try again.';
+            form_error = error instanceof Error
+                ? error.message
+                : 'Failed to create feature. Please try again.';
         }
         finally {
             creating = false;
         }
     }
+
+    const plan_label = $derived(`Planning Model${loading_models ? ' (loading...)' : ''}`);
+    const exec_label = $derived(`Execution Model${loading_models ? ' (loading...)' : ''}`);
 </script>
 
 <form
@@ -68,33 +96,31 @@
         handle_submit();
     }}
 >
-    <!-- Stage 1: Always visible -->
     <Input type="text" placeholder="Feature title" bind:value={title} required />
     <Textarea placeholder="Description" bind:value={description} rows={4} />
 
-    <div class="resources-section">
-        <div class="resources-header">
-            <span><span class="icon" style="font-size:16px">link</span> Resources</span>
-            <Button type="button" variant="secondary" size="sm" onclick={add_resource_field}>
-                <span class="icon" style="font-size:14px">add</span> Add URL
-            </Button>
+    <div class="model-grid">
+        <div class="field">
+            <Select id="create-planning-model" label={plan_label} bind:value={planning_model} disabled={loading_models}>
+                {#each model_options as m (m.value)}
+                    <option value={m.value}>{m.label}</option>
+                {/each}
+            </Select>
+            <span class="help-text">AI model that breaks your feature into tasks</span>
         </div>
-        {#each resources as resource, index (index)}
-            <div class="resource-row">
-                <Input type="url" placeholder="https://..." bind:value={resource.url} class="input" />
-                <div class="title-field">
-                    <Input type="text" placeholder="Title" bind:value={resource.title} class="input" />
-                </div>
-                <Button type="button" variant="danger" size="icon" onclick={() => remove_resource(index)} aria-label="Remove resource">
-                    <span class="icon" style="font-size:16px">close</span>
-                </Button>
-            </div>
-        {/each}
+        <div class="field">
+            <Select id="create-execution-model" label={exec_label} bind:value={execution_model} disabled={loading_models}>
+                {#each model_options as m (m.value)}
+                    <option value={m.value}>{m.label}</option>
+                {/each}
+            </Select>
+            <span class="help-text">AI model that implements each task</span>
+        </div>
     </div>
 
+    <FeatureResources bind:resources />
+
     <FeatureAdvancedSettings
-        bind:planning_model
-        bind:execution_model
         bind:on_task_failure
         bind:task_timeout_minutes
     />
@@ -108,7 +134,7 @@
 
     <div class="form-actions">
         <Button type="button" variant="secondary" onclick={on_cancel}>Cancel</Button>
-        <Button type="submit" variant="primary" disabled={creating || !title.trim() || !planning_model || !execution_model}>
+        <Button type="submit" variant="primary" disabled={creating || !title.trim() || loading_models}>
             <span class="icon" style="font-size:16px">save</span>
             {creating ? 'Creating...' : 'Save Draft'}
         </Button>
@@ -117,29 +143,47 @@
 
 <style>
     .create-form {
-        background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius);
-        padding: 1.25rem; margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem;
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
     }
-    .resources-section { margin-top: 0.5rem; }
-    .resources-header {
-        display: flex; justify-content: space-between; align-items: center;
-        margin-bottom: 0.5rem; font-size: 0.875rem; color: var(--fg-muted);
+    .model-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
     }
-    .resources-header span { display: inline-flex; align-items: center; gap: 0.3rem; }
-    .resource-row {
-        display: flex; gap: 0.5rem; align-items: center;
-        margin-bottom: 0.5rem; flex-wrap: wrap;
+    .field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
     }
-    .title-field { max-width: 180px; }
-    .form-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+    .help-text {
+        font-size: 0.7rem;
+        color: var(--fg-muted);
+        font-style: italic;
+    }
+    .form-actions {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: flex-end;
+    }
     .form-error {
-        display: flex; align-items: center; gap: 0.4rem;
-        padding: 0.5rem 0.75rem; border-radius: var(--radius);
-        background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3);
-        color: #ef4444; font-size: 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: var(--radius);
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #ef4444;
+        font-size: 0.8rem;
     }
     @media (max-width: 768px) {
-        .resource-row { flex-direction: column; }
-        .title-field { max-width: 100%; }
+        .model-grid { grid-template-columns: 1fr; }
     }
 </style>

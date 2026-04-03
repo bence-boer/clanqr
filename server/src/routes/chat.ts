@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppBindings } from '../middleware/supabase';
 import { validate_uuid_params, require_param } from '../middleware/validate_params';
-import { chat_send } from '../services/sdk_session_service';
+import { chat_send, chat_delete_session } from '../services/chat_session_service';
 import { logger } from '../utils/logger';
 
 const create_session_schema = z.object({
@@ -109,6 +109,12 @@ export const chat_routes = new Hono<AppBindings>()
             logger.error('Failed to delete session', { route: 'DELETE /api/chat/sessions/:id', id, error: String(error) });
             return context.json({ error: 'Failed to delete session' }, 500);
         }
+
+        // Clean up the persistent SDK session
+        chat_delete_session(id).catch((err) =>
+            logger.warn('Failed to delete SDK chat session', { id, error: String(err) })
+        );
+
         return context.json({ success: true });
     })
 

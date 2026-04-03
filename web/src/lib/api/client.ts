@@ -68,6 +68,11 @@ export const api = {
         unwrap(await (await client.api.agents.resume.$post()).json()),
     pipeline_stop_current: async (): Promise<{ success: boolean }> =>
         unwrap(await (await client.api.agents['stop-current'].$post()).json()),
+    agent_logs: async (sdk_session_id: string): Promise<{ entries: { timestamp: string, type: string, summary: string }[], text?: string }> => {
+        const res = await fetch(`${API_URL}/api/agents/logs/${encodeURIComponent(sdk_session_id)}`, { credentials: 'include' });
+        if (!res.ok) throw new Error(`Failed to fetch logs: ${res.status}`);
+        return res.json();
+    },
     pipeline_reorder: async (task_ids: string[]): Promise<{ success: boolean }> => {
         const response = await fetch(`${API_URL}/api/agents/queue/reorder`, {
             method: 'PATCH',

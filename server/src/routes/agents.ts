@@ -5,6 +5,7 @@ import { pipeline_service } from '../services/pipeline_service';
 import { get_session_concurrency } from '../services/session_pool_service';
 import { plan_feature } from '../services/sdk_session_service';
 import { prompt_service } from '../services/prompt_service';
+import { log_store } from '../services/log_store_service';
 import { logger } from '../utils/logger';
 
 export const agents_routes = new Hono<AppBindings>()
@@ -137,4 +138,29 @@ export const agents_routes = new Hono<AppBindings>()
             .update({ status: 'cancelled', finished_at: new Date().toISOString() })
             .eq('status', 'running');
         return context.json({ success: true, message: 'All agents stopped' });
+    })
+
+    .get('/logs/:session_id', async (context) => {
+        const session_id = context.req.param('session_id');
+        if (!session_id) return context.json({ error: 'Missing session_id' }, 400);
+
+        const entries = log_store.get(session_id);
+
+        if (entries.length === 0) {
+            const supabase = context.get('supabase');
+            const { data } = await supabase.from('agent_sessions')
+                .select('summary, error, status')
+                .eq('sdk_session_id', session_id)
+                .single();
+            if (data) {
+                const fallback = data.error
+                    ? `Status: ${data.status}\nError: ${data.error}`
+                    : data.summary
+                        ? `Status: ${data.status}\nSummary: ${data.summary}`
+                        : `Status: ${data.status}`;
+                return context.json({ entries: [], text: fallback });
+            }
+        }
+
+        return context.json({ entries });
     });
