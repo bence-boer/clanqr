@@ -51,13 +51,39 @@
         load_status();
     });
 
-    async function view_log(task_id: string) {
-        selected_log = task_id;
-        log_content = 'Agent logs are now available via task artifacts.';
+    async function view_log(agent_id: string) {
+        selected_log = agent_id;
+        log_content = 'Loading...';
+
+        const agent = agents.find((a) => a.id === agent_id);
+        const sdk_sid = agent?.sdk_session_id;
+        if (!sdk_sid) {
+            log_content = 'No SDK session ID available for this agent.';
+            return;
+        }
+
+        try {
+            const result = await api.agent_logs(sdk_sid);
+            if (result.entries.length > 0) {
+                log_content = result.entries
+                    .map((e) => `[${new Date(e.timestamp).toLocaleTimeString()}] ${e.type}: ${e.summary}`)
+                    .join('\n');
+            }
+            else if (result.text) {
+                log_content = result.text;
+            }
+            else {
+                log_content = 'No log entries recorded for this session.';
+            }
+        }
+        catch {
+            log_content = 'Failed to fetch logs.';
+        }
     }
 
     async function refresh_log() {
         if (!selected_log) return;
+        await view_log(selected_log);
     }
 
     async function stop_all() {

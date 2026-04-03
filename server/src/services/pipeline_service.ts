@@ -143,12 +143,13 @@ class PipelineService {
 
         const prompt = await prompt_service.resolve_for_task(task_id, task_spec);
         const model = task.model || task.features?.execution_model || 'gpt-4.1';
+        const timeout_ms = (task.features?.task_timeout_minutes ?? 30) * 60 * 1000;
 
         this.active_run = { task_id, run_id: '', feature_id };
 
         try {
             // Session count is managed inside sdk_execute_task (single owner)
-            const result = await sdk_execute_task(task_id, feature_id, model, prompt);
+            const result = await sdk_execute_task(task_id, feature_id, model, prompt, timeout_ms);
             this.active_run.run_id = result.session_id;
 
             if (result.success) {
