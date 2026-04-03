@@ -1,4 +1,4 @@
-import { get_client, check_cli_health } from '../sdk/client_factory';
+import { get_connected_client, check_cli_health } from '../sdk/client_factory';
 import { logger } from '../utils/logger';
 
 export interface ModelOption {
@@ -31,7 +31,7 @@ export async function get_models(): Promise<ModelOption[]> {
             return cached_models ?? FALLBACK_MODELS;
         }
 
-        const client = get_client();
+        const client = await get_connected_client();
         const sdk_models = await client.listModels();
 
         const models: ModelOption[] = sdk_models

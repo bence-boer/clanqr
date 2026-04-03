@@ -123,9 +123,8 @@ jobs:
         run: |
           echo "Waiting for services to restart..."
           sleep 10
-          CURL="docker run --rm --network host curlimages/curl --max-time 5"
           for i in 1 2 3 4 5 6; do
-            if $CURL -sf http://localhost:3011/health > /dev/null 2>&1; then
+            if curl -sf --max-time 5 http://localhost:3011/health > /dev/null 2>&1; then
               echo "✅ Test API is healthy"
               break
             fi
@@ -136,7 +135,7 @@ jobs:
             sleep 5
           done
           for i in 1 2 3 4 5 6; do
-            if $CURL -sf http://localhost:3012 > /dev/null 2>&1; then
+            if curl -sf --max-time 5 http://localhost:3012 > /dev/null 2>&1; then
               echo "✅ Test Web is healthy"
               break
             fi
@@ -146,6 +145,34 @@ jobs:
             fi
             sleep 5
           done
+
+      - name: Install E2E dependencies
+        run: |
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          cd $APP_DIR && bun install --frozen-lockfile
+
+      - name: Run E2E tests (fast suite)
+        env:
+          CI: "true"
+          BASE_URL: http://test.clanqr.dev
+          API_URL: http://localhost:3011
+          PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: /home/scoy/.cache/ms-playwright/chromium-1208/chrome-linux/chrome
+        run: |
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          cd $APP_DIR/e2e
+          bun x playwright test --grep-invert "agent execution"
+
+      - name: Run E2E tests (agent execution)
+        env:
+          CI: "true"
+          BASE_URL: http://test.clanqr.dev
+          API_URL: http://localhost:3011
+          PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: /home/scoy/.cache/ms-playwright/chromium-1208/chrome-linux/chrome
+        timeout-minutes: 25
+        run: |
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          cd $APP_DIR/e2e
+          bun x playwright test agent-execution
 
       - name: Rollback on failure
         if: failure()

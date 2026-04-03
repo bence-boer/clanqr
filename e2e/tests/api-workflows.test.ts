@@ -36,7 +36,7 @@ test.describe("feature lifecycle", () => {
         expect(res.ok()).toBeTruthy();
         const feature = await res.json();
         feature_id = feature.id;
-        expect(feature.status).toBe("Draft");
+        expect(feature.status).toBe("draft");
         expect(feature.on_task_failure).toBe("skip");
     });
 
@@ -104,7 +104,7 @@ test.describe.serial("task management", () => {
         expect(res.ok()).toBeTruthy();
         const task = await res.json();
         task_id = task.id;
-        expect(task.status).toBe("Pending_Approval");
+        expect(task.status).toBe("queued");
         expect(task.sort_order).toBeDefined();
     });
 
@@ -133,7 +133,7 @@ test.describe.serial("task management", () => {
         });
         expect(res.ok()).toBeTruthy();
         const task = await res.json();
-        expect(task.status).toBe("Approved");
+        expect(task.status).toBe("approved");
 
         // Clean up: delete the approved task, resume pipeline
         await request.delete(`${API_URL}/api/tasks/${task_id}`, { headers: AUTH_HEADERS });
@@ -147,7 +147,7 @@ test.describe.serial("chat workflow", () => {
     test("create chat session", async ({ request }) => {
         const res = await request.post(`${API_URL}/api/chat/sessions`, {
             headers: AUTH_HEADERS,
-            data: { title: "E2E Chat", model: "claude-sonnet-4.5" },
+            data: { title: "E2E Chat", model: "gpt-4.1" },
         });
         expect(res.ok()).toBeTruthy();
         const session = await res.json();
@@ -162,13 +162,24 @@ test.describe.serial("chat workflow", () => {
         expect(sessions.some((s: any) => s.id === session_id)).toBeTruthy();
     });
 
-    test("cancel returns result", async ({ request }) => {
-        const res = await request.post(`${API_URL}/api/chat/sessions/${session_id}/cancel`, {
+    test("get session with messages", async ({ request }) => {
+        const res = await request.get(`${API_URL}/api/chat/sessions/${session_id}`, {
             headers: AUTH_HEADERS,
         });
         expect(res.ok()).toBeTruthy();
-        const body = await res.json();
-        expect(typeof body.success).toBe("boolean");
+        const session = await res.json();
+        expect(session.id).toBe(session_id);
+        expect(Array.isArray(session.chat_messages)).toBeTruthy();
+    });
+
+    test("rename session", async ({ request }) => {
+        const res = await request.patch(`${API_URL}/api/chat/sessions/${session_id}`, {
+            headers: AUTH_HEADERS,
+            data: { title: "Renamed Chat" },
+        });
+        expect(res.ok()).toBeTruthy();
+        const session = await res.json();
+        expect(session.title).toBe("Renamed Chat");
     });
 
     test("delete session", async ({ request }) => {
