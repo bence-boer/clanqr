@@ -93,8 +93,9 @@ jobs:
       - name: Verify Copilot CLI is reachable
         run: |
           # The Copilot CLI headless server uses TCP (not HTTP) on port 4321.
+          # CI runner is in a Docker container — use host bridge IP to reach host services.
           for i in 1 2 3; do
-            if nc -z -w 2 localhost 4321 2>/dev/null; then
+            if nc -z -w 2 172.17.0.1 4321 2>/dev/null; then
               echo "✅ Copilot CLI is reachable on port 4321"
               exit 0
             fi
@@ -122,27 +123,25 @@ jobs:
       - name: Verify deployment
         run: |
           echo "Waiting for services to restart..."
-          sleep 15
-          for i in $(seq 1 12); do
-            if curl -sf --max-time 5 http://localhost:3011/health > /dev/null 2>&1; then
+          sleep 10
+          for i in $(seq 1 20); do
+            if curl -sf --max-time 5 http://172.17.0.1:3011/health > /dev/null 2>&1; then
               echo "✅ Test API is healthy"
               break
             fi
-            if [ "$i" -eq 12 ]; then
-              echo "::error::Test API health check failed after 75s"
-              sudo journalctl -u ralph-api-test -n 20 --no-pager || true
+            if [ "$i" -eq 20 ]; then
+              echo "::error::Test API health check failed after 110s"
               exit 1
             fi
             sleep 5
           done
-          for i in $(seq 1 12); do
-            if curl -sf --max-time 5 http://localhost:3012 > /dev/null 2>&1; then
+          for i in $(seq 1 20); do
+            if curl -sf --max-time 5 http://172.17.0.1:3012 > /dev/null 2>&1; then
               echo "✅ Test Web is healthy"
               break
             fi
-            if [ "$i" -eq 12 ]; then
-              echo "::error::Test Web health check failed after 75s"
-              sudo journalctl -u ralph-web-test -n 20 --no-pager || true
+            if [ "$i" -eq 20 ]; then
+              echo "::error::Test Web health check failed after 110s"
               exit 1
             fi
             sleep 5
@@ -157,7 +156,7 @@ jobs:
         env:
           CI: "true"
           BASE_URL: http://test.clanqr.dev
-          API_URL: http://localhost:3011
+          API_URL: http://172.17.0.1:3011
           PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: /home/scoy/.cache/ms-playwright/chromium-1208/chrome-linux/chrome
         run: |
           export PATH="$BUN_INSTALL/bin:$PATH"
@@ -168,7 +167,7 @@ jobs:
         env:
           CI: "true"
           BASE_URL: http://test.clanqr.dev
-          API_URL: http://localhost:3011
+          API_URL: http://172.17.0.1:3011
           PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: /home/scoy/.cache/ms-playwright/chromium-1208/chrome-linux/chrome
         timeout-minutes: 25
         run: |
