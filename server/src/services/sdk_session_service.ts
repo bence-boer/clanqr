@@ -2,7 +2,7 @@
  * Core SDK session service — manages agent session lifecycle for planning, execution, and chat.
  * Replaces agent_service + spawn_agent + chat_service.
  */
-import { get_client } from '../sdk/client_factory';
+import { get_connected_client } from '../sdk/client_factory';
 import { get_custom_agents } from '../sdk/custom_agents';
 import { build_hooks } from '../sdk/hooks';
 import { parse_manager_output, parse_ralph_output } from '../sdk/output_parser';
@@ -21,7 +21,7 @@ function build_session_id(agent_type: SdkAgentType, entity_id: string): string {
 }
 
 async function run_session(config: SdkSessionConfig, prompt: string): Promise<SdkSessionResult> {
-    const client = get_client();
+    const client = await get_connected_client();
     const hooks = build_hooks(config, '');
     const session = await client.createSession({
         sessionId: config.session_id,
@@ -168,7 +168,7 @@ export async function chat_send(
     increment_session_count();
 
     try {
-        const client = get_client();
+        const client = await get_connected_client();
         const config: SdkSessionConfig = { session_id: sdk_sid, agent_type: 'researcher', model, entity_id: chat_session_id, entity_type: 'chat' };
         const hooks = build_hooks(config, '');
         const session = await client.createSession({

@@ -6,10 +6,10 @@ export default defineConfig({
     testDir: "./tests",
     fullyParallel: true,
     forbidOnly: is_ci,
-    retries: is_ci ? 2 : 0,
+    retries: is_ci ? 1 : 0,
     workers: is_ci ? 1 : undefined,
     reporter: is_ci ? "github" : "html",
-    timeout: 30_000,
+    timeout: 60_000,
     use: {
         baseURL: process.env.BASE_URL || "http://localhost:5173",
         trace: "on-first-retry",

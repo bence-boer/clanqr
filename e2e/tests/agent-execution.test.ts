@@ -23,8 +23,6 @@ async function poll_until(
 // ── 1. Direct task pipeline: create → approve → execute → verify ──────────────
 
 test.describe.serial("agent execution: direct task pipeline", () => {
-    test.skip(!!process.env.CI, "Agent execution tests require Docker + Copilot CLI + long timeouts");
-
     let project_id: string;
     let feature_id: string;
     let task_id: string;
@@ -66,7 +64,7 @@ test.describe.serial("agent execution: direct task pipeline", () => {
         expect(res.ok()).toBeTruthy();
         const feature = await res.json();
         feature_id = feature.id;
-        expect(feature.status).toBe("Draft");
+        expect(feature.status).toBe("draft");
     });
 
     test("3. create task directly via API", async ({ request }) => {
@@ -86,7 +84,7 @@ test.describe.serial("agent execution: direct task pipeline", () => {
         expect(res.ok()).toBeTruthy();
         const task = await res.json();
         task_id = task.id;
-        expect(task.status).toBe("Pending_Approval");
+        expect(task.status).toBe("queued");
     });
 
     test("4. approve task and trigger pipeline", async ({ request }) => {
@@ -95,7 +93,7 @@ test.describe.serial("agent execution: direct task pipeline", () => {
         });
         expect(res.ok()).toBeTruthy();
         const task = await res.json();
-        expect(task.status).toBe("Approved");
+        expect(task.status).toBe("approved");
     });
 
     test("5. wait for task execution to complete", async ({ request }) => {
@@ -109,7 +107,7 @@ test.describe.serial("agent execution: direct task pipeline", () => {
                 if (!res.ok()) return false;
                 const task = await res.json();
                 // Terminal states
-                if (task.status === "Complete" || task.status === "Failed") return true;
+                if (task.status === "complete" || task.status === "failed") return true;
                 return false;
             },
             AGENT_TIMEOUT_MS - 30_000,
@@ -123,7 +121,7 @@ test.describe.serial("agent execution: direct task pipeline", () => {
         });
         expect(res.ok()).toBeTruthy();
         const task = await res.json();
-        expect(task.status).toBe("Complete");
+        expect(task.status).toBe("complete");
     });
 
     test("6. verify agent_runs record exists", async ({ request }) => {
@@ -153,15 +151,13 @@ test.describe.serial("agent execution: direct task pipeline", () => {
         expect(feature.tasks).toBeDefined();
         const completed_task = feature.tasks.find((t: { id: string }) => t.id === task_id);
         expect(completed_task).toBeTruthy();
-        expect(completed_task.status).toBe("Complete");
+        expect(completed_task.status).toBe("complete");
     });
 });
 
 // ── 2. Full manager flow: submit → manager creates tasks → execute ────────────
 
 test.describe.serial("agent execution: full manager flow", () => {
-    test.skip(!!process.env.CI, "Agent execution tests require Docker + Copilot CLI + long timeouts");
-
     let project_id: string;
     let feature_id: string;
 
@@ -214,7 +210,7 @@ test.describe.serial("agent execution: full manager flow", () => {
         });
         expect(res.ok()).toBeTruthy();
         const feature = await res.json();
-        expect(feature.status).toBe("Submitted");
+        expect(feature.status).toBe("submitted");
     });
 
     test("4. wait for manager to create tasks", async ({ request }) => {
@@ -227,10 +223,10 @@ test.describe.serial("agent execution: full manager flow", () => {
                 });
                 if (!res.ok()) return false;
                 const feature = await res.json();
-                // Manager done when tasks exist (auto_approve moves feature to In_Progress)
+                // Manager done when tasks exist (auto_approve moves feature to in_progress)
                 if (feature.tasks && feature.tasks.length > 0) return true;
-                // Also check if feature moved past Submitted
-                if (feature.status !== "Submitted" && feature.status !== "In_Progress") return true;
+                // Also check if feature moved past submitted
+                if (feature.status !== "submitted" && feature.status !== "in_progress") return true;
                 return false;
             },
             AGENT_TIMEOUT_MS - 30_000,
@@ -257,7 +253,7 @@ test.describe.serial("agent execution: full manager flow", () => {
                 const feature = await res.json();
                 if (!feature.tasks || feature.tasks.length === 0) return false;
                 // All tasks must be in a terminal state
-                const terminal = ["Complete", "Failed", "Skipped"];
+                const terminal = ["complete", "failed", "skipped"];
                 return feature.tasks.every((t: { status: string }) =>
                     terminal.includes(t.status)
                 );
@@ -277,7 +273,7 @@ test.describe.serial("agent execution: full manager flow", () => {
 
         // At least one task should have completed
         const completed = feature.tasks.filter(
-            (t: { status: string }) => t.status === "Complete"
+            (t: { status: string }) => t.status === "complete"
         );
         expect(completed.length).toBeGreaterThan(0);
     });
