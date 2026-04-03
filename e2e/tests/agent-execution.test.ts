@@ -135,8 +135,8 @@ test.describe.serial("agent execution: direct task pipeline", () => {
 
         // Find the run for our task
         const task_run = runs.find(
-            (r: { task_id: string; type: string }) =>
-                r.task_id === task_id && r.type === "ralph"
+            (r: { task_id: string; agent_type: string }) =>
+                r.task_id === task_id && r.agent_type === "ralph"
         );
         expect(task_run).toBeTruthy();
         expect(task_run.status).toBe("completed");
@@ -288,15 +288,15 @@ test.describe.serial("agent execution: full manager flow", () => {
 
         // Should have at least a manager run for this feature
         const manager_run = runs.find(
-            (r: { feature_id: string; type: string }) =>
-                r.feature_id === feature_id && r.type === "manager"
+            (r: { feature_id: string; agent_type: string }) =>
+                r.feature_id === feature_id && r.agent_type === "manager"
         );
         expect(manager_run).toBeTruthy();
 
         // Should have at least one ralph run
         const ralph_runs = runs.filter(
-            (r: { feature_id: string; type: string }) =>
-                r.feature_id === feature_id && r.type === "ralph"
+            (r: { feature_id: string; agent_type: string }) =>
+                r.feature_id === feature_id && r.agent_type === "ralph"
         );
         expect(ralph_runs.length).toBeGreaterThan(0);
     });

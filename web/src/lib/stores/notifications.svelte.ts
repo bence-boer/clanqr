@@ -1,3 +1,5 @@
+import { generate_id } from '$lib/utils/id';
+
 export interface Notification {
     id: string
     type: 'danger' | 'success' | 'warning' | 'info'
@@ -17,7 +19,7 @@ class NotificationStore {
     add(notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) {
         this.items.unshift({
             ...notification,
-            id: crypto.randomUUID(),
+            id: generate_id(),
             timestamp: new Date().toISOString(),
             read: false
         });

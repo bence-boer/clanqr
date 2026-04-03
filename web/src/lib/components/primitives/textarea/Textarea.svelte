@@ -1,6 +1,7 @@
 <script lang="ts">
     import type { HTMLTextareaAttributes } from 'svelte/elements';
     import { Label } from '../label';
+    import { generate_id } from '$lib/utils/id';
 
     export type TextareaProperties = HTMLTextareaAttributes & {
         ref?: HTMLTextAreaElement | null
@@ -20,7 +21,7 @@
         ...rest_props
     }: TextareaProperties = $props();
 
-    const fallback_id = `textarea-${crypto.randomUUID().slice(0, 8)}`;
+    const fallback_id = `textarea-${generate_id().slice(0, 8)}`;
     const textarea_id = $derived(id || fallback_id);
 </script>
 
