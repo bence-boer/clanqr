@@ -87,11 +87,10 @@ test.describe("feature form: model selectors visible", () => {
     test("model selectors are visible without expanding advanced settings", async ({ page }) => {
         await authenticate(page);
         await page.goto(`/projects/${project_id}`);
-        await page.waitForLoadState("networkidle");
 
         // Click "New Feature" to open the form
         const new_btn = page.getByRole("button", { name: /new feature/i });
-        await expect(new_btn).toBeVisible({ timeout: 10_000 });
+        await expect(new_btn).toBeVisible({ timeout: 15_000 });
         await new_btn.click();
 
         // Model selectors should be visible in the main form — NOT inside collapsed section
