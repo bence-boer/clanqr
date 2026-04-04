@@ -72,12 +72,17 @@ function attach_event_handlers(
         }
         if (event.type === 'tool.execution_complete') {
             const d = event.data as Record<string, unknown>;
+            const success = d.success === true;
+            const err = d.error as Record<string, unknown> | undefined;
+            const err_msg = err ? (err.message as string ?? JSON.stringify(err)) : undefined;
+            const telemetry = d.toolTelemetry as Record<string, unknown> | undefined;
+            const result_len = (telemetry?.metrics as Record<string, number>)?.resultLength;
             update_tool_result(
                 db_session_id,
                 (d.toolCallId ?? d.id ?? '') as string,
-                d.error == null,
-                typeof d.output === 'string' ? d.output : JSON.stringify(d.output ?? ''),
-                typeof d.error === 'string' ? d.error : undefined,
+                success,
+                success ? `Completed (${result_len ?? '?'} chars)` : (err_msg ?? 'Failed'),
+                success ? undefined : err_msg,
                 typeof d.duration === 'number' ? d.duration : undefined
             );
         }
