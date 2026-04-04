@@ -84,6 +84,8 @@
     const feature_id = $derived(run.tasks?.feature_id ?? run.tasks?.features?.id);
     const feature_title = $derived(run.tasks?.features?.title);
     const token_info = $derived(format_tokens(run.prompt_tokens, run.completion_tokens));
+    const cost = $derived(Number(run.estimated_cost ?? 0));
+    const cost_label = $derived(cost > 0 ? `$${cost.toFixed(4)}` : null);
 </script>
 
 <div class="history-item" class:flash-success={is_new}>
@@ -121,6 +123,9 @@
                 {/if}
                 {#if token_info}
                     <span class="token-info">{token_info}</span>
+                {/if}
+                {#if cost_label}
+                    <span class="cost-info">{cost_label}</span>
                 {/if}
             </p>
             {#if run.summary}
@@ -184,6 +189,7 @@
         color: var(--fg-muted); font-family: var(--font-mono, monospace);
     }
     .token-info { font-size: 0.7rem; color: var(--fg-muted); opacity: 0.8; }
+    .cost-info { font-size: 0.7rem; color: var(--success); font-weight: 500; }
     .run-summary { font-size: 0.8rem; color: var(--fg-muted); margin-top: 0.45rem; line-height: 1.45; }
     .run-error { font-size: 0.8rem; color: var(--danger); margin-top: 0.4rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>
