@@ -13,13 +13,14 @@ export interface SdkSessionConfig {
     entity_type: 'feature' | 'task' | 'chat'
     project_id?: string
     user_id?: string
+    billing_multiplier?: number
 }
 
 export interface SdkSessionResult {
     content: string
     session_id: string
-    tokens_input?: number
-    tokens_output?: number
+    prompt_tokens?: number
+    completion_tokens?: number
     cache_read?: number
     cache_write?: number
     total_cost?: number

@@ -12,9 +12,11 @@ import { log_store } from './log_store_service';
 import { persist_event, persist_tool_call, update_tool_result } from './telemetry_persist_service';
 import type { SdkSessionConfig, SdkSessionResult } from '../sdk/types';
 
+const DEFAULT_COST_PER_PREMIUM_REQUEST = 0.04;
+
 export interface SessionMetrics {
-    tokens_input: number
-    tokens_output: number
+    prompt_tokens: number
+    completion_tokens: number
     cache_read: number
     cache_write: number
     total_cost: number
@@ -24,25 +26,33 @@ export interface SessionMetrics {
 
 export function empty_metrics(): SessionMetrics {
     return {
-        tokens_input: 0, tokens_output: 0,
+        prompt_tokens: 0, completion_tokens: 0,
         cache_read: 0, cache_write: 0,
         total_cost: 0, duration_ms: 0, files_changed: []
     };
 }
 
-function accumulate_usage(m: SessionMetrics, u: ExtractedUsage): void {
-    m.tokens_input += u.input;
-    m.tokens_output += u.output;
+function accumulate_usage(
+    m: SessionMetrics, u: ExtractedUsage, billing_multiplier: number
+): void {
+    m.prompt_tokens += u.input;
+    m.completion_tokens += u.output;
     m.cache_read += u.cache_read;
     m.cache_write += u.cache_write;
-    m.total_cost += u.cost;
+    if (u.cost > 0) {
+        m.total_cost += u.cost;
+    }
+    else if (billing_multiplier > 0) {
+        m.total_cost += billing_multiplier * DEFAULT_COST_PER_PREMIUM_REQUEST;
+    }
 }
 
 function attach_event_handlers(
     session: CopilotSession,
     session_id: string,
     db_session_id: string,
-    metrics: SessionMetrics
+    metrics: SessionMetrics,
+    billing_multiplier: number
 ): void {
     session.on((event: {
         type: string
@@ -87,7 +97,7 @@ function attach_event_handlers(
             );
         }
         if (event.type === 'assistant.usage') {
-            accumulate_usage(metrics, extract_usage(event.data));
+            accumulate_usage(metrics, extract_usage(event.data), billing_multiplier);
         }
         if (event.type === 'session.shutdown') {
             const shutdown = extract_shutdown(event.data);
@@ -115,7 +125,8 @@ export async function run_session(
     });
 
     const metrics = empty_metrics();
-    attach_event_handlers(session, config.session_id, db_session_id, metrics);
+    const multiplier = config.billing_multiplier ?? 0;
+    attach_event_handlers(session, config.session_id, db_session_id, metrics, multiplier);
 
     const response = await session.sendAndWait({ prompt }, timeout_ms);
     const content = response?.data?.content ?? '';
@@ -124,8 +135,8 @@ export async function run_session(
     return {
         content,
         session_id: config.session_id,
-        tokens_input: metrics.tokens_input,
-        tokens_output: metrics.tokens_output,
+        prompt_tokens: metrics.prompt_tokens,
+        completion_tokens: metrics.completion_tokens,
         cache_read: metrics.cache_read,
         cache_write: metrics.cache_write,
         total_cost: metrics.total_cost,
@@ -142,8 +153,8 @@ export function build_session_update(
     return {
         status,
         finished_at: new Date().toISOString(),
-        tokens_input: result.tokens_input ?? 0,
-        tokens_output: result.tokens_output ?? 0,
+        prompt_tokens: result.prompt_tokens ?? 0,
+        completion_tokens: result.completion_tokens ?? 0,
         cache_read_tokens: result.cache_read ?? 0,
         cache_write_tokens: result.cache_write ?? 0,
         duration_ms: result.duration_ms ?? 0,
