@@ -198,12 +198,12 @@ test.describe.serial("agent execution: direct task pipeline", () => {
         expect(summary.status).toBe("completed");
         expect(summary.event_count).toBeGreaterThan(0);
 
-        // Verify token data was persisted to agent_sessions
-        expect(ralph_agent.prompt_tokens).toBeGreaterThan(0);
-        expect(ralph_agent.completion_tokens).toBeGreaterThan(0);
+        // Verify token data was persisted (use summary which has all columns)
+        expect(summary.prompt_tokens).toBeGreaterThan(0);
+        expect(summary.completion_tokens).toBeGreaterThan(0);
 
         // Verify cost estimation worked (billing_multiplier × cost_rate)
-        const cost = Number(ralph_agent.estimated_cost ?? 0);
+        const cost = Number(summary.estimated_cost ?? 0);
         expect(cost).toBeGreaterThan(0);
     });
 });
