@@ -18,7 +18,7 @@
 
     let { on_create, on_cancel }: Props = $props();
 
-    type ModelOpt = { value: string, label: string };
+    type ModelOpt = { value: string, label: string, billing_multiplier?: number };
 
     let title = $state('');
     let description = $state('');
@@ -103,7 +103,7 @@
         <div class="field">
             <Select id="create-planning-model" label={plan_label} bind:value={planning_model} disabled={loading_models}>
                 {#each model_options as m (m.value)}
-                    <option value={m.value}>{m.label}</option>
+                    <option value={m.value}>{m.label}{m.billing_multiplier && m.billing_multiplier > 1 ? ` (${m.billing_multiplier}×)` : ''}</option>
                 {/each}
             </Select>
             <span class="help-text">AI model that breaks your feature into tasks</span>
@@ -111,7 +111,7 @@
         <div class="field">
             <Select id="create-execution-model" label={exec_label} bind:value={execution_model} disabled={loading_models}>
                 {#each model_options as m (m.value)}
-                    <option value={m.value}>{m.label}</option>
+                    <option value={m.value}>{m.label}{m.billing_multiplier && m.billing_multiplier > 1 ? ` (${m.billing_multiplier}×)` : ''}</option>
                 {/each}
             </Select>
             <span class="help-text">AI model that implements each task</span>
