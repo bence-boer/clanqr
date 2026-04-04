@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { api } from '$lib/api/client';
+    import { admin_api } from '$lib/api/admin-client';
     import { auth_store } from '$lib/stores/auth.svelte';
     import { toast_store } from '$lib/stores/toast.svelte';
     import type { User } from '$lib/types';
@@ -18,7 +18,7 @@
         users_loading = true;
         users_error = '';
         try {
-            users = await api.list_users();
+            users = await admin_api.list_users();
         }
         catch (err: unknown) {
             toast_store.error(err instanceof Error ? err.message : 'Failed to load users');
@@ -37,7 +37,7 @@
         users = users.map((u) => (u.id === user.id ? { ...u, role: new_role } : u));
 
         try {
-            await api.update_user_role(user.id, new_role);
+            await admin_api.update_user_role(user.id, new_role);
         }
         catch (err: unknown) {
             // Rollback
@@ -49,7 +49,7 @@
 
     async function delete_user(user_id: string) {
         try {
-            await api.delete_user(user_id);
+            await admin_api.delete_user(user_id);
             users = users.filter((u) => u.id !== user_id);
         }
         catch (err: unknown) {

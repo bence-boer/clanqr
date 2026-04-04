@@ -34,9 +34,13 @@
 
     onMount(async () => {
         try {
-            model_options = await api.list_models();
+            const [models, defaults] = await Promise.all([
+                api.list_models(),
+                api.get_defaults()
+            ]);
+            model_options = models;
             if (model_options.length > 0) {
-                const default_model = model_options.find((m) => m.value === 'gpt-4.1');
+                const default_model = model_options.find((m) => m.value === defaults.default_model);
                 planning_model = default_model?.value ?? model_options[0].value;
                 execution_model = default_model?.value ?? model_options[0].value;
             }

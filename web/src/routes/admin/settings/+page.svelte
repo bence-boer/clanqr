@@ -1,5 +1,6 @@
 <script lang="ts">
     import { api } from '$lib/api/client';
+    import { admin_api } from '$lib/api/admin-client';
     import type { ModelOption, SdkDefaults } from '$lib/types';
     import { LoadingSpinner } from '$lib/components';
     import { Button } from '$lib/components/primitives';
@@ -28,7 +29,7 @@
     onMount(async () => {
         try {
             const [s, m] = await Promise.all([
-                api.get_settings(),
+                admin_api.get_settings(),
                 api.list_models()
             ]);
             settings = s;
@@ -49,7 +50,7 @@
     async function save() {
         saving = true;
         try {
-            const updated = await api.update_settings({
+            const updated = await admin_api.update_settings({
                 default_model: draft_model,
                 default_reasoning_effort: draft_reasoning,
                 default_timeout_minutes: draft_timeout,
