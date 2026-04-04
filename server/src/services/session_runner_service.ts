@@ -9,7 +9,7 @@ import {
 } from '../sdk/event_mapper';
 import { stream_service } from './stream_service';
 import { log_store } from './log_store_service';
-import { persist_event } from './telemetry_persist_service';
+import { persist_event, persist_tool_call, update_tool_result } from './telemetry_persist_service';
 import type { SdkSessionConfig, SdkSessionResult } from '../sdk/types';
 
 export interface SessionMetrics {
@@ -59,6 +59,27 @@ function attach_event_handlers(
         }
         if (should_persist(event.type)) {
             persist_event(db_session_id, event.type, event.data);
+        }
+        if (event.type === 'tool.execution_start') {
+            const d = event.data as Record<string, string>;
+            persist_tool_call(
+                db_session_id,
+                d.toolCallId ?? d.id ?? '',
+                d.toolName ?? d.name ?? 'unknown',
+                d.arguments ?? d.input ?? {},
+                d.mcpServerName
+            );
+        }
+        if (event.type === 'tool.execution_complete') {
+            const d = event.data as Record<string, unknown>;
+            update_tool_result(
+                db_session_id,
+                (d.toolCallId ?? d.id ?? '') as string,
+                d.error == null,
+                typeof d.output === 'string' ? d.output : JSON.stringify(d.output ?? ''),
+                typeof d.error === 'string' ? d.error : undefined,
+                typeof d.duration === 'number' ? d.duration : undefined
+            );
         }
         if (event.type === 'assistant.usage') {
             accumulate_usage(metrics, extract_usage(event.data));
