@@ -204,10 +204,11 @@ test.describe("UI workflow: dashboard → projects → pipeline → monitoring �
     });
 
     test("monitoring page shows filter controls", async ({ page }) => {
-        test.setTimeout(60_000);
-        await page.goto("/monitoring");
+        test.setTimeout(90_000);
+        await page.goto("/monitoring", { waitUntil: "domcontentloaded" });
 
-        await expect(page.getByText("Agent Monitoring")).toBeVisible({ timeout: 30_000 });
+        // Wait for page content — in CI, Cloudflare tunnel adds latency
+        await expect(page.getByText("Agent Monitoring")).toBeVisible({ timeout: 45_000 });
 
         // Stat cards render with text-transform:uppercase, but DOM text is title case
         await expect(page.locator(".stat-label", { hasText: "Running" })).toBeVisible({ timeout: 15_000 });
