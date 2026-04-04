@@ -167,7 +167,7 @@
         border-radius: var(--radius);
         color: var(--fg-muted);
         font-size: 0.78rem;
-        font-family: 'SF Mono', 'Fira Code', monospace;
+        font-family: var(--font-mono);
         line-height: 1.6;
         padding: 0.75rem;
         resize: vertical;

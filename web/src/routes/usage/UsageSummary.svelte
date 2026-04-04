@@ -142,7 +142,7 @@
             grid-template-columns: repeat(2, 1fr);
         }
     }
-    @media (max-width: 480px) {
+    @media (max-width: 768px) {
         .stats-row {
             grid-template-columns: 1fr;
         }

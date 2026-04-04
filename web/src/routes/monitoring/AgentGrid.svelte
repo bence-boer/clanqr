@@ -116,12 +116,12 @@
     .agent-info { display: flex; align-items: center; gap: 0.6rem; }
     .agent-icon { font-size: 24px; color: var(--accent); }
     .agent-type { display: block; font-weight: 600; color: var(--fg); text-transform: capitalize; font-size: 0.9rem; }
-    .agent-id { display: block; font-size: 0.7rem; color: var(--fg-muted); font-family: monospace; }
+    .agent-id { display: block; font-size: 0.7rem; color: var(--fg-muted); font-family: var(--font-mono); }
     .breadcrumb { display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: var(--fg-muted); margin-bottom: 0.5rem; }
     .breadcrumb-link { display: inline-flex; align-items: center; gap: 0.2rem; color: var(--accent); text-decoration: none; }
     .breadcrumb-link:hover { text-decoration: underline; }
     .breadcrumb-sep { color: var(--fg-muted); opacity: 0.5; }
-    .breadcrumb-item { font-family: monospace; }
+    .breadcrumb-item { font-family: var(--font-mono); }
     .agent-times { font-size: 0.8rem; color: var(--fg-muted); display: flex; gap: 1.5rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
     .agent-times span { display: inline-flex; align-items: center; gap: 0.25rem; }
     .duration-muted { color: var(--fg-muted); }

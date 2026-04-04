@@ -74,7 +74,7 @@
         padding: 0.5rem 0.75rem;
         border-radius: var(--radius);
         margin-bottom: 1.5rem;
-        font-family: monospace;
+        font-family: var(--font-mono);
     }
 
     .error-actions {

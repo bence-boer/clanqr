@@ -131,7 +131,7 @@
         color: var(--fg-muted);
         opacity: 0.6;
         margin: 0;
-        font-family: monospace;
+        font-family: var(--font-mono);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;

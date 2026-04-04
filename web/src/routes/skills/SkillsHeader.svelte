@@ -64,7 +64,7 @@
         padding: 0.3rem 0.65rem;
     }
 
-    @media (max-width: 600px) {
+    @media (max-width: 768px) {
         .page-header {
             flex-direction: column;
         }

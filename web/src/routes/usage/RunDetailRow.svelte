@@ -75,7 +75,7 @@
     .detail-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--fg-muted); font-weight: 600; }
     .detail-value { font-size: 0.82rem; color: var(--fg); font-variant-numeric: tabular-nums; }
     .cost-value { color: var(--success); font-weight: 500; }
-    .error-text { color: var(--danger); font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.78rem; word-break: break-word; }
-    .detail-link { font-size: 0.82rem; color: var(--accent); text-decoration: none; font-family: 'SF Mono', 'Fira Code', monospace; }
+    .error-text { color: var(--danger); font-family: var(--font-mono); font-size: 0.78rem; word-break: break-word; }
+    .detail-link { font-size: 0.82rem; color: var(--accent); text-decoration: none; font-family: var(--font-mono); }
     .detail-link:hover { text-decoration: underline; }
 </style>

@@ -177,7 +177,7 @@
     .pagination-border { border-top: 1px solid var(--border); padding: 0.75rem 1.25rem; }
     .loading-row { padding: 2rem 1.25rem; display: flex; justify-content: center; }
     @media (max-width: 768px) { .filters { flex-wrap: wrap; } }
-    @media (max-width: 640px) {
+    @media (max-width: 768px) {
         .history-header { flex-direction: column; align-items: flex-start; }
     }
 </style>

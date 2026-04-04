@@ -180,7 +180,7 @@
         flex-shrink: 0;
     }
 
-    @media (max-width: 600px) {
+    @media (max-width: 768px) {
         .page {
             padding: 1rem;
         }

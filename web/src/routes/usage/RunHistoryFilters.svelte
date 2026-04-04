@@ -69,7 +69,7 @@
     @media (max-width: 768px) {
         .filters { flex-wrap: wrap; }
     }
-    @media (max-width: 640px) {
+    @media (max-width: 768px) {
         .date-pills { width: 100%; }
         .date-pill { flex: 1; text-align: center; }
     }
