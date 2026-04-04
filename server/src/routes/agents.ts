@@ -137,11 +137,18 @@ export const agents_routes = new Hono<AppBindings>()
 
     .get('/status', async (context) => {
         const supabase = context.get('supabase');
-        const { data } = await supabase.from('agent_sessions')
-            .select('id, agent_type, status, sdk_session_id, started_at, finished_at, feature_id, task_id')
+        const one_hour_ago = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+        const { data: running } = await supabase.from('agent_sessions')
+            .select('id, agent_type, status, sdk_session_id, started_at, finished_at, feature_id, task_id, model')
             .in('status', ['running', 'pending'])
             .order('started_at', { ascending: false });
-        return context.json(data ?? []);
+        const { data: recent } = await supabase.from('agent_sessions')
+            .select('id, agent_type, status, sdk_session_id, started_at, finished_at, feature_id, task_id, model')
+            .in('status', ['completed', 'failed', 'cancelled'])
+            .gte('finished_at', one_hour_ago)
+            .order('finished_at', { ascending: false })
+            .limit(20);
+        return context.json([...(running ?? []), ...(recent ?? [])]);
     })
 
     .post('/stop-all', async (context) => {

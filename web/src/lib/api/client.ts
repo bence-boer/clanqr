@@ -208,5 +208,24 @@ export const api = {
         });
         if (!response.ok) throw new Error('Failed to revoke invite');
         return response.json();
+    },
+
+    // ── Settings ─────────────────────────────────────────────────────────────
+    get_settings: async (): Promise<Types.SdkDefaults> => {
+        const response = await fetch(`${API_URL}/api/admin/settings`, {
+            credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Failed to load settings');
+        return response.json();
+    },
+    update_settings: async (updates: Partial<Types.SdkDefaults>): Promise<Types.SdkDefaults> => {
+        const response = await fetch(`${API_URL}/api/admin/settings`, {
+            method: 'PUT',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates)
+        });
+        if (!response.ok) throw new Error('Failed to save settings');
+        return response.json();
     }
 };
