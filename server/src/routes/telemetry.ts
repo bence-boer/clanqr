@@ -1,16 +1,31 @@
 /** Telemetry API routes — exposes rich SDK event data for monitoring UI. */
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AppBindings } from '../middleware/supabase';
 import { log_store } from '../services/log_store_service';
 import { stream_service } from '../services/stream_service';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Resolve an ID that may be a UUID (agent_sessions.id) or an SDK session string. */
+async function resolve_session_uuid(
+    db: SupabaseClient, raw_id: string
+): Promise<string | null> {
+    if (UUID_RE.test(raw_id)) return raw_id;
+    const { data } = await db.from('agent_sessions')
+        .select('id').eq('sdk_session_id', raw_id).limit(1).single();
+    return data?.id ?? null;
+}
 
 export const telemetry_routes = new Hono<AppBindings>()
 
     /** Paginated agent_events from DB for a session */
     .get('/sessions/:id/events', async (context) => {
         const supabase = context.get('supabase');
-        const session_id = context.req.param('id');
+        const uuid = await resolve_session_uuid(supabase, context.req.param('id'));
+        if (!uuid) return context.json({ events: [], total: 0, page: 1, per_page: 50 });
+
         const page = Number(context.req.query('page') ?? '1');
         const per_page = Math.min(Number(context.req.query('per_page') ?? '50'), 200);
         const type_filter = context.req.query('type');
@@ -18,7 +33,7 @@ export const telemetry_routes = new Hono<AppBindings>()
 
         let query = supabase.from('agent_events')
             .select('*', { count: 'exact' })
-            .eq('agent_session_id', session_id)
+            .eq('agent_session_id', uuid)
             .order('created_at', { ascending: true })
             .range(offset, offset + per_page - 1);
 
@@ -27,22 +42,17 @@ export const telemetry_routes = new Hono<AppBindings>()
         const { data, count, error } = await query;
         if (error) return context.json({ error: error.message }, 500);
 
-        return context.json({
-            events: data ?? [],
-            total: count ?? 0,
-            page,
-            per_page
-        });
+        return context.json({ events: data ?? [], total: count ?? 0, page, per_page });
     })
 
     /** Agent tool calls from DB for a session */
     .get('/sessions/:id/tools', async (context) => {
         const supabase = context.get('supabase');
-        const session_id = context.req.param('id');
+        const uuid = await resolve_session_uuid(supabase, context.req.param('id'));
+        if (!uuid) return context.json({ tools: [] });
 
         const { data, error } = await supabase.from('agent_tool_calls')
-            .select('*')
-            .eq('agent_session_id', session_id)
+            .select('*').eq('agent_session_id', uuid)
             .order('created_at', { ascending: true });
 
         if (error) return context.json({ error: error.message }, 500);
@@ -52,22 +62,22 @@ export const telemetry_routes = new Hono<AppBindings>()
     /** Full session summary with rich telemetry */
     .get('/sessions/:id/summary', async (context) => {
         const supabase = context.get('supabase');
-        const session_id = context.req.param('id');
+        const uuid = await resolve_session_uuid(supabase, context.req.param('id'));
+        if (!uuid) return context.json({ error: 'Session not found' }, 404);
 
         const { data, error } = await supabase.from('agent_sessions')
             .select('*, tasks(id, title, feature_id, features(id, title, project_id, projects(id, name)))')
-            .eq('id', session_id)
-            .single();
+            .eq('id', uuid).single();
 
         if (error || !data) return context.json({ error: 'Session not found' }, 404);
 
         const { count: event_count } = await supabase.from('agent_events')
             .select('id', { count: 'exact', head: true })
-            .eq('agent_session_id', session_id);
+            .eq('agent_session_id', uuid);
 
         const { count: tool_count } = await supabase.from('agent_tool_calls')
             .select('id', { count: 'exact', head: true })
-            .eq('agent_session_id', session_id);
+            .eq('agent_session_id', uuid);
 
         return context.json({
             ...data,
