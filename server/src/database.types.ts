@@ -50,6 +50,7 @@ export type Database = {
           created_at: string
           duration_ms: number | null
           error: string | null
+          estimated_cost: number
           feature_id: string | null
           files_changed: string[] | null
           finished_at: string | null
@@ -76,6 +77,7 @@ export type Database = {
           created_at?: string
           duration_ms?: number | null
           error?: string | null
+          estimated_cost?: number
           feature_id?: string | null
           files_changed?: string[] | null
           finished_at?: string | null
@@ -102,6 +104,7 @@ export type Database = {
           created_at?: string
           duration_ms?: number | null
           error?: string | null
+          estimated_cost?: number
           feature_id?: string | null
           files_changed?: string[] | null
           finished_at?: string | null

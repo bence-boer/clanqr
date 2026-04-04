@@ -4,6 +4,8 @@
   type BreakdownWithTokens = UsageBreakdown & {
       total_prompt_tokens?: number
       total_completion_tokens?: number
+      total_estimated_cost?: number
+      by_model_cost?: Record<string, number>
   };
 
   let { breakdown, loading }: {
@@ -27,6 +29,17 @@
           ? Object.entries(breakdown.by_model).sort(([, count_a], [, count_b]) => count_b - count_a)
           : []
   );
+
+  function fmt_cost(n: number): string {
+      if (n === 0) return '$0';
+      if (n < 0.01) return `$${n.toFixed(4)}`;
+      return `$${n.toFixed(2)}`;
+  }
+
+  function model_cost(name: string): string {
+      const cost = breakdown?.by_model_cost?.[name] ?? 0;
+      return cost > 0 ? fmt_cost(cost) : '';
+  }
 </script>
 
 {#if !loading && breakdown}
@@ -52,12 +65,13 @@
       <h3 class="panel-title">Breakdown by Model</h3>
       <div class="bar-list">
         {#each by_model_entries as [model_name, count] (model_name)}
+          {@const cost = model_cost(model_name)}
           <div class="bar-row">
             <span class="bar-label">{model_name}</span>
             <div class="bar-track">
               <div class="bar-fill" style="width: {bar_pct(count, breakdown.by_model)}%"></div>
             </div>
-            <span class="bar-count">{count}</span>
+            <span class="bar-count">{count}{cost ? ` · ${cost}` : ''}</span>
           </div>
         {/each}
         {#if by_model_entries.length === 0}
@@ -68,7 +82,7 @@
   </div>
   {#if breakdown.total_prompt_tokens !== undefined || breakdown.total_completion_tokens !== undefined}
     <div class="tokens-summary">
-      <h3 class="panel-title">Total Tokens</h3>
+      <h3 class="panel-title">Total Tokens & Cost</h3>
       <div class="tokens-grid">
         <div class="token-stat">
           <span class="token-value">{(breakdown.total_prompt_tokens ?? 0).toLocaleString()}</span>
@@ -78,10 +92,16 @@
           <span class="token-value">{(breakdown.total_completion_tokens ?? 0).toLocaleString()}</span>
           <span class="token-label">Completion</span>
         </div>
-        <div class="token-stat token-total">
+        <div class="token-stat">
           <span class="token-value">{((breakdown.total_prompt_tokens ?? 0) + (breakdown.total_completion_tokens ?? 0)).toLocaleString()}</span>
           <span class="token-label">Total</span>
         </div>
+        {#if (breakdown.total_estimated_cost ?? 0) > 0}
+          <div class="token-stat token-total">
+            <span class="token-value">{fmt_cost(breakdown.total_estimated_cost ?? 0)}</span>
+            <span class="token-label">Est. Cost</span>
+          </div>
+        {/if}
       </div>
     </div>
   {/if}
@@ -89,130 +109,59 @@
 
 <style>
   .breakdown-section {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.25rem;
-    margin-bottom: 2rem;
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 1.25rem; margin-bottom: 2rem;
   }
-
   .breakdown-panel {
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1.25rem;
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.25rem;
   }
-
   .panel-title {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: var(--fg-muted);
-    margin-bottom: 1rem;
-    font-weight: 600;
+    font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.07em;
+    color: var(--fg-muted); margin-bottom: 1rem; font-weight: 600;
   }
-
-  .bar-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.65rem;
-  }
-
-  .bar-row {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
+  .bar-list { display: flex; flex-direction: column; gap: 0.65rem; }
+  .bar-row { display: flex; align-items: center; gap: 0.75rem; }
   .bar-label {
-    font-size: 0.8rem;
-    color: var(--fg);
-    width: 96px;
-    flex-shrink: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: 0.8rem; color: var(--fg); width: 96px; flex-shrink: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .bar-track {
+    flex: 1; height: 8px; background: var(--bg-elevated);
+    border-radius: 4px; overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%; background: var(--accent); border-radius: 4px;
+    transition: width 0.3s ease; min-width: 3px;
+  }
+  .bar-count {
+    font-size: 0.8rem; color: var(--fg-muted); min-width: 36px;
+    text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
-
-  .bar-track {
-    flex: 1;
-    height: 8px;
-    background: var(--bg-elevated);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-
-  .bar-fill {
-    height: 100%;
-    background: var(--accent);
-    border-radius: 4px;
-    transition: width 0.3s ease;
-    min-width: 3px;
-  }
-
-  .bar-count {
-    font-size: 0.8rem;
-    color: var(--fg-muted);
-    width: 36px;
-    text-align: right;
-    flex-shrink: 0;
-    font-variant-numeric: tabular-nums;
-  }
-
   .no-data {
-    font-size: 0.8rem;
-    color: var(--fg-muted);
-    text-align: center;
-    padding: 1rem 0;
-    margin: 0;
+    font-size: 0.8rem; color: var(--fg-muted);
+    text-align: center; padding: 1rem 0; margin: 0;
   }
-
   .tokens-summary {
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1.25rem;
-    margin-bottom: 2rem;
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.25rem; margin-bottom: 2rem;
   }
-
-  .tokens-grid {
-    display: flex;
-    gap: 2rem;
-    flex-wrap: wrap;
-  }
-
-  .token-stat {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-  }
-
-  .token-stat.token-total {
-    margin-left: auto;
-  }
-
+  .tokens-grid { display: flex; gap: 2rem; flex-wrap: wrap; }
+  .token-stat { display: flex; flex-direction: column; gap: 0.15rem; }
+  .token-stat.token-total { margin-left: auto; }
   .token-value {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--fg);
+    font-size: 1.25rem; font-weight: 700; color: var(--fg);
     font-variant-numeric: tabular-nums;
   }
-
-  .token-total .token-value {
-    color: var(--accent);
-  }
-
+  .token-total .token-value { color: var(--accent); }
   .token-label {
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--fg-muted);
-    font-weight: 600;
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--fg-muted); font-weight: 600;
   }
-
   @media (max-width: 768px) {
     .breakdown-section { grid-template-columns: 1fr; }
   }
-
   @media (max-width: 640px) {
     .breakdown-section { grid-template-columns: 1fr; }
     .bar-label { width: auto; min-width: 60px; }

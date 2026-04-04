@@ -122,6 +122,7 @@ export function build_session_update(
         cache_write_tokens: result.cache_write ?? 0,
         duration_ms: result.duration_ms ?? 0,
         files_changed: result.files_changed ?? [],
+        estimated_cost: result.total_cost ?? 0,
         ...(error ? { error } : {})
     };
 }

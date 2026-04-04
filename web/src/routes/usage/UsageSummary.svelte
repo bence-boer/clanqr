@@ -13,6 +13,20 @@
         return n.toLocaleString();
     }
 
+    function fmt_cost(n: number): string {
+        if (n === 0) return '$0';
+        if (n < 0.01) return `$${n.toFixed(4)}`;
+        return `$${n.toFixed(2)}`;
+    }
+
+    function fmt_duration(ms: number): string {
+        if (ms === 0) return '0s';
+        const mins = Math.floor(ms / 60_000);
+        const secs = Math.round((ms % 60_000) / 1000);
+        if (mins > 0) return `${mins}m ${secs}s`;
+        return `${secs}s`;
+    }
+
     let success_rate = $derived.by(() => {
         if (!summary) return null;
         const total = summary.completed_runs + summary.failed_runs;
@@ -48,6 +62,8 @@
         <StatCard icon="output" value={fmt(summary.total_completion_tokens)} label="Completion Tokens" />
         <StatCard icon="cached" value={fmt(summary.total_cache_read_tokens ?? 0)} label="Cache Read" />
         <StatCard icon="save" value={fmt(summary.total_cache_write_tokens ?? 0)} label="Cache Write" />
+        <StatCard icon="payments" value={fmt_cost(summary.total_estimated_cost ?? 0)} label="Est. Cost" />
+        <StatCard icon="timer" value={fmt_duration(summary.total_duration_ms ?? 0)} label="Total Duration" />
     </div>
     {#if success_rate !== null}
         <div class="success-rate-bar">
@@ -73,7 +89,7 @@
     }
 
     .token-row {
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(3, 1fr);
         margin-bottom: 1rem;
     }
 
