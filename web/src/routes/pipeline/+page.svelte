@@ -22,9 +22,6 @@
     let active_tab = $state('queue');
 
     let loading = $state(true);
-    let log_text = $state('');
-    let log_visible = $state(false);
-    let log_loading = $state(false);
     let action_error = $state('');
     let action_busy = $state(false);
 
@@ -68,27 +65,8 @@
         }
     }
 
-    async function refresh_log() {
-        log_loading = true;
-        try {
-            const result = await api.pipeline_log();
-            log_text = result.log;
-            return true;
-        }
-        catch (err) {
-            console.error('Failed to load log:', err);
-            toast_store.error('Failed to load log');
-            log_text = 'Failed to load log.';
-            throw err;
-        }
-        finally {
-            log_loading = false;
-        }
-    }
-
     async function load_all() {
         await Promise.all([load_pipeline(), load_queue()]);
-        if (log_visible) refresh_log();
         loading = false;
     }
 
@@ -97,7 +75,6 @@
             pipeline_status: () => {
                 load_pipeline();
                 load_queue();
-                if (log_visible) refresh_log();
             },
             tasks_update: () => {
                 load_queue();
@@ -141,11 +118,6 @@
         await do_action(() => api.pipeline_stop_current(), 'Failed to stop');
     }
 
-    async function toggle_log() {
-        log_visible = !log_visible;
-        if (log_visible) await refresh_log();
-    }
-
 </script>
 
 <div class="page" aria-busy={loading}>
@@ -169,13 +141,8 @@
 
         <CurrentTask
             {pipeline}
-            {log_visible}
-            {log_text}
-            {log_loading}
             {action_busy}
-            ontoggle_log={toggle_log}
             onstop={do_stop}
-            onrefresh_log={refresh_log}
             {format_duration}
         />
 

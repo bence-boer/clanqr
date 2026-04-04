@@ -52,6 +52,7 @@ export const agents_routes = new Hono<AppBindings>()
             state: pipeline_info.state,
             current_task,
             current_run_id: pipeline_info.current_run_id,
+            current_sdk_session_id: pipeline_info.current_sdk_session_id,
             queue_depth: count ?? 0
         });
     })
