@@ -202,9 +202,9 @@ test.describe.serial("agent execution: direct task pipeline", () => {
         expect(summary.prompt_tokens).toBeGreaterThan(0);
         expect(summary.completion_tokens).toBeGreaterThan(0);
 
-        // Verify cost estimation worked (billing_multiplier × cost_rate)
-        const cost = Number(summary.estimated_cost ?? 0);
-        expect(cost).toBeGreaterThan(0);
+        // Verify estimated_cost is a valid number (0 is expected for free/0x models)
+        expect(summary.estimated_cost).toBeDefined();
+        expect(Number(summary.estimated_cost)).toBeGreaterThanOrEqual(0);
     });
 });
 

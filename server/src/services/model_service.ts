@@ -16,10 +16,10 @@ export interface ModelOption {
 }
 
 const FALLBACK_MODELS: ModelOption[] = [
-    { value: 'gpt-4.1', label: 'GPT-4.1' },
-    { value: 'gpt-4.1-mini', label: 'GPT-4.1 Mini' },
-    { value: 'claude-sonnet-4', label: 'Claude Sonnet 4' },
-    { value: 'o4-mini', label: 'O4 Mini' }
+    { value: 'gpt-4.1', label: 'GPT-4.1', billing_multiplier: 0 },
+    { value: 'gpt-4.1-mini', label: 'GPT-4.1 Mini', billing_multiplier: 0 },
+    { value: 'claude-sonnet-4', label: 'Claude Sonnet 4', billing_multiplier: 1 },
+    { value: 'o4-mini', label: 'O4 Mini', billing_multiplier: 0 }
 ];
 
 let cached_models: ModelOption[] | null = null;
