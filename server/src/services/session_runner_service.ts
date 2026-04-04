@@ -33,7 +33,8 @@ export function empty_metrics(): SessionMetrics {
 }
 
 function accumulate_usage(
-    m: SessionMetrics, u: ExtractedUsage, billing_multiplier: number
+    m: SessionMetrics, u: ExtractedUsage,
+    billing_multiplier: number, cost_rate: number
 ): void {
     m.prompt_tokens += u.input;
     m.completion_tokens += u.output;
@@ -43,7 +44,7 @@ function accumulate_usage(
         m.total_cost += u.cost;
     }
     else if (billing_multiplier > 0) {
-        m.total_cost += billing_multiplier * DEFAULT_COST_PER_PREMIUM_REQUEST;
+        m.total_cost += billing_multiplier * cost_rate;
     }
 }
 
@@ -52,7 +53,8 @@ function attach_event_handlers(
     session_id: string,
     db_session_id: string,
     metrics: SessionMetrics,
-    billing_multiplier: number
+    billing_multiplier: number,
+    cost_rate: number
 ): void {
     session.on((event: {
         type: string
@@ -97,7 +99,9 @@ function attach_event_handlers(
             );
         }
         if (event.type === 'assistant.usage') {
-            accumulate_usage(metrics, extract_usage(event.data), billing_multiplier);
+            accumulate_usage(
+                metrics, extract_usage(event.data), billing_multiplier, cost_rate
+            );
         }
         if (event.type === 'session.shutdown') {
             const shutdown = extract_shutdown(event.data);
@@ -126,7 +130,10 @@ export async function run_session(
 
     const metrics = empty_metrics();
     const multiplier = config.billing_multiplier ?? 0;
-    attach_event_handlers(session, config.session_id, db_session_id, metrics, multiplier);
+    const cost_rate = config.cost_per_premium_request ?? DEFAULT_COST_PER_PREMIUM_REQUEST;
+    attach_event_handlers(
+        session, config.session_id, db_session_id, metrics, multiplier, cost_rate
+    );
 
     const response = await session.sendAndWait({ prompt }, timeout_ms);
     const content = response?.data?.content ?? '';

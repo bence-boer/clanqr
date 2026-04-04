@@ -14,6 +14,7 @@ export interface SdkSessionConfig {
     project_id?: string
     user_id?: string
     billing_multiplier?: number
+    cost_per_premium_request?: number
 }
 
 export interface SdkSessionResult {
