@@ -6,6 +6,7 @@ import { create_supabase_client } from '../db';
 import { event_bus } from './event_bus';
 import { logger } from '../utils/logger';
 import { get_models } from './model_service';
+import { get_sdk_defaults } from './settings_service';
 import type { SdkAgentType, SdkSessionConfig } from '../sdk/types';
 
 const db = create_supabase_client();
@@ -23,6 +24,16 @@ async function get_billing_multiplier(model: string): Promise<number> {
     }
     catch {
         return 0;
+    }
+}
+
+async function get_cost_rate(): Promise<number> {
+    try {
+        const defaults = await get_sdk_defaults(db);
+        return defaults.cost_per_premium_request;
+    }
+    catch {
+        return 0.04;
     }
 }
 
@@ -55,7 +66,8 @@ export async function plan_feature(feature_id: string, model: string, prompt: st
         const config: SdkSessionConfig = {
             session_id: sdk_sid, agent_type: 'manager', model,
             entity_id: feature_id, entity_type: 'feature',
-            billing_multiplier: await get_billing_multiplier(model)
+            billing_multiplier: await get_billing_multiplier(model),
+            cost_per_premium_request: await get_cost_rate()
         };
         const result = await run_session(config, prompt, MANAGER_TIMEOUT_MS, run_id);
         const parsed = parse_manager_output(result.content);
@@ -111,7 +123,8 @@ export async function execute_task(
         const config: SdkSessionConfig = {
             session_id: sdk_sid, agent_type: 'ralph', model,
             entity_id: task_id, entity_type: 'task',
-            billing_multiplier: await get_billing_multiplier(model)
+            billing_multiplier: await get_billing_multiplier(model),
+            cost_per_premium_request: await get_cost_rate()
         };
         const effective_timeout = timeout_ms ?? DEFAULT_TASK_TIMEOUT_MS;
         const result = await run_session(config, prompt, effective_timeout, run_id);

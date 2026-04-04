@@ -155,6 +155,7 @@ export type SdkDefaults = {
     default_reasoning_effort: string
     default_timeout_minutes: number
     max_concurrent_sessions: number
+    cost_per_premium_request: number
 };
 
 // Re-export material symbols (not API-derived)

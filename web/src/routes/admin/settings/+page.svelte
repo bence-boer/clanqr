@@ -16,6 +16,7 @@
     let draft_reasoning = $state('medium');
     let draft_timeout = $state(30);
     let draft_concurrency = $state(3);
+    let draft_cost_rate = $state(0.04);
 
     let has_changes = $derived(
         settings !== null && (
@@ -23,6 +24,7 @@
             || draft_reasoning !== settings.default_reasoning_effort
             || draft_timeout !== settings.default_timeout_minutes
             || draft_concurrency !== settings.max_concurrent_sessions
+            || draft_cost_rate !== settings.cost_per_premium_request
         )
     );
 
@@ -38,6 +40,7 @@
             draft_reasoning = s.default_reasoning_effort;
             draft_timeout = s.default_timeout_minutes;
             draft_concurrency = s.max_concurrent_sessions;
+            draft_cost_rate = s.cost_per_premium_request;
         }
         catch {
             toast_store.error('Failed to load settings');
@@ -54,7 +57,8 @@
                 default_model: draft_model,
                 default_reasoning_effort: draft_reasoning,
                 default_timeout_minutes: draft_timeout,
-                max_concurrent_sessions: draft_concurrency
+                max_concurrent_sessions: draft_concurrency,
+                cost_per_premium_request: draft_cost_rate
             });
             settings = updated;
             toast_store.success('Settings saved');
@@ -122,6 +126,21 @@
                     bind:value={draft_concurrency}
                 />
             </label>
+
+            <label class="field">
+                <span class="field-label">Cost per Premium Request ($)</span>
+                <input
+                    class="field-input"
+                    type="number"
+                    min="0"
+                    max="10"
+                    step="0.01"
+                    bind:value={draft_cost_rate}
+                />
+                <span class="field-hint">
+                    Used to estimate costs when the SDK doesn't report them directly.
+                </span>
+            </label>
         </div>
 
         <div class="actions">
@@ -161,6 +180,7 @@
         outline: none; border-color: var(--accent);
         box-shadow: 0 0 0 2px rgba(106, 168, 254, 0.2);
     }
+    .field-hint { font-size: 0.72rem; color: var(--fg-muted); line-height: 1.3; }
     select.field-input { cursor: pointer; }
     .actions { display: flex; gap: 0.75rem; }
 </style>

@@ -7,6 +7,7 @@ export interface SdkDefaults {
     default_reasoning_effort: string
     default_timeout_minutes: number
     max_concurrent_sessions: number
+    cost_per_premium_request: number
 }
 
 const SDK_DEFAULTS_KEY = 'sdk_defaults';
@@ -15,7 +16,8 @@ const FALLBACK: SdkDefaults = {
     default_model: 'gpt-4.1',
     default_reasoning_effort: 'medium',
     default_timeout_minutes: 30,
-    max_concurrent_sessions: 3
+    max_concurrent_sessions: 3,
+    cost_per_premium_request: 0.04
 };
 
 export async function get_sdk_defaults(supabase: SupabaseClient): Promise<SdkDefaults> {
