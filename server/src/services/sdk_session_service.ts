@@ -5,6 +5,7 @@ import { can_start_session, increment_session_count, decrement_session_count } f
 import { create_supabase_client } from '../db';
 import { event_bus } from './event_bus';
 import { logger } from '../utils/logger';
+import { get_models } from './model_service';
 import type { SdkAgentType, SdkSessionConfig } from '../sdk/types';
 
 const db = create_supabase_client();
@@ -13,6 +14,16 @@ const DEFAULT_TASK_TIMEOUT_MS = 30 * 60 * 1000;
 
 function build_session_id(agent_type: SdkAgentType, entity_id: string): string {
     return `${agent_type}-${entity_id}-${Date.now()}`;
+}
+
+async function get_billing_multiplier(model: string): Promise<number> {
+    try {
+        const models = await get_models();
+        return models.find((m) => m.value === model)?.billing_multiplier ?? 0;
+    }
+    catch {
+        return 0;
+    }
 }
 
 export async function plan_feature(feature_id: string, model: string, prompt: string): Promise<void> {
@@ -43,7 +54,8 @@ export async function plan_feature(feature_id: string, model: string, prompt: st
 
         const config: SdkSessionConfig = {
             session_id: sdk_sid, agent_type: 'manager', model,
-            entity_id: feature_id, entity_type: 'feature'
+            entity_id: feature_id, entity_type: 'feature',
+            billing_multiplier: await get_billing_multiplier(model)
         };
         const result = await run_session(config, prompt, MANAGER_TIMEOUT_MS, run_id);
         const parsed = parse_manager_output(result.content);
@@ -98,7 +110,8 @@ export async function execute_task(
 
         const config: SdkSessionConfig = {
             session_id: sdk_sid, agent_type: 'ralph', model,
-            entity_id: task_id, entity_type: 'task'
+            entity_id: task_id, entity_type: 'task',
+            billing_multiplier: await get_billing_multiplier(model)
         };
         const effective_timeout = timeout_ms ?? DEFAULT_TASK_TIMEOUT_MS;
         const result = await run_session(config, prompt, effective_timeout, run_id);

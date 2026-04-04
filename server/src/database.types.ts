@@ -64,8 +64,6 @@ export type Database = {
           status: Database["public"]["Enums"]["agent_session_status"]
           summary: string | null
           task_id: string | null
-          tokens_input: number
-          tokens_output: number
           updated_at: string
           user_id: string | null
         }
@@ -91,8 +89,6 @@ export type Database = {
           status?: Database["public"]["Enums"]["agent_session_status"]
           summary?: string | null
           task_id?: string | null
-          tokens_input?: number
-          tokens_output?: number
           updated_at?: string
           user_id?: string | null
         }
@@ -118,8 +114,6 @@ export type Database = {
           status?: Database["public"]["Enums"]["agent_session_status"]
           summary?: string | null
           task_id?: string | null
-          tokens_input?: number
-          tokens_output?: number
           updated_at?: string
           user_id?: string | null
         }
