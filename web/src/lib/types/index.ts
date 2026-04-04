@@ -149,5 +149,13 @@ export type TaskArtifact = {
     created_at: string
 };
 
+// ── System Settings ──────────────────────────────────────────────────────────
+export type SdkDefaults = {
+    default_model: string
+    default_reasoning_effort: string
+    default_timeout_minutes: number
+    max_concurrent_sessions: number
+};
+
 // Re-export material symbols (not API-derived)
 export type { MaterialSymbol } from './material-symbols';

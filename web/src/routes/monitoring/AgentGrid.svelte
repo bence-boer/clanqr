@@ -52,7 +52,7 @@
                     <span class="icon agent-icon">{is_manager ? 'assignment' : 'build'}</span>
                     <div>
                         <span class="agent-type">{agent.agent_type}</span>
-                        <span class="agent-id">{agent.id.slice(0, 8)}</span>
+                        <span class="agent-id">{agent.id.slice(0, 8)}{agent.model ? ` · ${agent.model}` : ''}</span>
                     </div>
                 </div>
                 <Badge
