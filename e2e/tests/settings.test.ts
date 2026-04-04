@@ -14,8 +14,10 @@ test.describe("settings API endpoints", () => {
         expect(data).toHaveProperty("default_reasoning_effort");
         expect(data).toHaveProperty("default_timeout_minutes");
         expect(data).toHaveProperty("max_concurrent_sessions");
+        expect(data).toHaveProperty("cost_per_premium_request");
         expect(typeof data.default_model).toBe("string");
         expect(typeof data.default_timeout_minutes).toBe("number");
+        expect(typeof data.cost_per_premium_request).toBe("number");
     });
 
     test("PUT /api/admin/settings updates and returns merged settings", async ({
