@@ -103,6 +103,14 @@ export type ModelOption = {
     value: string
     label: string
     billing_multiplier?: number
+    capabilities?: {
+        supports_vision?: boolean
+        supports_reasoning_effort?: boolean
+        max_context_tokens?: number
+    }
+    policy_state?: string
+    reasoning_efforts?: string[]
+    default_reasoning_effort?: string
 };
 
 // ── Usage ─────────────────────────────────────────────────────────────────────

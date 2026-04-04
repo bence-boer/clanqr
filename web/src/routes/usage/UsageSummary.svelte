@@ -9,6 +9,10 @@
 
     let { summary, loading }: Props = $props();
 
+    function fmt(n: number): string {
+        return n.toLocaleString();
+    }
+
     let success_rate = $derived.by(() => {
         if (!summary) return null;
         const total = summary.completed_runs + summary.failed_runs;
@@ -39,6 +43,12 @@
         <StatCard icon="check_circle" value={summary.completed_runs} label="Completed" />
         <StatCard icon="error" value={summary.failed_runs} label="Failed" />
     </div>
+    <div class="stats-grid token-row">
+        <StatCard icon="input" value={fmt(summary.total_prompt_tokens)} label="Prompt Tokens" />
+        <StatCard icon="output" value={fmt(summary.total_completion_tokens)} label="Completion Tokens" />
+        <StatCard icon="cached" value={fmt(summary.total_cache_read_tokens ?? 0)} label="Cache Read" />
+        <StatCard icon="save" value={fmt(summary.total_cache_write_tokens ?? 0)} label="Cache Write" />
+    </div>
     {#if success_rate !== null}
         <div class="success-rate-bar">
             <span class="success-label">Success Rate</span>
@@ -59,6 +69,11 @@
 
     .stats-row {
         grid-template-columns: repeat(5, 1fr);
+        margin-bottom: 1rem;
+    }
+
+    .token-row {
+        grid-template-columns: repeat(4, 1fr);
         margin-bottom: 1rem;
     }
 
@@ -105,6 +120,9 @@
 
     @media (max-width: 768px) {
         .stats-row {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .token-row {
             grid-template-columns: repeat(2, 1fr);
         }
     }
