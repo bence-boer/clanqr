@@ -12,12 +12,12 @@
         current_path,
         role = null,
         badges = {},
-        onclose
+        on_close
     }: {
         current_path: string
         role?: string | null
         badges?: SidebarBadges
-        onclose: () => void
+        on_close: () => void
     } = $props();
 
     function is_active(path: string) {
@@ -30,13 +30,13 @@
     <span class="nav-section-label">Workspace</span>
     <ul class="nav-links">
         <li>
-            <a href={resolve('/')} onclick={onclose} class:active={is_active('/') && current_path === '/'}>
+            <a href={resolve('/')} onclick={on_close} class:active={is_active('/') && current_path === '/'}>
                 <span class="icon">dashboard</span>
                 <span>Dashboard</span>
             </a>
         </li>
         <li>
-            <a href={resolve('/projects')} onclick={onclose} class:active={is_active('/projects')}>
+            <a href={resolve('/projects')} onclick={on_close} class:active={is_active('/projects')}>
                 <span class="icon">folder</span>
                 <span>Projects</span>
                 {#if badges.pending_approval_count && badges.pending_approval_count > 0}
@@ -45,7 +45,7 @@
             </a>
         </li>
         <li>
-            <a href={resolve('/pipeline')} onclick={onclose} class:active={is_active('/pipeline')}>
+            <a href={resolve('/pipeline')} onclick={on_close} class:active={is_active('/pipeline')}>
                 <span class="icon">account_tree</span>
                 <span>Pipeline</span>
                 {#if badges.pipeline_paused}
@@ -54,7 +54,7 @@
             </a>
         </li>
         <li>
-            <a href={resolve('/monitoring')} onclick={onclose} class:active={is_active('/monitoring')}>
+            <a href={resolve('/monitoring')} onclick={on_close} class:active={is_active('/monitoring')}>
                 <span class="icon">monitoring</span>
                 <span>Monitoring</span>
                 {#if badges.failed_agent_count && badges.failed_agent_count > 0}
@@ -69,19 +69,19 @@
     <span class="nav-section-label">Intelligence</span>
     <ul class="nav-links">
         <li>
-            <a href={resolve('/chat')} onclick={onclose} class:active={is_active('/chat')}>
+            <a href={resolve('/chat')} onclick={on_close} class:active={is_active('/chat')}>
                 <span class="icon">chat</span>
                 <span>Chat</span>
             </a>
         </li>
         <li>
-            <a href={resolve('/prompts')} onclick={onclose} class:active={is_active('/prompts')}>
+            <a href={resolve('/prompts')} onclick={on_close} class:active={is_active('/prompts')}>
                 <span class="icon">tune</span>
                 <span>Prompts &amp; Traits</span>
             </a>
         </li>
         <li>
-            <a href={resolve('/skills')} onclick={onclose} class:active={is_active('/skills')}>
+            <a href={resolve('/skills')} onclick={on_close} class:active={is_active('/skills')}>
                 <span class="icon">extension</span>
                 <span>Skills</span>
             </a>
@@ -93,7 +93,7 @@
     <span class="nav-section-label">Insights</span>
     <ul class="nav-links">
         <li>
-            <a href={resolve('/usage')} onclick={onclose} class:active={is_active('/usage')}>
+            <a href={resolve('/usage')} onclick={on_close} class:active={is_active('/usage')}>
                 <span class="icon">analytics</span>
                 <span>Usage</span>
             </a>
@@ -106,7 +106,7 @@
         <span class="nav-section-label">Settings</span>
         <ul class="nav-links">
             <li>
-                <a href={resolve('/admin')} onclick={onclose} class:active={is_active('/admin')}>
+                <a href={resolve('/admin')} onclick={on_close} class:active={is_active('/admin')}>
                     <span class="icon">admin_panel_settings</span>
                     <span>Admin</span>
                     {#if badges.active_invite_count && badges.active_invite_count > 0}

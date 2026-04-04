@@ -6,10 +6,24 @@
         content: string
         role: string
     } = $props();
+
+    let rendered = $state('');
+
+    $effect(() => {
+        const current_content = content;
+        if (role !== 'assistant') return;
+        render_markdown(current_content).then((html) => {
+            rendered = html;
+        });
+    });
 </script>
 
 {#if role === 'assistant'}
-    <div class="message-content markdown-body">{@html render_markdown(content)}</div>
+    {#if rendered}
+        <div class="message-content markdown-body">{@html rendered}</div>
+    {:else}
+        <pre class="message-content markdown-loading">{content}</pre>
+    {/if}
 {:else}
     <p class="message-content">{content}</p>
 {/if}
@@ -21,6 +35,13 @@
         white-space: pre-wrap;
         word-break: break-word;
         margin: 0;
+    }
+
+    .markdown-loading {
+        font-family: inherit;
+        background: none;
+        border: none;
+        padding: 0;
     }
 
     .markdown-body {

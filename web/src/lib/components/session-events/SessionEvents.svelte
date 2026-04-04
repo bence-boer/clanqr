@@ -1,5 +1,6 @@
 <script lang="ts">
     import type { StructuredLogEntry } from '$lib/api/telemetry-client';
+    import { format_time } from '$lib/utils/format';
 
     let { entries, is_live }: {
         entries: StructuredLogEntry[]
@@ -7,7 +8,7 @@
     } = $props();
 
     let scroll_el: HTMLDivElement | null = $state(null);
-    let prev_count = $state(0);
+    let prev_count = 0;
 
     $effect(() => {
         if (entries.length > prev_count && scroll_el) {
@@ -30,7 +31,7 @@
 
     function color_for(type: string): string {
         if (type === 'error') return 'var(--danger)';
-        if (type === 'warning') return '#e6a23c';
+        if (type === 'warning') return 'var(--warning)';
         if (type === 'tool_complete') return 'var(--success)';
         if (type === 'agent_output' || type === 'agent_message') return 'var(--accent)';
         if (type === 'usage') return 'var(--fg-muted)';
@@ -62,13 +63,9 @@
         if (entry.type === 'shutdown') return `${d.shutdown_type ?? 'completed'}`;
         return '';
     }
-
-    function format_time(ts: string): string {
-        return new Date(ts).toLocaleTimeString();
-    }
 </script>
 
-<div class="events-feed" bind:this={scroll_el}>
+<div data-slot="session-events" class="events-feed" bind:this={scroll_el}>
     {#if entries.length === 0}
         <p class="empty">{is_live ? 'Waiting for events…' : 'No events recorded.'}</p>
     {:else}

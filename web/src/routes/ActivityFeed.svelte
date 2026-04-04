@@ -26,7 +26,7 @@
         success: 'var(--success)',
         danger: 'var(--danger)',
         warning: 'var(--accent)',
-        info: '#6ea8fe',
+        info: 'var(--info)',
         muted: 'var(--fg-muted)'
     };
 </script>

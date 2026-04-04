@@ -1,6 +1,6 @@
 /** Admin API client — users, invites, settings (admin-only endpoints). */
 import type * as Types from '$lib/types';
-import { API_URL, client, unwrap } from './rpc';
+import { API_URL, client, custom_fetch, unwrap } from './rpc';
 
 export const admin_api = {
     // ── Users ────────────────────────────────────────────────────────────────
@@ -15,47 +15,45 @@ export const admin_api = {
 
     // ── Invites ──────────────────────────────────────────────────────────────
     create_invite: async (expires_in_days?: number) => {
-        const response = await fetch(`${API_URL}/api/admin/invites`, {
+        const response = await custom_fetch(`${API_URL}/api/admin/invites`, {
             method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(expires_in_days ? { expires_in_days } : {})
         });
-        if (!response.ok) throw new Error('Failed to create invite');
         return response.json();
     },
     list_invites: async () => {
-        const response = await fetch(`${API_URL}/api/admin/invites`, {
-            credentials: 'include'
-        });
-        if (!response.ok) throw new Error('Failed to list invites');
+        const response = await custom_fetch(`${API_URL}/api/admin/invites`);
         return response.json();
     },
     revoke_invite: async (id: string): Promise<{ success: boolean }> => {
-        const response = await fetch(`${API_URL}/api/admin/invites/${encodeURIComponent(id)}`, {
-            method: 'DELETE',
-            credentials: 'include'
+        const response = await custom_fetch(`${API_URL}/api/admin/invites/${encodeURIComponent(id)}`, {
+            method: 'DELETE'
         });
-        if (!response.ok) throw new Error('Failed to revoke invite');
         return response.json();
     },
 
     // ── Settings ─────────────────────────────────────────────────────────────
     get_settings: async (): Promise<Types.SdkDefaults> => {
-        const response = await fetch(`${API_URL}/api/admin/settings`, {
-            credentials: 'include'
-        });
-        if (!response.ok) throw new Error('Failed to load settings');
+        const response = await custom_fetch(`${API_URL}/api/admin/settings`);
         return response.json();
     },
     update_settings: async (updates: Partial<Types.SdkDefaults>): Promise<Types.SdkDefaults> => {
-        const response = await fetch(`${API_URL}/api/admin/settings`, {
+        const response = await custom_fetch(`${API_URL}/api/admin/settings`, {
             method: 'PUT',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updates)
         });
-        if (!response.ok) throw new Error('Failed to save settings');
+        return response.json();
+    },
+
+    // ── Metrics & Maintenance ────────────────────────────────────────────────
+    load_metrics: async (): Promise<Record<string, { total_requests: number, total_errors: number, avg_latency_ms: number, p95_latency_ms: number }>> => {
+        const response = await custom_fetch(`${API_URL}/api/admin/metrics`);
+        return response.json();
+    },
+    cleanup_workspaces: async (): Promise<{ cleaned: number }> => {
+        const response = await custom_fetch(`${API_URL}/api/admin/cleanup-workspaces`, {
+            method: 'POST'
+        });
         return response.json();
     }
 };

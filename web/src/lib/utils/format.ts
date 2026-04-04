@@ -49,3 +49,19 @@ export function format_cost(n: number): string {
     if (n < 0.01) return `$${n.toFixed(4)}`;
     return `$${n.toFixed(2)}`;
 }
+
+export function format_time(iso: string): string {
+    return new Date(iso).toLocaleTimeString();
+}
+
+export function format_relative_short(iso: string): string {
+    const d = new Date(iso);
+    const now = new Date();
+    const diff_ms = now.getTime() - d.getTime();
+    const diff_min = Math.floor(diff_ms / 60_000);
+    if (diff_min < 1) return 'just now';
+    if (diff_min < 60) return `${diff_min}m ago`;
+    const diff_hr = Math.floor(diff_min / 60);
+    if (diff_hr < 24) return `${diff_hr}h ago`;
+    return `${Math.floor(diff_hr / 24)}d ago`;
+}

@@ -13,7 +13,7 @@
 </script>
 
 {#if href}
-<a href={resolve(href as '/')} class="stat-card stat-link">
+<a href={resolve(href as '/')} data-slot="stat-card" class="stat-card stat-link">
   {#if icon}
     <span class="icon stat-icon">{icon}</span>
   {/if}
@@ -23,7 +23,7 @@
   </div>
 </a>
 {:else}
-<div class="stat-card">
+<div data-slot="stat-card" class="stat-card">
   {#if icon}
     <span class="icon stat-icon">{icon}</span>
   {/if}
@@ -53,7 +53,7 @@
   }
 
   .stat-link:hover {
-    border-color: var(--accent, #d4af37);
+    border-color: var(--accent);
   }
 
   .stat-icon {

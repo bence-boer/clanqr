@@ -3,6 +3,7 @@
     import { LoadingSpinner } from '$lib/components';
     import { toast_store } from '$lib/stores/toast.svelte';
     import type { ResolvedTrait, SkillLink, Trait } from '$lib/types';
+    import { onMount } from 'svelte';
     import ArtifactCheckboxList from './ArtifactCheckboxList.svelte';
 
     interface Props {
@@ -55,7 +56,9 @@
         try {
             resolved_traits = await api.resolve_task_traits(task_id);
         }
-        catch {
+        catch (error) {
+            console.error(error);
+            toast_store.error('Failed to load resolved traits');
             resolved_traits = [];
         }
         finally {
@@ -98,8 +101,9 @@
         }
     }
 
-    // Load immediately on mount
-    load();
+    onMount(() => {
+        load();
+    });
 </script>
 
 <div class="artifacts-panel">
@@ -137,7 +141,7 @@
                 {#each resolved_traits as rt (rt.id)}
                     <div class="resolved-trait">
                         <span class="artifact-name">{rt.name}</span>
-                        <span class="scope-badge {rt.scope_source}">{scope_labels[rt.scope_source] ?? rt.scope_source}</span>
+                        <span class={['scope-badge', rt.scope_source].join(' ')}>{scope_labels[rt.scope_source] ?? rt.scope_source}</span>
                     </div>
                 {/each}
             {/if}
@@ -191,7 +195,7 @@
         white-space: nowrap;
     }
     .scope-badge.global { background: rgba(99,102,241,0.12); color: var(--accent, #6366f1); }
-    .scope-badge.project { background: rgba(34,197,94,0.12); color: #22c55e; }
+    .scope-badge.project { background: rgba(var(--success-rgb), 0.12); color: var(--success); }
     .scope-badge.feature { background: rgba(232,154,46,0.12); color: var(--warning, #e89a2e); }
     .scope-badge.task { background: rgba(201,84,74,0.12); color: var(--danger, #c9544a); }
 </style>

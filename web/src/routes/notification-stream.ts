@@ -1,6 +1,11 @@
 import { API_URL } from '$lib/api/rpc';
 import { notification_store } from '$lib/stores/notifications.svelte';
 
+/**
+ * Creates an SSE EventSource for real-time notifications (features, tasks, pipeline).
+ * Callers must close the returned EventSource when no longer needed (e.g., on component
+ * destroy) to avoid leaked connections.
+ */
 export function create_notification_stream(): EventSource {
     const es = new EventSource(`${API_URL}/api/events/stream`, { withCredentials: true });
 

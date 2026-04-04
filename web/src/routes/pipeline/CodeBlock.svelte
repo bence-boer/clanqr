@@ -48,7 +48,7 @@
         border-radius: var(--radius);
         font-size: 0.75rem;
         color: var(--fg-muted);
-        font-family: 'SF Mono', 'Fira Code', monospace;
+        font-family: var(--font-mono);
         white-space: pre-wrap;
         word-break: break-word;
         overflow-y: auto;

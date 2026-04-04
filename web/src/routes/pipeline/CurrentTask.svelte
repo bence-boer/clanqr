@@ -8,12 +8,12 @@
     let {
         pipeline,
         action_busy,
-        onstop,
+        on_stop,
         format_duration
     }: {
         pipeline: PipelineStatus | null
         action_busy: boolean
-        onstop: () => void
+        on_stop: () => void
         format_duration: (started_at: string | null) => string
     } = $props();
 
@@ -95,7 +95,7 @@
                 }}>
                     {log_visible ? 'Hide Log' : 'View Log'}
                 </Button>
-                <Button variant="danger" size="sm" icon="stop" onclick={onstop} disabled={action_busy}>Stop</Button>
+                <Button variant="danger" size="sm" icon="stop" onclick={on_stop} disabled={action_busy}>Stop</Button>
             </div>
 
             <LiveEventPanel

@@ -38,6 +38,7 @@
 
         try {
             await admin_api.update_user_role(user.id, new_role);
+            toast_store.success('Role updated');
         }
         catch (err: unknown) {
             // Rollback
@@ -51,6 +52,7 @@
         try {
             await admin_api.delete_user(user_id);
             users = users.filter((u) => u.id !== user_id);
+            toast_store.success('User deleted');
         }
         catch (err: unknown) {
             users_error = err instanceof Error ? err.message : String(err);

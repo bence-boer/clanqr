@@ -40,6 +40,9 @@
         await auth_store.check();
         if (auth_store.state === 'authenticated') {
             load_system_stats();
+            if (!notification_source) {
+                notification_source = create_notification_stream();
+            }
         }
     }
 
@@ -47,9 +50,14 @@
         const saved = localStorage.getItem('sidebar_collapsed');
         if (saved === 'true') sidebar_collapsed = true;
 
-        if (!current_path.startsWith('/invite')) {
+        if (current_path !== '/invite' && !current_path.startsWith('/invite/')) {
             do_auth_check();
         }
+
+        return () => {
+            notification_source?.close();
+            notification_source = null;
+        };
     });
 
     function toggle_sidebar_collapse() {
@@ -59,7 +67,7 @@
 
     // Re-check auth when navigating away from invite pages
     $effect(() => {
-        if (!current_path.startsWith('/invite') && !auth_check_done) {
+        if (current_path !== '/invite' && !current_path.startsWith('/invite/') && !auth_check_done) {
             do_auth_check();
         }
     });
@@ -70,7 +78,8 @@
             system_stats = stats;
             critical_alerts = alerts_resp.alerts.filter((a: SystemAlert) => a.severity === 'critical');
         }
-        catch {
+        catch (error) {
+            console.error(error);
             toast_store.error('Failed to load system stats');
         }
     }
@@ -88,29 +97,19 @@
     }
 
     let notification_source: EventSource | null = null;
-
-    $effect(() => {
-        if (auth_store.state === 'authenticated' && !notification_source) {
-            notification_source = create_notification_stream();
-        }
-        return () => {
-            notification_source?.close();
-            notification_source = null;
-        };
-    });
 </script>
 
 <svelte:head>
     <title>Ralph Agent Workspace</title>
 </svelte:head>
 
-{#if current_path.startsWith('/invite')}
+{#if current_path === '/invite' || current_path.startsWith('/invite/')}
     {@render children()}
 {:else if auth_store.state !== 'authenticated'}
-    <AuthScreen auth_state={auth_store.state} error={auth_store.error} pending={auth_store.pending} onlogin={handle_login} />
+    <AuthScreen auth_state={auth_store.state} error={auth_store.error} pending={auth_store.pending} on_login={handle_login} />
 {:else}
     <div class="app" class:sidebar-open={sidebar_open} class:sidebar-collapsed={sidebar_collapsed}>
-        <button class="mobile-toggle" onclick={() => (sidebar_open = !sidebar_open)}>
+        <button class="mobile-toggle" onclick={() => (sidebar_open = !sidebar_open)} aria-label="Toggle navigation menu">
             <span class="icon">{sidebar_open ? 'close' : 'menu'}</span>
         </button>
 
@@ -124,9 +123,9 @@
           {system_stats}
            {sidebar_open}
             collapsed={sidebar_collapsed}
-            onclose={close_sidebar}
-            onlogout={handle_logout}
-            ontoggle_collapse={toggle_sidebar_collapse}>
+            on_close={close_sidebar}
+            on_logout={handle_logout}
+            on_toggle_collapse={toggle_sidebar_collapse}>
             {#snippet notification_bell()}
                 <NotificationBell />
             {/snippet}
@@ -195,9 +194,9 @@
         gap: 0.5rem;
         padding: 0.6rem 1rem;
         margin-bottom: 1rem;
-        background: rgba(201, 84, 74, 0.12);
+        background: rgba(var(--danger-rgb), 0.12);
         color: var(--danger);
-        border: 1px solid rgba(201, 84, 74, 0.3);
+        border: 1px solid rgba(var(--danger-rgb), 0.3);
         border-radius: var(--radius);
         font-size: 0.8rem;
         font-weight: 600;

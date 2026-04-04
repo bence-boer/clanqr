@@ -28,7 +28,7 @@
     };
 </script>
 
-<span {...rest_props} class="badge {variant_classes[variant]} {class_name}">
+<span {...rest_props} data-slot="badge" class={['badge', variant_classes[variant], class_name].filter(Boolean).join(' ')}>
     {#if icon}
         <span class="icon" style="font-size:11px">{icon}</span>
     {/if}
@@ -58,13 +58,13 @@
     }
 
     .badge-muted {
-        background: rgba(158, 151, 138, 0.15);
+        background: var(--bg-elevated);
         color: var(--fg-muted);
     }
 
     .badge-info {
-        background: rgba(106, 168, 254, 0.15);
-        color: #6ea8fe;
+        background: rgba(var(--info-rgb), 0.15);
+        color: var(--info);
     }
 
     .badge-warning {
@@ -73,12 +73,12 @@
     }
 
     .badge-success {
-        background: rgba(74, 158, 110, 0.15);
+        background: rgba(var(--success-rgb), 0.15);
         color: var(--success);
     }
 
     .badge-danger {
-        background: rgba(201, 84, 74, 0.15);
+        background: rgba(var(--danger-rgb), 0.15);
         color: var(--danger);
     }
 </style>

@@ -47,8 +47,8 @@
         refresh_message = null;
         try {
             const result = await api.refresh_skills();
-            refresh_message = `Found ${result.refreshed} skill${result.refreshed !== 1 ? 's' : ''}`;
             skills = await api.list_skills();
+            toast_store.success(`Skills refreshed — found ${result.refreshed}`);
         }
         catch (err) {
             refresh_message = err instanceof Error ? err.message : 'Refresh failed';
@@ -108,6 +108,7 @@
                 class="search-input"
                 placeholder="Search skills by name or description…"
                 bind:value={search_query}
+                aria-label="Search skills"
             />
             <span class="search-count">{filtered_skills.length} of {skills.length} skill{skills.length !== 1 ? 's' : ''}</span>
         </div>
@@ -180,7 +181,7 @@
         flex-shrink: 0;
     }
 
-    @media (max-width: 600px) {
+    @media (max-width: 768px) {
         .page {
             padding: 1rem;
         }

@@ -7,7 +7,7 @@
     import { Textarea } from '$lib/components/primitives/textarea';
     import { toast_store } from '$lib/stores/toast.svelte';
     import type { FailureBehavior } from '$lib/types';
-    import type { CreateFeatureData } from './feature_actions';
+    import type { CreateFeatureData } from './feature-actions';
     import FeatureAdvancedSettings from './FeatureAdvancedSettings.svelte';
     import FeatureResources from './FeatureResources.svelte';
 
@@ -100,8 +100,8 @@
         handle_submit();
     }}
 >
-    <Input type="text" placeholder="Feature title" bind:value={title} required />
-    <Textarea placeholder="Description" bind:value={description} rows={4} />
+    <Input type="text" placeholder="Feature title" bind:value={title} required aria-label="Feature title" />
+    <Textarea placeholder="Description" bind:value={description} rows={4} aria-label="Feature description" />
 
     <div class="model-grid">
         <div class="field">
@@ -182,9 +182,9 @@
         gap: 0.4rem;
         padding: 0.5rem 0.75rem;
         border-radius: var(--radius);
-        background: rgba(239, 68, 68, 0.1);
-        border: 1px solid rgba(239, 68, 68, 0.3);
-        color: #ef4444;
+        background: rgba(var(--danger-rgb), 0.1);
+        border: 1px solid rgba(var(--danger-rgb), 0.3);
+        color: var(--danger);
         font-size: 0.8rem;
     }
     @media (max-width: 768px) {

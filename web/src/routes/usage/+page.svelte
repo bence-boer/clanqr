@@ -10,7 +10,7 @@
 
     let summary = $state<UsageSummary | null>(null);
     let breakdown = $state<UsageBreakdown | null>(null);
-    let runs = $state<AgentSession[]>([]);
+    let runs = $state.raw<AgentSession[]>([]);
     let total_pages = $state(1);
     let total_count = $state(0);
     let loading_summary = $state(true);
@@ -51,21 +51,28 @@
         const page = current_page;
         const type = filter_type;
         const status = filter_status;
+        let cancelled = false;
 
         loading_history = true;
         api.usage_history(page, 20, type || undefined, status || undefined)
             .then((result) => {
+                if (cancelled) return;
                 runs = result.runs;
                 total_pages = result.total_pages;
                 total_count = result.total;
             })
             .catch((err) => {
+                if (cancelled) return;
                 console.error('usage history error:', err);
                 toast_store.error('Failed to load usage history');
             })
             .finally(() => {
-                loading_history = false;
+                if (!cancelled) loading_history = false;
             });
+
+        return () => {
+            cancelled = true;
+        };
     });
 
     function get_date_cutoff(range: typeof date_range): SvelteDate | null {
@@ -105,18 +112,18 @@
         {filter_status}
         {current_page}
         {date_range}
-        onfilter_type_change={(value) => {
+        on_filter_type_change={(value) => {
             filter_type = value;
             current_page = 1;
         }}
-        onfilter_status_change={(value) => {
+        on_filter_status_change={(value) => {
             filter_status = value;
             current_page = 1;
         }}
-        onpage_change={(page) => {
+        on_page_change={(page) => {
             current_page = page;
         }}
-        ondate_range_change={(value) => {
+        on_date_range_change={(value) => {
             date_range = value;
         }}
     />

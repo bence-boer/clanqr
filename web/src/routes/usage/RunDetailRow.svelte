@@ -64,7 +64,7 @@
 </tr>
 
 <style>
-    .detail-row td { padding: 0 !important; border-bottom: 1px solid var(--border); }
+    .detail-row td { padding: 0; border-bottom: 1px solid var(--border); }
     .detail-grid {
         display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
         gap: 0.75rem; padding: 1rem 1.25rem;
@@ -75,7 +75,7 @@
     .detail-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--fg-muted); font-weight: 600; }
     .detail-value { font-size: 0.82rem; color: var(--fg); font-variant-numeric: tabular-nums; }
     .cost-value { color: var(--success); font-weight: 500; }
-    .error-text { color: var(--danger); font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.78rem; word-break: break-word; }
-    .detail-link { font-size: 0.82rem; color: var(--accent); text-decoration: none; font-family: 'SF Mono', 'Fira Code', monospace; }
+    .error-text { color: var(--danger); font-family: var(--font-mono); font-size: 0.78rem; word-break: break-word; }
+    .detail-link { font-size: 0.82rem; color: var(--accent); text-decoration: none; font-family: var(--font-mono); }
     .detail-link:hover { text-decoration: underline; }
 </style>

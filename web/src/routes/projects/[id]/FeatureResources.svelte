@@ -26,9 +26,9 @@
     </div>
     {#each resources as resource, index (index)}
         <div class="resource-row">
-            <Input type="url" placeholder="https://..." bind:value={resource.url} class="input" />
+            <Input type="url" placeholder="https://..." bind:value={resource.url} class="input" aria-label="Resource URL" />
             <div class="title-field">
-                <Input type="text" placeholder="Title" bind:value={resource.title} class="input" />
+                <Input type="text" placeholder="Title" bind:value={resource.title} class="input" aria-label="Resource title" />
             </div>
             <Button
                 type="button"

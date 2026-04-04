@@ -1,3 +1,9 @@
+/**
+ * Tabs component — renders a `role="tablist"` bar.
+ *
+ * Consumers should render the corresponding tab content inside a container with
+ * `role="tabpanel"` to complete the accessible tabs pattern.
+ */
 <script lang="ts" generics="ValueType">
     import { Icon } from '../primitives';
     import type { TabsProperties } from './types';
@@ -8,7 +14,7 @@
         items,
         value = $bindable<ValueType>(),
         aria_label = 'Tabs',
-        ontabselect,
+        on_tab_select,
         ...rest_props
     }: TabsProperties<ValueType> = $props();
 
@@ -61,7 +67,7 @@
             }}
             onclick={() => {
                 value = item.value;
-                if (ontabselect) ontabselect(value);
+                if (on_tab_select) on_tab_select(value);
             }}
         >
             {#if item.icon}

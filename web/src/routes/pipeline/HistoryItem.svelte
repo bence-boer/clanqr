@@ -1,6 +1,6 @@
 <script lang="ts">
     import { resolve } from '$app/paths';
-    import { CodeBlock } from '$lib/components';
+    import CodeBlock from './CodeBlock.svelte';
     import { Badge, Button } from '$lib/components/primitives';
     import type { AgentSession } from '$lib/types';
     import { status_icon, status_class } from '$lib/utils/status';
@@ -10,7 +10,7 @@
         run,
         expanded,
         on_toggle_log,
-        onretry
+        on_retry
     }: {
         run: AgentSession & {
             tasks?: {
@@ -28,7 +28,7 @@
         }
         expanded: boolean
         on_toggle_log: (id: string) => void
-        onretry?: (task_id: string) => void
+        on_retry?: (task_id: string) => void
     } = $props();
 
     const log_content = $derived(run.tasks?.agent_log ?? null);
@@ -90,7 +90,7 @@
 
 <div class="history-item" class:flash-success={is_new}>
     <div class="history-item-main">
-        <span class="icon run-status-icon {status_class(run.status)}">{status_icon(run.status)}</span>
+        <span class={['icon', 'run-status-icon', status_class(run.status)].join(' ')}>{status_icon(run.status)}</span>
         <div class="history-item-copy">
             {#if project_name || feature_title}
                 <div class="run-breadcrumb">
@@ -140,8 +140,8 @@
     <div class="history-item-footer">
         <Badge variant={status_class(run.status) as 'success' | 'danger' | 'muted' | 'info'}>{run.status}</Badge>
         <div class="footer-actions">
-            {#if run.status === 'failed' && run.task_id && onretry}
-                <Button variant="secondary" size="sm" icon="replay" onclick={() => onretry(run.task_id ?? '')}>Retry</Button>
+            {#if run.status === 'failed' && run.task_id && on_retry}
+                <Button variant="secondary" size="sm" icon="replay" onclick={() => on_retry(run.task_id ?? '')}>Retry</Button>
             {/if}
             {#if log_content}
                 <Button variant="ghost" size="sm" icon="terminal" onclick={() => on_toggle_log(run.id)}>

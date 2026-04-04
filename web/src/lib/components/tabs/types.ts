@@ -12,5 +12,5 @@ export interface TabsProperties<ValueType> extends HTMLAttributes<HTMLDivElement
     items: TabItem<ValueType>[]
     value?: ValueType
     aria_label?: string
-    ontabselect?: (value: ValueType) => void
+    on_tab_select?: (value: ValueType) => void
 }

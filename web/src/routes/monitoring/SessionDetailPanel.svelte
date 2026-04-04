@@ -5,7 +5,7 @@
     import { Tabs } from '$lib/components';
     import type { TabItem } from '$lib/components/tabs/types';
     import { onMount } from 'svelte';
-    import SessionEvents from './SessionEvents.svelte';
+    import { SessionEvents } from '$lib/components/session-events';
     import SessionMetrics from './SessionMetrics.svelte';
 
     let { agent, on_close }: {
@@ -15,7 +15,7 @@
 
     type TabValue = 'events' | 'metrics';
     let active_tab = $state<TabValue>('events');
-    let entries = $state<StructuredLogEntry[]>([]);
+    let entries = $state.raw<StructuredLogEntry[]>([]);
     let event_source = $state<EventSource | null>(null);
     let last_index = $state(-1);
 
@@ -103,7 +103,7 @@
         </Button>
     </div>
 
-    <Tabs items={tabs} value={active_tab} ontabselect={(v) => active_tab = v} />
+    <Tabs items={tabs} value={active_tab} on_tab_select={(v) => active_tab = v} />
 
     <div class="detail-body">
         {#if active_tab === 'events'}

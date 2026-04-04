@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { API_URL } from '$lib/api/rpc';
+    import { admin_api } from '$lib/api/admin-client';
     import { Button } from '$lib/components/primitives';
     import { toast_store } from '$lib/stores/toast.svelte';
 
@@ -8,15 +8,11 @@
     async function cleanup_workspaces() {
         cleanup_loading = true;
         try {
-            const resp = await fetch(`${API_URL}/api/admin/cleanup-workspaces`, {
-                method: 'POST',
-                credentials: 'include'
-            });
-            if (!resp.ok) throw new Error('Cleanup failed');
-            const data: { cleaned: number } = await resp.json();
+            const data = await admin_api.cleanup_workspaces();
             toast_store.success(`Cleaned up ${data.cleaned} workspace(s)`);
         }
-        catch {
+        catch (error) {
+            console.error(error);
             toast_store.error('Workspace cleanup failed');
         }
         finally {

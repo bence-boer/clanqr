@@ -7,7 +7,7 @@
     import ResourceList from './ResourceList.svelte';
     import FeatureEditForm from './FeatureEditForm.svelte';
     import TaskProgressBar from './TaskProgressBar.svelte';
-    import { create_feature_handlers } from './feature_handlers';
+    import { create_feature_handlers } from './feature-handlers';
 
     interface Props {
         feature: Feature
@@ -132,8 +132,8 @@
     confirm_label="Submit"
     variant="default"
     open={show_submit_confirm}
-    onconfirm={handle_submit}
-    oncancel={() => (show_submit_confirm = false)}
+    on_confirm={handle_submit}
+    on_cancel={() => (show_submit_confirm = false)}
 />
 
 <ConfirmModal
@@ -142,8 +142,8 @@
     confirm_label="Delete"
     variant="danger"
     open={show_delete_confirm}
-    onconfirm={handle_delete}
-    oncancel={() => (show_delete_confirm = false)}
+    on_confirm={handle_delete}
+    on_cancel={() => (show_delete_confirm = false)}
 />
 
 <style>

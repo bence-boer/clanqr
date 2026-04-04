@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Accordion } from '$lib/components';
+    import Accordion from './Accordion.svelte';
     import { Badge, Button } from '$lib/components/primitives';
     import { toast_store } from '$lib/stores/toast.svelte';
     import type { TaskRow as Task } from '$lib/types';
@@ -42,7 +42,8 @@
             await on_approve(task.id);
             toast_store.info('Task approved. It will run when the pipeline reaches it.');
         }
-        catch {
+        catch (error) {
+            console.error(error);
             optimistic_status = prev_status;
             toast_store.error('Failed to approve task.');
         }
@@ -93,8 +94,8 @@
                 <Button variant="secondary" size="sm" icon="play_arrow" onclick={() => on_spawn(task.id)}>Run Ralph</Button>
             {/if}
             {#if ['queued', 'approved'].includes(task.status)}
-                <Button variant="ghost" size="sm" icon="edit" title="Edit" onclick={() => on_start_edit(task)} />
-                <Button variant="danger" size="sm" icon="delete" title="Delete" onclick={() => on_delete(task.id)} />
+                <Button variant="ghost" size="sm" icon="edit" title="Edit" aria-label="Edit task" onclick={() => on_start_edit(task)} />
+                <Button variant="danger" size="sm" icon="delete" title="Delete" aria-label="Delete task" onclick={() => on_delete(task.id)} />
             {/if}
             <Button variant="secondary" size="sm" icon="tune" title="Artifacts" onclick={() => on_toggle_artifacts(task.id)}>Artifacts</Button>
         </div>
@@ -147,7 +148,7 @@
     .task-failure-reason {
         display: flex; align-items: flex-start; gap: 0.3rem;
         margin-top: 0.35rem; padding: 0.3rem 0.5rem;
-        border-radius: var(--radius); background: rgba(239, 68, 68, 0.08);
-        color: #ef4444; font-size: 0.75rem; line-height: 1.4;
+        border-radius: var(--radius); background: rgba(var(--danger-rgb), 0.08);
+        color: var(--danger); font-size: 0.75rem; line-height: 1.4;
     }
 </style>

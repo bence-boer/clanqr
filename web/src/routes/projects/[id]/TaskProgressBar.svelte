@@ -55,10 +55,10 @@
         background: var(--border); margin-bottom: 0.35rem;
     }
     .progress-segment { height: 100%; transition: width 0.3s ease; }
-    .progress-segment.complete { background: #22c55e; }
-    .progress-segment.failed { background: #ef4444; }
-    .progress-segment.in-progress { background: #3b82f6; }
-    .progress-segment.pending-approval { background: #eab308; }
-    .progress-segment.other { background: #6b7280; }
+    .progress-segment.complete { background: var(--success); }
+    .progress-segment.failed { background: var(--danger); }
+    .progress-segment.in-progress { background: var(--info); }
+    .progress-segment.pending-approval { background: var(--warning); }
+    .progress-segment.other { background: var(--fg-muted); }
     .progress-label { font-size: 0.75rem; color: var(--fg-muted); }
 </style>

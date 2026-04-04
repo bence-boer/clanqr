@@ -23,8 +23,8 @@
             on_create();
         }}
     >
-        <Input type="text" placeholder="Project name" bind:value={new_name} class="input" required />
-        <Textarea placeholder="Description (optional)" bind:value={new_description} rows={2} />
+        <Input type="text" placeholder="Project name" bind:value={new_name} class="input" required aria-label="Project name" />
+        <Textarea placeholder="Description (optional)" bind:value={new_description} rows={2} aria-label="Project description" />
         <Button type="submit" variant="primary" disabled={creating || !new_name.trim()}>
             {creating ? 'Creating...' : 'Create Project'}
         </Button>

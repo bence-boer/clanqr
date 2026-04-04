@@ -35,7 +35,7 @@
         letter-spacing: 0.04em;
     }
     .required-indicator {
-        color: var(--danger, #ef4444);
+        color: var(--danger);
         margin-left: 0.2rem;
     }
 </style>

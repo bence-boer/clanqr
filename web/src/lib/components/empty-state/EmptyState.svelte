@@ -17,7 +17,7 @@
     const { icon = 'inbox', message, detail, action_label, action_href, onaction, children }: Props = $props();
 </script>
 
-<div class="empty-state">
+<div data-slot="empty-state" class="empty-state">
     <span class="icon empty-icon">{icon}</span>
     <p class="empty-message">{message}</p>
     {#if detail}

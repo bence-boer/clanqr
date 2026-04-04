@@ -74,7 +74,7 @@
     }
 
     .skill-card:hover {
-        border-color: rgba(212, 175, 55, 0.4);
+        border-color: rgba(var(--accent-rgb), 0.4);
     }
 
     .skill-card.expanded {
@@ -131,7 +131,7 @@
         color: var(--fg-muted);
         opacity: 0.6;
         margin: 0;
-        font-family: monospace;
+        font-family: var(--font-mono);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;

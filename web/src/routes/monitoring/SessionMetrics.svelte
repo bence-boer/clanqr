@@ -15,7 +15,7 @@
     let total_cost = $derived(sum_usage_float('cost'));
     let tool_count = $derived(entries.filter((e) => e.type === 'tool_complete').length);
 
-    let models_used = $derived(() => {
+    let models_used = $derived.by(() => {
         const models = new SvelteSet<string>();
         for (const e of entries) {
             if (e.type === 'usage' && e.data.model) models.add(String(e.data.model));
@@ -92,7 +92,7 @@
     </div>
     <div class="metric-card">
         <span class="metric-label">Models</span>
-        <span class="metric-value models">{models_used().join(', ') || '—'}</span>
+        <span class="metric-value models">{models_used.join(', ') || '—'}</span>
     </div>
 </div>
 

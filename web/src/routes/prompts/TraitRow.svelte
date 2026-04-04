@@ -60,12 +60,12 @@
     .trait-row:hover { border-color: var(--bg-elevated); }
     .trait-main { flex: 1; min-width: 0; width: 100%; display: flex; flex-direction: column; gap: 0.2rem; }
     .trait-header-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-    .trait-name { font-weight: 600; color: var(--fg); font-size: 0.875rem; font-family: 'SF Mono', 'Fira Code', monospace; }
+    .trait-name { font-weight: 600; color: var(--fg); font-size: 0.875rem; font-family: var(--font-mono); }
     .trait-badges { display: flex; gap: 0.35rem; flex-wrap: wrap; }
     .trait-desc { font-size: 0.82rem; color: var(--fg-muted); }
     .trait-preview {
         font-size: 0.75rem; color: var(--fg-muted); opacity: 0.55;
-        font-family: 'SF Mono', 'Fira Code', monospace;
+        font-family: var(--font-mono);
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .trait-actions { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }

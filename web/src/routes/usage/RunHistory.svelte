@@ -17,8 +17,8 @@
         runs, total_pages, total_count, loading,
         filter_type, filter_status, current_page,
         date_range = 'all',
-        onfilter_type_change, onfilter_status_change,
-        onpage_change, ondate_range_change
+        on_filter_type_change, on_filter_status_change,
+        on_page_change, on_date_range_change
     }: {
         runs: AgentSession[]
         total_pages: number
@@ -28,10 +28,10 @@
         filter_status: string
         current_page: number
         date_range?: DateRange
-        onfilter_type_change: (value: string) => void
-        onfilter_status_change: (value: string) => void
-        onpage_change: (page: number) => void
-        ondate_range_change?: (value: DateRange) => void
+        on_filter_type_change: (value: string) => void
+        on_filter_status_change: (value: string) => void
+        on_page_change: (page: number) => void
+        on_date_range_change?: (value: DateRange) => void
     } = $props();
 
     let sort_field = $state<SortField>('date');
@@ -59,6 +59,13 @@
 
     function get_cost(run: AgentSession): number {
         return Number(run.estimated_cost ?? 0);
+    }
+
+    function handle_sort_key(e: KeyboardEvent, handler: () => void) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handler();
+        }
     }
 
     let sorted_runs = $derived.by(() => {
@@ -90,9 +97,9 @@
                 {date_range}
                 {filter_type}
                 {filter_status}
-                {ondate_range_change}
-                {onfilter_type_change}
-                {onfilter_status_change}
+                {on_date_range_change}
+                {on_filter_type_change}
+                {on_filter_status_change}
             />
         </div>
     </div>
@@ -108,13 +115,13 @@
             <table class="runs-table">
                 <thead>
                     <tr>
-                        <th class="sortable" onclick={() => toggle_sort('type')}>Type{sort_indicator('type')}</th>
-                        <th class="sortable" onclick={() => toggle_sort('model')}>Model{sort_indicator('model')}</th>
-                        <th class="sortable" onclick={() => toggle_sort('status')}>Status{sort_indicator('status')}</th>
-                        <th class="sortable" onclick={() => toggle_sort('duration')}>Duration{sort_indicator('duration')}</th>
-                        <th class="sortable" onclick={() => toggle_sort('tokens')}>Tokens{sort_indicator('tokens')}</th>
-                        <th class="sortable" onclick={() => toggle_sort('cost')}>Cost{sort_indicator('cost')}</th>
-                        <th class="sortable" onclick={() => toggle_sort('date')}>Date{sort_indicator('date')}</th>
+                        <th class="sortable" role="button" tabindex="0" onclick={() => toggle_sort('type')} onkeydown={(e) => handle_sort_key(e, () => toggle_sort('type'))}>Type{sort_indicator('type')}</th>
+                        <th class="sortable" role="button" tabindex="0" onclick={() => toggle_sort('model')} onkeydown={(e) => handle_sort_key(e, () => toggle_sort('model'))}>Model{sort_indicator('model')}</th>
+                        <th class="sortable" role="button" tabindex="0" onclick={() => toggle_sort('status')} onkeydown={(e) => handle_sort_key(e, () => toggle_sort('status'))}>Status{sort_indicator('status')}</th>
+                        <th class="sortable" role="button" tabindex="0" onclick={() => toggle_sort('duration')} onkeydown={(e) => handle_sort_key(e, () => toggle_sort('duration'))}>Duration{sort_indicator('duration')}</th>
+                        <th class="sortable" role="button" tabindex="0" onclick={() => toggle_sort('tokens')} onkeydown={(e) => handle_sort_key(e, () => toggle_sort('tokens'))}>Tokens{sort_indicator('tokens')}</th>
+                        <th class="sortable" role="button" tabindex="0" onclick={() => toggle_sort('cost')} onkeydown={(e) => handle_sort_key(e, () => toggle_sort('cost'))}>Cost{sort_indicator('cost')}</th>
+                        <th class="sortable" role="button" tabindex="0" onclick={() => toggle_sort('date')} onkeydown={(e) => handle_sort_key(e, () => toggle_sort('date'))}>Date{sort_indicator('date')}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -122,7 +129,11 @@
                         <tr
                             class="clickable-row"
                             class:expanded={expanded_row === run.id}
+                            tabindex="0"
                             onclick={() => expanded_row = expanded_row === run.id ? null : run.id}
+                            onkeydown={(e) => handle_sort_key(e, () => {
+                                expanded_row = expanded_row === run.id ? null : run.id;
+                            })}
                         >
                             <td><Badge variant={run.agent_type === 'manager' ? 'info' : run.agent_type === 'chat' ? 'success' : 'warning'}>{run.agent_type}</Badge></td>
                             <td class="model-col">{run.model ?? 'default'}</td>
@@ -141,7 +152,7 @@
         </div>
 
         <div class="pagination-border">
-            <Pagination {current_page} {total_pages} {onpage_change} />
+            <Pagination {current_page} {total_pages} {on_page_change} />
         </div>
     {/if}
 </div>
@@ -177,7 +188,7 @@
     .pagination-border { border-top: 1px solid var(--border); padding: 0.75rem 1.25rem; }
     .loading-row { padding: 2rem 1.25rem; display: flex; justify-content: center; }
     @media (max-width: 768px) { .filters { flex-wrap: wrap; } }
-    @media (max-width: 640px) {
+    @media (max-width: 768px) {
         .history-header { flex-direction: column; align-items: flex-start; }
     }
 </style>

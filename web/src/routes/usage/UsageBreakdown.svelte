@@ -162,7 +162,7 @@
   @media (max-width: 768px) {
     .breakdown-section { grid-template-columns: 1fr; }
   }
-  @media (max-width: 640px) {
+  @media (max-width: 768px) {
     .breakdown-section { grid-template-columns: 1fr; }
     .bar-label { width: auto; min-width: 60px; }
   }

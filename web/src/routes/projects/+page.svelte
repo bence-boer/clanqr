@@ -184,8 +184,8 @@
     confirm_label="Delete"
     variant="danger"
     open={confirm_delete_id !== null}
-    onconfirm={handle_confirm_delete}
-    oncancel={() => (confirm_delete_id = null)}
+    on_confirm={handle_confirm_delete}
+    on_cancel={() => (confirm_delete_id = null)}
 />
 
 <ConfirmModal
@@ -194,8 +194,8 @@
     confirm_label="Delete All"
     variant="danger"
     open={confirm_bulk_delete}
-    onconfirm={handle_delete_selected}
-    oncancel={() => (confirm_bulk_delete = false)}
+    on_confirm={handle_delete_selected}
+    on_cancel={() => (confirm_bulk_delete = false)}
 />
 
 <style>

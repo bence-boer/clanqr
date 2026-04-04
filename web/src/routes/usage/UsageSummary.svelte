@@ -38,7 +38,7 @@
         success_rate === null
             ? 'var(--fg-muted)'
             : success_rate >= 80
-                ? 'var(--success, #4ade80)'
+                ? 'var(--success)'
                 : success_rate >= 50
                     ? 'var(--accent)'
                     : 'var(--danger)'
@@ -142,7 +142,7 @@
             grid-template-columns: repeat(2, 1fr);
         }
     }
-    @media (max-width: 480px) {
+    @media (max-width: 768px) {
         .stats-row {
             grid-template-columns: 1fr;
         }

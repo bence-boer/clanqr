@@ -50,6 +50,7 @@
     {...rest_props}
     bind:this={ref}
     disabled={rest_props.disabled || loading}
+    data-slot="button"
     class={['base-btn', variant_classes[variant], size_classes[size], active ? 'active' : '', class_name].filter(Boolean).join(' ')}
 >
     {#if loading}
@@ -189,9 +190,9 @@
 
     /* Icon scaling relative to size */
     :global(.base-btn.size-sm .btn-icon) {
-        font-size: 16px !important;
+        font-size: 16px;
     }
     :global(.base-btn.size-default .btn-icon) {
-        font-size: 20px !important;
+        font-size: 20px;
     }
 </style>

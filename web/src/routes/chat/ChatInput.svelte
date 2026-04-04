@@ -3,19 +3,19 @@
     let {
         input_text = $bindable(''),
         is_streaming,
-        onsend,
-        onstop
+        on_send,
+        on_stop
     }: {
         input_text: string
         is_streaming: boolean
-        onsend: () => void
-        onstop?: () => void
+        on_send: () => void
+        on_stop?: () => void
     } = $props();
 
     function handle_key_down(event: KeyboardEvent) {
         if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
-            onsend();
+            on_send();
         }
     }
 </script>
@@ -28,14 +28,15 @@
         disabled={is_streaming}
         onkeydown={handle_key_down}
         rows={3}
+        aria-label="Chat message"
     />
-    {#if is_streaming && onstop}
-        <Button variant="danger" size="icon" onclick={onstop} title="Stop generating" icon="stop" aria-label="Stop generation" />
+    {#if is_streaming && on_stop}
+        <Button variant="danger" size="icon" onclick={on_stop} title="Stop generating" icon="stop" aria-label="Stop generation" />
     {:else}
         <Button
             variant="primary"
             size="icon"
-            onclick={onsend}
+            onclick={on_send}
             disabled={!input_text.trim() || is_streaming}
             loading={is_streaming}
             icon={is_streaming ? undefined : 'send'}

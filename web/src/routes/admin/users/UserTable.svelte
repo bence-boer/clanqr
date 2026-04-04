@@ -136,8 +136,8 @@
     confirm_label="Revoke Access"
     variant="danger"
     loading={delete_target_user ? deleting.has(delete_target_user.id) : false}
-    onconfirm={confirm_delete_user}
-    oncancel={() => {
+    on_confirm={confirm_delete_user}
+    on_cancel={() => {
         show_delete_modal = false;
         delete_target_user = null;
     }}

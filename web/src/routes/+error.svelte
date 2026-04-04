@@ -11,6 +11,10 @@
         <p class="error-subtitle">
             {#if page.status === 404}
                 The page you're looking for doesn't exist.
+            {:else if page.status === 403}
+                You don't have permission to view this page.
+            {:else if page.status >= 500}
+                A server error occurred. Please try again later.
             {:else}
                 An unexpected error occurred. Please try again.
             {/if}
@@ -74,7 +78,7 @@
         padding: 0.5rem 0.75rem;
         border-radius: var(--radius);
         margin-bottom: 1.5rem;
-        font-family: monospace;
+        font-family: var(--font-mono);
     }
 
     .error-actions {

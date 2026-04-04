@@ -21,7 +21,7 @@
     const resolved_icon = $derived(icon ?? default_icons[variant]);
 </script>
 
-<div class="error-banner variant-{variant}" role="alert">
+<div data-slot="error-banner" class={['error-banner', `variant-${variant}`].join(' ')} role="alert">
     <span class="icon banner-icon">{resolved_icon}</span>
     <span class="banner-message">{message}</span>
 </div>
@@ -43,26 +43,26 @@
     }
 
     .variant-error {
-        background: rgba(201, 84, 74, 0.1);
-        border: 1px solid rgba(201, 84, 74, 0.3);
+        background: rgba(var(--danger-rgb), 0.1);
+        border: 1px solid rgba(var(--danger-rgb), 0.3);
         color: var(--danger);
     }
 
     .variant-warning {
         background: var(--accent-dim);
-        border: 1px solid rgba(212, 175, 55, 0.3);
+        border: 1px solid rgba(var(--accent-rgb), 0.3);
         color: var(--accent);
     }
 
     .variant-info {
-        background: rgba(106, 168, 254, 0.1);
-        border: 1px solid rgba(106, 168, 254, 0.3);
-        color: #6ea8fe;
+        background: rgba(var(--info-rgb), 0.1);
+        border: 1px solid rgba(var(--info-rgb), 0.3);
+        color: var(--info);
     }
 
     .variant-stale {
         background: var(--accent-dim);
-        border: 1px solid rgba(212, 175, 55, 0.3);
+        border: 1px solid rgba(var(--accent-rgb), 0.3);
         color: var(--accent);
         font-size: 0.8rem;
     }

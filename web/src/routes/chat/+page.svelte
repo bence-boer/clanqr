@@ -151,7 +151,7 @@
         <span class="icon" style="font-size: 20px">{mobile_sessions_open ? 'close' : 'menu'}</span>
     </button>
     <div class="sessions-container" class:mobile-open={mobile_sessions_open}>
-        <SessionList {sessions} {active_session} {loading_sessions} onselect={select_session} ondelete={delete_session} oncreate={create_session} />
+        <SessionList {sessions} {active_session} {loading_sessions} on_select={select_session} on_delete={delete_session} on_create={create_session} />
     </div>
     <ChatActions
         session={active_session} {messages} {loading_messages} {is_streaming} {streaming_content}

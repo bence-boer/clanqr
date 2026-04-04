@@ -13,7 +13,7 @@ if (typeof window !== 'undefined' && !PUBLIC_API_URL) {
     );
 }
 
-const custom_fetch = async (endpoint: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+export const custom_fetch = async (endpoint: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const response = await fetch(endpoint, {
         ...init,
         credentials: 'include',
