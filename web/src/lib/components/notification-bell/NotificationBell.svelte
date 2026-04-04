@@ -3,6 +3,7 @@
     import { resolve } from '$app/paths';
     import type { Pathname } from '$app/types';
     import { notification_store, type Notification } from '$lib/stores/notifications.svelte';
+    import { format_relative_short } from '$lib/utils/format';
 
     let open = $state(false);
 
@@ -24,18 +25,6 @@
 
     function mark_all() {
         notification_store.mark_all_read();
-    }
-
-    function format_time(iso: string): string {
-        const d = new Date(iso);
-        const now = new Date();
-        const diff_ms = now.getTime() - d.getTime();
-        const diff_min = Math.floor(diff_ms / 60_000);
-        if (diff_min < 1) return 'just now';
-        if (diff_min < 60) return `${diff_min}m ago`;
-        const diff_hr = Math.floor(diff_min / 60);
-        if (diff_hr < 24) return `${diff_hr}h ago`;
-        return `${Math.floor(diff_hr / 24)}d ago`;
     }
 
     const type_icon: Record<Notification['type'], string> = {
@@ -78,7 +67,7 @@
                             <span class="icon n-icon {n.type}" style="font-size:16px">{type_icon[n.type]}</span>
                             <div class="n-content">
                                 <span class="n-message">{n.message}</span>
-                                <span class="n-time">{format_time(n.timestamp)}</span>
+                                <span class="n-time">{format_relative_short(n.timestamp)}</span>
                             </div>
                         </button>
                     {/each}

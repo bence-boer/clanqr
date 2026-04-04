@@ -1,7 +1,7 @@
 <script lang="ts">
     import { telemetry_api, type StructuredLogEntry } from '$lib/api/telemetry-client';
     import { onMount } from 'svelte';
-    import SessionEvents from '../monitoring/SessionEvents.svelte';
+    import { SessionEvents } from '$lib/components/session-events';
 
     let {
         sdk_session_id,
@@ -11,8 +11,9 @@
         visible: boolean
     } = $props();
 
-    let entries = $state<StructuredLogEntry[]>([]);
+    let entries = $state.raw<StructuredLogEntry[]>([]);
     let event_source: EventSource | null = null;
+    let stop_poll: (() => void) | null = null;
     let poll_index = $state(0);
 
     function connect_stream(sdk_sid: string) {
@@ -40,6 +41,8 @@
     }
 
     function disconnect_stream() {
+        stop_poll?.();
+        stop_poll = null;
         event_source?.close();
         event_source = null;
     }
@@ -58,7 +61,8 @@
                 // ignore polling errors
             }
         }, 3000);
-        return () => clearInterval(id);
+        stop_poll = () => clearInterval(id);
+        return stop_poll;
     }
 
     $effect(() => {
@@ -68,7 +72,11 @@
         else {
             disconnect_stream();
         }
-        return () => disconnect_stream();
+        return () => {
+            stop_poll?.();
+            stop_poll = null;
+            disconnect_stream();
+        };
     });
 
     onMount(() => () => disconnect_stream());

@@ -1,6 +1,6 @@
 <script lang="ts">
     import { resolve } from '$app/paths';
-    import { CodeBlock } from '$lib/components';
+    import CodeBlock from './CodeBlock.svelte';
     import { Badge, Button } from '$lib/components/primitives';
     import type { AgentSession } from '$lib/types';
     import { status_icon, status_class } from '$lib/utils/status';

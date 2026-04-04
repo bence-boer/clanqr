@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Accordion } from '$lib/components';
+    import Accordion from './Accordion.svelte';
     import { Badge, Button } from '$lib/components/primitives';
     import { toast_store } from '$lib/stores/toast.svelte';
     import type { TaskRow as Task } from '$lib/types';
@@ -42,7 +42,8 @@
             await on_approve(task.id);
             toast_store.info('Task approved. It will run when the pipeline reaches it.');
         }
-        catch {
+        catch (error) {
+            console.error(error);
             optimistic_status = prev_status;
             toast_store.error('Failed to approve task.');
         }

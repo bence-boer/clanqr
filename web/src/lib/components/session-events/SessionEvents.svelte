@@ -1,5 +1,6 @@
 <script lang="ts">
     import type { StructuredLogEntry } from '$lib/api/telemetry-client';
+    import { format_time } from '$lib/utils/format';
 
     let { entries, is_live }: {
         entries: StructuredLogEntry[]
@@ -7,7 +8,7 @@
     } = $props();
 
     let scroll_el: HTMLDivElement | null = $state(null);
-    let prev_count = $state(0);
+    let prev_count = 0;
 
     $effect(() => {
         if (entries.length > prev_count && scroll_el) {
@@ -61,10 +62,6 @@
         }
         if (entry.type === 'shutdown') return `${d.shutdown_type ?? 'completed'}`;
         return '';
-    }
-
-    function format_time(ts: string): string {
-        return new Date(ts).toLocaleTimeString();
     }
 </script>
 
