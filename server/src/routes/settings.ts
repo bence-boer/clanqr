@@ -9,7 +9,8 @@ const update_schema = z.object({
     default_model: z.string().min(1).max(100).optional(),
     default_reasoning_effort: z.enum(['low', 'medium', 'high', 'xhigh']).optional(),
     default_timeout_minutes: z.number().int().min(1).max(1440).optional(),
-    max_concurrent_sessions: z.number().int().min(1).max(20).optional()
+    max_concurrent_sessions: z.number().int().min(1).max(20).optional(),
+    cost_per_premium_request: z.number().min(0).max(10).optional()
 });
 
 export const settings_routes = new Hono<AppBindings>()
