@@ -8,6 +8,17 @@ import { prompt_service } from '../services/prompt_service';
 import { log_store } from '../services/log_store_service';
 import { logger } from '../utils/logger';
 
+function summarize_entry(type: string, data: Record<string, unknown> = {}): string {
+    if (type === 'tool_start' || type === 'tool_complete') return `${data.tool_name ?? 'unknown'}`;
+    if (type === 'agent_output' || type === 'agent_message') {
+        const text = String(data.text ?? data.content ?? '');
+        return text.length > 120 ? text.slice(0, 120) + '…' : text;
+    }
+    if (type === 'usage') return `${data.input_tokens ?? 0}in/${data.output_tokens ?? 0}out`;
+    if (type === 'error' || type === 'warning') return String(data.message ?? data.text ?? type);
+    return type;
+}
+
 export const agents_routes = new Hono<AppBindings>()
     // ── Pipeline status & controls ────────────────────────────────────────────
     .get('/queue', async (context) => {
@@ -144,9 +155,9 @@ export const agents_routes = new Hono<AppBindings>()
         const session_id = context.req.param('session_id');
         if (!session_id) return context.json({ error: 'Missing session_id' }, 400);
 
-        const entries = log_store.get(session_id);
+        const raw_entries = log_store.get(session_id);
 
-        if (entries.length === 0) {
+        if (raw_entries.length === 0) {
             const supabase = context.get('supabase');
             const { data } = await supabase.from('agent_sessions')
                 .select('summary, error, status')
@@ -162,5 +173,10 @@ export const agents_routes = new Hono<AppBindings>()
             }
         }
 
+        const entries = raw_entries.map((e) => ({
+            timestamp: e.timestamp,
+            type: e.type,
+            summary: summarize_entry(e.type, e.data as Record<string, unknown>)
+        }));
         return context.json({ entries });
     });

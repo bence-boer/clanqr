@@ -5,6 +5,14 @@ export interface ModelOption {
     value: string
     label: string
     billing_multiplier?: number
+    capabilities?: {
+        supports_vision?: boolean
+        supports_reasoning_effort?: boolean
+        max_context_tokens?: number
+    }
+    policy_state?: string
+    reasoning_efforts?: string[]
+    default_reasoning_effort?: string
 }
 
 const FALLBACK_MODELS: ModelOption[] = [
@@ -39,7 +47,15 @@ export async function get_models(): Promise<ModelOption[]> {
             .map((m) => ({
                 value: m.id,
                 label: m.name,
-                billing_multiplier: m.billing?.multiplier
+                billing_multiplier: m.billing?.multiplier,
+                capabilities: {
+                    supports_vision: m.capabilities?.supports?.vision,
+                    supports_reasoning_effort: m.capabilities?.supports?.reasoningEffort,
+                    max_context_tokens: m.capabilities?.limits?.max_context_window_tokens
+                },
+                policy_state: m.policy?.state,
+                reasoning_efforts: m.supportedReasoningEfforts,
+                default_reasoning_effort: m.defaultReasoningEffort
             }));
 
         if (models.length === 0) {

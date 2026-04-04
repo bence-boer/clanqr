@@ -1,54 +1,22 @@
 /**
- * In-memory log buffer for agent sessions.
- * Stores recent SDK events per session for retrieval via API.
- * Events are kept in a ring buffer (max entries per session) and evicted on session cleanup.
+ * In-memory structured event buffer for agent sessions.
+ * Stores full SDK events per session for real-time streaming and API retrieval.
+ * Events are kept in a ring buffer and evicted on capacity.
  */
 import type { SdkEvent } from '../sdk/types';
 
-const MAX_ENTRIES_PER_SESSION = 500;
-const MAX_SESSIONS = 100;
+const MAX_ENTRIES_PER_SESSION = 2000;
+const MAX_SESSIONS = 500;
 
-interface LogEntry {
+export interface StructuredLogEntry {
     timestamp: string
     type: string
-    summary: string
-}
-
-function summarize_event(event: SdkEvent): string {
-    const d = event.data;
-    switch (event.type) {
-        case 'tool_start':
-            return `Tool: ${d.toolName ?? 'unknown'}`;
-        case 'tool_complete': {
-            const result = typeof d.toolResult === 'string' ? d.toolResult : JSON.stringify(d.toolResult ?? '');
-            const truncated = result.length > 200 ? result.slice(0, 200) + '…' : result;
-            return `Tool done: ${d.toolName ?? 'unknown'} → ${truncated}`;
-        }
-        case 'agent_message':
-            return typeof d.content === 'string'
-                ? (d.content.length > 300 ? d.content.slice(0, 300) + '…' : d.content)
-                : 'Agent response';
-        case 'agent_output':
-            return typeof d.content === 'string' ? d.content : '';
-        case 'agent_turn_start':
-            return 'Turn started';
-        case 'agent_turn_end':
-            return 'Turn ended';
-        case 'usage':
-            return `Tokens: ${d.inputTokens ?? 0} in / ${d.outputTokens ?? 0} out`;
-        case 'error':
-            return `Error: ${d.errorMessage ?? d.message ?? 'unknown'}`;
-        case 'subagent_started':
-            return `Sub-agent started: ${d.agentName ?? 'unknown'}`;
-        case 'subagent_completed':
-            return `Sub-agent completed: ${d.agentName ?? 'unknown'}`;
-        default:
-            return event.type;
-    }
+    data: Record<string, unknown>
+    ephemeral?: boolean
 }
 
 class LogStore {
-    private buffers = new Map<string, LogEntry[]>();
+    private buffers = new Map<string, StructuredLogEntry[]>();
     private session_order: string[] = [];
 
     append(session_id: string, event: SdkEvent): void {
@@ -60,25 +28,50 @@ class LogStore {
             this.evict_oldest_if_needed();
         }
 
-        const entry: LogEntry = {
+        buf.push({
             timestamp: event.timestamp,
             type: event.type,
-            summary: summarize_event(event)
-        };
+            data: event.data,
+            ephemeral: event.ephemeral
+        });
 
-        buf.push(entry);
         if (buf.length > MAX_ENTRIES_PER_SESSION) {
             buf.splice(0, buf.length - MAX_ENTRIES_PER_SESSION);
         }
     }
 
-    get(session_id: string): LogEntry[] {
+    get(session_id: string): StructuredLogEntry[] {
         return this.buffers.get(session_id) ?? [];
+    }
+
+    /** Get entries since a specific index (for polling without re-fetching) */
+    get_since(session_id: string, after_index: number): StructuredLogEntry[] {
+        const buf = this.buffers.get(session_id);
+        if (!buf) return [];
+        return buf.slice(after_index);
+    }
+
+    /** Get latest entry of a given type */
+    get_latest(session_id: string, type: string): StructuredLogEntry | null {
+        const buf = this.buffers.get(session_id);
+        if (!buf) return null;
+        for (let i = buf.length - 1; i >= 0; i--) {
+            if (buf[i].type === type) return buf[i];
+        }
+        return null;
+    }
+
+    count(session_id: string): number {
+        return this.buffers.get(session_id)?.length ?? 0;
     }
 
     clear(session_id: string): void {
         this.buffers.delete(session_id);
         this.session_order = this.session_order.filter((id) => id !== session_id);
+    }
+
+    has(session_id: string): boolean {
+        return this.buffers.has(session_id);
     }
 
     private evict_oldest_if_needed(): void {
