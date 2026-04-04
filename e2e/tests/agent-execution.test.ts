@@ -153,6 +153,51 @@ test.describe.serial("agent execution: direct task pipeline", () => {
         expect(completed_task).toBeTruthy();
         expect(completed_task.status).toBe("complete");
     });
+
+    test("8. verify telemetry events were captured", async ({ request }) => {
+        // Get agent status to find the SDK session ID for our task
+        const status_res = await request.get(`${API_URL}/api/agents/status`, {
+            headers: AUTH,
+        });
+        expect(status_res.ok()).toBeTruthy();
+        const agents = await status_res.json();
+        const ralph_agent = agents.find(
+            (a: { task_id: string; agent_type: string }) =>
+                a.task_id === task_id && a.agent_type === "ralph"
+        );
+        expect(ralph_agent).toBeTruthy();
+        expect(ralph_agent.sdk_session_id).toBeTruthy();
+
+        // Verify events exist via telemetry API (using SDK session ID)
+        const events_res = await request.get(
+            `${API_URL}/api/telemetry/sessions/${ralph_agent.sdk_session_id}/events`,
+            { headers: AUTH }
+        );
+        expect(events_res.ok()).toBeTruthy();
+        const events = await events_res.json();
+        expect(events.total).toBeGreaterThan(0);
+        expect(events.events.length).toBeGreaterThan(0);
+
+        // Verify tool calls were persisted
+        const tools_res = await request.get(
+            `${API_URL}/api/telemetry/sessions/${ralph_agent.sdk_session_id}/tools`,
+            { headers: AUTH }
+        );
+        expect(tools_res.ok()).toBeTruthy();
+        const tools = await tools_res.json();
+        expect(tools.tools.length).toBeGreaterThan(0);
+
+        // Verify session summary is accessible
+        const summary_res = await request.get(
+            `${API_URL}/api/telemetry/sessions/${ralph_agent.sdk_session_id}/summary`,
+            { headers: AUTH }
+        );
+        expect(summary_res.ok()).toBeTruthy();
+        const summary = await summary_res.json();
+        expect(summary.agent_type).toBe("ralph");
+        expect(summary.status).toBe("completed");
+        expect(summary.event_count).toBeGreaterThan(0);
+    });
 });
 
 // ── 2. Full manager flow: submit → manager creates tasks → execute ────────────
