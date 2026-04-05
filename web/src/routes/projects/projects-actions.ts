@@ -28,6 +28,7 @@ export async function load_projects_data(): Promise<ProjectsData | null> {
 export async function create_project_action(name: string, description: string): Promise<boolean> {
     try {
         await api.create_project({ name: name.trim(), description: description.trim() || undefined });
+        toast_store.success('Project created');
         return true;
     }
     catch (error) {
@@ -40,6 +41,7 @@ export async function create_project_action(name: string, description: string): 
 export async function delete_project_action(id: string): Promise<boolean> {
     try {
         await api.delete_project(id);
+        toast_store.success('Project deleted');
         return true;
     }
     catch (error) {
@@ -52,6 +54,7 @@ export async function delete_project_action(id: string): Promise<boolean> {
 export async function delete_projects_action(ids: string[]): Promise<boolean> {
     try {
         await Promise.all(ids.map((id) => api.delete_project(id)));
+        toast_store.success('Projects deleted');
         return true;
     }
     catch (error) {
@@ -103,6 +106,7 @@ export async function save_project_edit_action(
             name: name.trim(),
             description: description.trim() || null
         } as Partial<Project>);
+        toast_store.success('Project updated');
         return true;
     }
     catch (error) {

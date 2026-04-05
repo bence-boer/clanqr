@@ -1,6 +1,6 @@
 <script lang="ts">
     import { api } from '$lib/api/client';
-    import { ConfirmModal, ErrorBanner, LoadingSpinner } from '$lib/components';
+    import { ConfirmModal, EmptyState, ErrorBanner, LoadingSpinner } from '$lib/components';
     import { Button } from '$lib/components/primitives/button';
     import { toast_store } from '$lib/stores/toast.svelte';
     import type { PromptRecord, Trait } from '$lib/types';
@@ -151,6 +151,8 @@
             <LoadingSpinner label="Loading prompts…" />
         {:else if prompts_error}
             <ErrorBanner message={prompts_error} />
+        {:else if prompts.length === 0}
+            <EmptyState icon="description" message="No prompts configured yet" detail="Sync from your repository to load base prompts." />
         {:else}
             <PromptList {prompts} {edit_state} on_updated={load_prompts} />
         {/if}

@@ -1,6 +1,6 @@
 <script lang="ts">
-    import { API_URL } from '$lib/api/rpc';
-    import { LoadingSpinner, StatCard } from '$lib/components';
+    import { admin_api } from '$lib/api/admin-client';
+    import { EmptyState, LoadingSpinner, StatCard } from '$lib/components';
     import { Button } from '$lib/components/primitives';
     import { toast_store } from '$lib/stores/toast.svelte';
     import { onMount } from 'svelte';
@@ -32,11 +32,10 @@
     async function load_metrics() {
         metrics_loading = true;
         try {
-            const resp = await fetch(`${API_URL}/api/admin/metrics`, { credentials: 'include' });
-            if (!resp.ok) throw new Error('Failed to load metrics');
-            metrics = await resp.json();
+            metrics = await admin_api.load_metrics();
         }
-        catch {
+        catch (error) {
+            console.error(error);
             toast_store.error('Failed to load metrics');
         }
         finally {
@@ -52,7 +51,7 @@
 {#if metrics_loading}
     <LoadingSpinner label="Loading metrics…" />
 {:else if sorted_metrics.length === 0}
-    <p class="empty-text">No metrics data available yet.</p>
+    <EmptyState icon="analytics" message="No metrics data yet" detail="Metrics will appear once the API starts receiving traffic." />
 {:else}
     <div class="metrics-grid">
         <StatCard label="Total Endpoints" value={String(sorted_metrics.length)} icon="api" />

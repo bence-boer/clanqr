@@ -11,7 +11,7 @@
     import MonitoringFilters from './MonitoringFilters.svelte';
     import { get_empty_state } from './monitoring.utils';
 
-    let agents = $state<AgentProcess[]>([]);
+    let agents = $state.raw<AgentProcess[]>([]);
     let pipeline = $state<PipelineStatus | null>(null);
     let selected_agent = $state<AgentProcess | null>(null);
     let loading = $state(true);
@@ -63,9 +63,11 @@
         stopping = true;
         try {
             await api.stop_all_agents();
+            toast_store.success('All agents stopped');
             await load_status();
         }
-        catch {
+        catch (error) {
+            console.error(error);
             toast_store.error('Failed to stop agents');
         }
         finally {
@@ -101,7 +103,7 @@
     </div>
 
     {#if !loading && agents.length > 0}
-        <MonitoringFilters {agents} bind:filtered_agents />
+        <MonitoringFilters {agents} onchange={(result) => filtered_agents = result} />
     {/if}
 
     {#if loading}

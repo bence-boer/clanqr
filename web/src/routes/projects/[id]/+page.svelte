@@ -2,7 +2,7 @@
     import { resolve } from '$app/paths';
     import { page } from '$app/state';
     import { api } from '$lib/api/client';
-    import { LoadingSpinner } from '$lib/components';
+    import { ErrorBanner, LoadingSpinner } from '$lib/components';
     import { Button } from '$lib/components/primitives/button';
     import { toast_store } from '$lib/stores/toast.svelte';
     import type { Feature, Project } from '$lib/types';
@@ -87,7 +87,7 @@
         load_data();
     }
 
-    use_event_stream(
+    const stream = use_event_stream(
         { features_update: refresh_all, tasks_update: refresh_all },
         refresh_all,
         15_000
@@ -127,6 +127,10 @@
     {:else if !project}
         <p class="error">Project not found</p>
     {:else}
+        {#if stream.is_stale}
+            <ErrorBanner variant="stale" message="Data may be outdated — unable to reach server" />
+        {/if}
+
         <div class="page-header">
             <div>
                 <a href={resolve('/projects')} class="back-link">
