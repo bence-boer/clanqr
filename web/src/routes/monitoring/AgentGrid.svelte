@@ -110,8 +110,8 @@
 <style>
     .agent-grid { display: flex; flex-direction: column; gap: 0.75rem; }
     .agent-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; }
-    .agent-card.running { border-color: rgba(106, 168, 254, 0.4); }
-    .agent-card.failed { border-color: rgba(201, 84, 74, 0.4); }
+    .agent-card.running { border-color: rgba(var(--info-rgb), 0.4); }
+    .agent-card.failed { border-color: rgba(var(--danger-rgb), 0.4); }
     .agent-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem; }
     .agent-info { display: flex; align-items: center; gap: 0.6rem; }
     .agent-icon { font-size: 24px; color: var(--accent); }
@@ -125,7 +125,7 @@
     .agent-times { font-size: 0.8rem; color: var(--fg-muted); display: flex; gap: 1.5rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
     .agent-times span { display: inline-flex; align-items: center; gap: 0.25rem; }
     .duration-muted { color: var(--fg-muted); }
-    .duration-warning { color: #e6a23c; font-weight: 600; }
+    .duration-warning { color: var(--warning); font-weight: 600; }
     .duration-danger { color: var(--danger); font-weight: 700; }
     .agent-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 </style>

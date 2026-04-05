@@ -38,7 +38,7 @@
         success_rate === null
             ? 'var(--fg-muted)'
             : success_rate >= 80
-                ? 'var(--success, #4ade80)'
+                ? 'var(--success)'
                 : success_rate >= 50
                     ? 'var(--accent)'
                     : 'var(--danger)'

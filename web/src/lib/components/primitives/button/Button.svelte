@@ -189,9 +189,9 @@
 
     /* Icon scaling relative to size */
     :global(.base-btn.size-sm .btn-icon) {
-        font-size: 16px !important;
+        font-size: 16px;
     }
     :global(.base-btn.size-default .btn-icon) {
-        font-size: 20px !important;
+        font-size: 20px;
     }
 </style>

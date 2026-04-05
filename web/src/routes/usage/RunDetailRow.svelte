@@ -64,7 +64,7 @@
 </tr>
 
 <style>
-    .detail-row td { padding: 0 !important; border-bottom: 1px solid var(--border); }
+    .detail-row td { padding: 0; border-bottom: 1px solid var(--border); }
     .detail-grid {
         display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
         gap: 0.75rem; padding: 1rem 1.25rem;

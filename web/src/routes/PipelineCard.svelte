@@ -20,7 +20,7 @@
     }
 
     function pipeline_state_color(state: string) {
-        if (state === 'running') return '#6ea8fe';
+        if (state === 'running') return 'var(--info)';
         if (state === 'paused') return 'var(--accent)';
         return 'var(--fg-muted)';
     }

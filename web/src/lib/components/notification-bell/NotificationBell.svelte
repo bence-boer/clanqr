@@ -88,7 +88,7 @@
     .badge {
         position: absolute; top: 0; right: 0; min-width: 16px; height: 16px;
         padding: 0 4px; border-radius: 999px; font-size: 0.6rem; font-weight: 700;
-        background: var(--danger, #c9544a); color: #fff;
+        background: var(--danger); color: var(--fg);
         display: flex; align-items: center; justify-content: center; line-height: 1;
     }
     .dropdown {
@@ -117,11 +117,11 @@
         color: inherit; font-family: inherit; font-size: inherit; transition: background 0.1s;
     }
     .notification-item:hover { background: var(--bg-elevated, var(--bg)); }
-    .notification-item.unread { background: rgba(99, 102, 241, 0.06); }
-    .n-icon.success { color: var(--success, #22c55e); }
-    .n-icon.danger { color: var(--danger, #c9544a); }
-    .n-icon.warning { color: var(--warning, #e89a2e); }
-    .n-icon.info { color: var(--accent, #6366f1); }
+    .notification-item.unread { background: rgba(var(--accent-rgb), 0.06); }
+    .n-icon.success { color: var(--success); }
+    .n-icon.danger { color: var(--danger); }
+    .n-icon.warning { color: var(--warning); }
+    .n-icon.info { color: var(--info); }
     .n-content { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; flex: 1; }
     .n-message { font-size: 0.78rem; color: var(--fg); line-height: 1.35; }
     .n-time { font-size: 0.65rem; color: var(--fg-muted); }

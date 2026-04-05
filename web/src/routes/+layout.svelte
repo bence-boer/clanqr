@@ -40,6 +40,9 @@
         await auth_store.check();
         if (auth_store.state === 'authenticated') {
             load_system_stats();
+            if (!notification_source) {
+                notification_source = create_notification_stream();
+            }
         }
     }
 
@@ -50,6 +53,11 @@
         if (!current_path.startsWith('/invite')) {
             do_auth_check();
         }
+
+        return () => {
+            notification_source?.close();
+            notification_source = null;
+        };
     });
 
     function toggle_sidebar_collapse() {
@@ -70,7 +78,8 @@
             system_stats = stats;
             critical_alerts = alerts_resp.alerts.filter((a: SystemAlert) => a.severity === 'critical');
         }
-        catch {
+        catch (error) {
+            console.error(error);
             toast_store.error('Failed to load system stats');
         }
     }
@@ -88,16 +97,6 @@
     }
 
     let notification_source: EventSource | null = null;
-
-    $effect(() => {
-        if (auth_store.state === 'authenticated' && !notification_source) {
-            notification_source = create_notification_stream();
-        }
-        return () => {
-            notification_source?.close();
-            notification_source = null;
-        };
-    });
 </script>
 
 <svelte:head>
@@ -195,9 +194,9 @@
         gap: 0.5rem;
         padding: 0.6rem 1rem;
         margin-bottom: 1rem;
-        background: rgba(201, 84, 74, 0.12);
+        background: rgba(var(--danger-rgb), 0.12);
         color: var(--danger);
-        border: 1px solid rgba(201, 84, 74, 0.3);
+        border: 1px solid rgba(var(--danger-rgb), 0.3);
         border-radius: var(--radius);
         font-size: 0.8rem;
         font-weight: 600;

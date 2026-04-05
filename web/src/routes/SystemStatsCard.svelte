@@ -151,7 +151,7 @@
         background: var(--danger);
     }
     .progress-fill.warm {
-        background: #f4a261;
+        background: var(--warning);
     }
 
     .muted-text {
@@ -177,15 +177,15 @@
     }
 
     .alert-warning {
-        background: rgba(244, 162, 97, 0.12);
-        color: #f4a261;
-        border: 1px solid rgba(244, 162, 97, 0.3);
+        background: rgba(var(--warning-rgb), 0.12);
+        color: var(--warning);
+        border: 1px solid rgba(var(--warning-rgb), 0.3);
     }
 
     .alert-critical {
-        background: rgba(201, 84, 74, 0.12);
+        background: rgba(var(--danger-rgb), 0.12);
         color: var(--danger);
-        border: 1px solid rgba(201, 84, 74, 0.3);
+        border: 1px solid rgba(var(--danger-rgb), 0.3);
     }
 
     @media (max-width: 768px) {

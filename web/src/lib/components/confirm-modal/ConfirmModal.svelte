@@ -108,6 +108,7 @@
 
     .confirm-modal::backdrop {
         background: rgba(0, 0, 0, 0.6);
+        /* backdrop uses literal black — intentional */
     }
 
     .confirm-modal[open] {

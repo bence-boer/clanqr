@@ -53,7 +53,7 @@
   }
 
   .stat-link:hover {
-    border-color: var(--accent, #d4af37);
+    border-color: var(--accent);
   }
 
   .stat-icon {

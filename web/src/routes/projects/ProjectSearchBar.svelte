@@ -62,8 +62,8 @@
         color: var(--fg-muted);
         pointer-events: none;
     }
-    :global(.search-input) {
-        padding-left: 2.2rem !important;
+    .search-box :global(.search-input) {
+        padding-left: 2.2rem;
     }
     .filter-pills {
         display: flex;

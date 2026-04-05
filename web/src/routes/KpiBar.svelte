@@ -94,7 +94,7 @@
         color: var(--fg);
     }
 
-    .kpi-running { color: #6ea8fe; }
+    .kpi-running { color: var(--info); }
     .kpi-paused { color: var(--accent); }
     .kpi-idle { color: var(--fg-muted); }
 

@@ -58,8 +58,8 @@
     .refresh-msg {
         font-size: 0.82rem;
         color: var(--accent);
-        background: rgba(212, 175, 55, 0.1);
-        border: 1px solid rgba(212, 175, 55, 0.25);
+        background: rgba(var(--accent-rgb), 0.1);
+        border: 1px solid rgba(var(--accent-rgb), 0.25);
         border-radius: var(--radius);
         padding: 0.3rem 0.65rem;
     }

@@ -31,7 +31,7 @@
 
     function color_for(type: string): string {
         if (type === 'error') return 'var(--danger)';
-        if (type === 'warning') return '#e6a23c';
+        if (type === 'warning') return 'var(--warning)';
         if (type === 'tool_complete') return 'var(--success)';
         if (type === 'agent_output' || type === 'agent_message') return 'var(--accent)';
         if (type === 'usage') return 'var(--fg-muted)';
