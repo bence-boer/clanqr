@@ -316,10 +316,10 @@ WantedBy=multi-user.target
 **Instances:** `ralph-api@prod.service` and `ralph-api@test.service`
 
 **Working directories:**
-- `ralph-prod` → symlink or rename of existing `ralph-agent-workspace`
+- `ralph-prod` → symlink or rename of existing `clanqr`
 - `ralph-test` → new clone at `/home/scoy/Developer/repositories/ralph-test`
 
-> **Decision:** Rather than renaming the existing directory (which would break many scripts and references), create a symlink: `ln -s ralph-agent-workspace ralph-prod`. This preserves backward compatibility while enabling the template pattern.
+> **Decision:** Rather than renaming the existing directory (which would break many scripts and references), create a symlink: `ln -s clanqr ralph-prod`. This preserves backward compatibility while enabling the template pattern.
 
 #### `ralph-web@.service`
 
@@ -372,7 +372,7 @@ ExecStart=/bin/systemctl restart ralph-api@%i.service
 ExecStart=/bin/systemctl restart ralph-web@%i.service
 ```
 
-> **Symlink note:** For production, the path unit watches `ralph-prod/.deploy-trigger` which resolves through the symlink to `ralph-agent-workspace/.deploy-trigger`.
+> **Symlink note:** For production, the path unit watches `ralph-prod/.deploy-trigger` which resolves through the symlink to `clanqr/.deploy-trigger`.
 
 ### 2.6 Test Environment Initialization (One-Time Pi Setup)
 
@@ -381,12 +381,12 @@ The implementing agent must run these commands on the Pi (via the self-hosted ru
 ```bash
 # 1. Create test clone
 cd /home/scoy/Developer/repositories
-git clone https://github.com/bence-boer/ralph-agent-workspace.git ralph-test
+git clone https://github.com/bence-boer/clanqr.git ralph-test
 cd ralph-test && git checkout develop
 
 # 2. Create prod symlink
 cd /home/scoy/Developer/repositories
-ln -sfn ralph-agent-workspace ralph-prod
+ln -sfn clanqr ralph-prod
 
 # 3. Start test Docker stack
 cd ralph-test && docker compose -f docker-compose.test.yml up -d
@@ -666,7 +666,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  APP_DIR: /home/scoy/Developer/repositories/ralph-agent-workspace
+  APP_DIR: /home/scoy/Developer/repositories/clanqr
   BUN_INSTALL: /home/scoy/.bun
 
 jobs:
@@ -1067,8 +1067,8 @@ jobs:
 
 ```bash
 # Using gh CLI
-gh api repos/bence-boer/ralph-agent-workspace/environments/production -X PUT
-gh api repos/bence-boer/ralph-agent-workspace/environments/test -X PUT
+gh api repos/bence-boer/clanqr/environments/production -X PUT
+gh api repos/bence-boer/clanqr/environments/test -X PUT
 
 # Set environment-scoped secrets
 gh secret set SUPABASE_KEY --env production --body "<prod-key>"
@@ -1404,7 +1404,7 @@ With the agent execution tests skipped, the remaining ~49 tests should complete 
 ### 7.2 Branch Protection: `main`
 
 ```bash
-gh api repos/bence-boer/ralph-agent-workspace/branches/main/protection -X PUT \
+gh api repos/bence-boer/clanqr/branches/main/protection -X PUT \
   --input - << 'EOF'
 {
   "required_status_checks": {
@@ -1435,7 +1435,7 @@ EOF
 ### 7.3 Branch Protection: `develop`
 
 ```bash
-gh api repos/bence-boer/ralph-agent-workspace/branches/develop/protection -X PUT \
+gh api repos/bence-boer/clanqr/branches/develop/protection -X PUT \
   --input - << 'EOF'
 {
   "required_status_checks": {
@@ -1462,7 +1462,7 @@ EOF
 ### 7.4 Create `develop` Branch
 
 ```bash
-cd /home/scoy/Developer/repositories/ralph-agent-workspace
+cd /home/scoy/Developer/repositories/clanqr
 git checkout main
 git checkout -b develop
 git push origin develop

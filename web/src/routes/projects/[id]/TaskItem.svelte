@@ -91,7 +91,7 @@
                 <Button variant="primary" size="sm" icon="thumb_up" onclick={handle_approve}>Approve</Button>
             {/if}
             {#if task.status === 'approved'}
-                <Button variant="secondary" size="sm" icon="play_arrow" onclick={() => on_spawn(task.id)}>Run Ralph</Button>
+                <Button variant="secondary" size="sm" icon="play_arrow" onclick={() => on_spawn(task.id)}>Run Clanqr</Button>
             {/if}
             {#if ['queued', 'approved'].includes(task.status)}
                 <Button variant="ghost" size="sm" icon="edit" title="Edit" aria-label="Edit task" onclick={() => on_start_edit(task)} />

@@ -38,7 +38,7 @@ function build_manager_agent(): CustomAgentDef {
 function build_ralph_agent(): CustomAgentDef {
     return {
         name: 'ralph',
-        display_name: 'Ralph Agent',
+        display_name: 'Clanqr Agent',
         description: 'Coding agent that executes specific implementation tasks with full tool access',
         tools: ['view', 'edit', 'bash', 'grep', 'glob', 'create'],
         prompt: load_prompt('ralph.md')

@@ -152,7 +152,7 @@
             <Button variant="filter" active={trait_filter === filter_val} onclick={() => {
                 trait_filter = filter_val;
             }}>
-                {filter_val === 'all' ? 'All' : filter_val === 'manager' ? 'Manager' : 'Ralph'}
+                {filter_val === 'all' ? 'All' : filter_val === 'manager' ? 'Manager' : 'Clanqr'}
             </Button>
         {/each}
         <span class="filter-count">{filtered_traits.length} trait{filtered_traits.length !== 1 ? 's' : ''}</span>

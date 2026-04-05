@@ -43,7 +43,7 @@
     <Select style="flex: 1;" onchange={on_type_change} value={filter_type} aria-label="Filter by type">
         <option value="">All types</option>
         <option value="manager">manager</option>
-        <option value="ralph">ralph</option>
+        <option value="ralph">Clanqr</option>
         <option value="chat">chat</option>
     </Select>
     <Select style="flex: 1;" onchange={on_status_change} value={filter_status} aria-label="Filter by status">

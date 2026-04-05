@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "ralph-agent-workspace",
+      "name": "clanqr",
       "devDependencies": {
         "@eslint-community/eslint-plugin-eslint-comments": "4.6.0",
         "@eslint/compat": "^2.0.2",

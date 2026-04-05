@@ -1,4 +1,4 @@
-# Ralph Agent Workspace
+# Clanqr Workspace
 
 Multi-agent orchestration platform for managing AI coding agents. Features a
 project/feature pipeline, prompt management, usage tracking, and a real-time
@@ -117,7 +117,7 @@ them manually before pushing.
 ## Architecture
 
 ```
-ralph-agent-workspace/
+clanqr/
   server/                   Hono API (Bun, port 3001)
     src/
       index.ts              Entry point, middleware + route mounting

@@ -79,7 +79,7 @@ class PromptService {
 
         // 1. Base prompt from DB
         const base_prompt = await this.get_prompt('ralph', db);
-        let prompt = base_prompt ?? 'You are Ralph, a coding agent. Execute the assigned task carefully and thoroughly.';
+        let prompt = base_prompt ?? 'You are Clanqr, a coding agent. Execute the assigned task carefully and thoroughly.';
 
         // 2. Resolve traits for this task
         const traits = await resolve_task_traits(db, task_id, 'ralph');

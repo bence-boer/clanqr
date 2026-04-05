@@ -37,7 +37,7 @@
         <div class="form-row">
             <Input id="trait-name" type="text" class="form-input" bind:value={form.name} placeholder="e.g. verbose_logging" label="Name" required />
             <Select id="trait-target" bind:value={form.target} label="Target" required>
-                <option value="ralph">Ralph</option>
+                <option value="ralph">Clanqr</option>
                 <option value="manager">Manager</option>
                 <option value="researcher">Researcher</option>
                 <option value="editor">Editor</option>

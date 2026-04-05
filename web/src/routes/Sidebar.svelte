@@ -40,7 +40,7 @@
     <div class="logo">
         <span class="icon logo-icon">smart_toy</span>
         <div>
-            <h1>Ralph</h1>
+            <h1>Clanqr</h1>
             <span class="subtitle">Agent Workspace</span>
         </div>
         {#if notification_bell}

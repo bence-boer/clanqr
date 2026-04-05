@@ -86,20 +86,20 @@
     <div class="invite-card">
         {#if invite_state === 'loading' || invite_state === 'redirecting'}
             <span class="material-symbols-outlined icon spinning">progress_activity</span>
-            <h1>Ralph Agent Workspace</h1>
+            <h1>Clanqr Workspace</h1>
             <p class="subtitle">
                 {invite_state === 'redirecting' ? 'Redirecting to GitHub...' : 'Checking invite...'}
             </p>
 
         {:else if invite_state === 'error'}
             <span class="material-symbols-outlined icon error-icon">link_off</span>
-            <h1>Ralph Agent Workspace</h1>
+            <h1>Clanqr Workspace</h1>
             <p class="error-text">{error_messages[error_reason] ?? 'Invalid invite link.'}</p>
             <a href={resolve('/')} class="link">Go to login</a>
 
         {:else if invite_state === 'valid'}
             <span class="material-symbols-outlined icon">person_add</span>
-            <h1>Ralph Agent Workspace</h1>
+            <h1>Clanqr Workspace</h1>
             <p class="subtitle">You've been invited. Sign in with GitHub to get started.</p>
             {#if expires_at}
                 <p class="meta">Expires {new Date(expires_at).toLocaleDateString()}</p>
