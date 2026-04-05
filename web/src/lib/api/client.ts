@@ -1,5 +1,5 @@
 import type * as Types from '$lib/types';
-import { API_URL, BASE_URL, client, unwrap } from './rpc';
+import { API_URL, BASE_URL, client, custom_fetch, unwrap } from './rpc';
 import { chat_api } from './chat-client';
 
 export { BASE_URL, client };
@@ -69,18 +69,14 @@ export const api = {
     pipeline_stop_current: async (): Promise<{ success: boolean }> =>
         unwrap(await (await client.api.agents['stop-current'].$post()).json()),
     agent_logs: async (sdk_session_id: string): Promise<{ entries: { timestamp: string, type: string, summary: string }[], text?: string }> => {
-        const res = await fetch(`${API_URL}/api/agents/logs/${encodeURIComponent(sdk_session_id)}`, { credentials: 'include' });
-        if (!res.ok) throw new Error(`Failed to fetch logs: ${res.status}`);
+        const res = await custom_fetch(`${API_URL}/api/agents/logs/${encodeURIComponent(sdk_session_id)}`);
         return res.json();
     },
     pipeline_reorder: async (task_ids: string[]): Promise<{ success: boolean }> => {
-        const response = await fetch(`${API_URL}/api/agents/queue/reorder`, {
+        const response = await custom_fetch(`${API_URL}/api/agents/queue/reorder`, {
             method: 'PATCH',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ task_ids })
         });
-        if (!response.ok) throw new Error('Failed to reorder queue');
         return response.json();
     },
 
@@ -166,11 +162,14 @@ export const api = {
 
     // ── Task Artifacts ─────────────────────────────────────────────────────────
     list_task_files: async (task_id: string): Promise<Types.TaskArtifact[]> => {
-        const response = await fetch(`${API_URL}/api/tasks/${encodeURIComponent(task_id)}/files`, {
-            credentials: 'include'
-        });
-        if (!response.ok) return [];
-        return response.json();
+        try {
+            const response = await custom_fetch(`${API_URL}/api/tasks/${encodeURIComponent(task_id)}/files`);
+            return response.json();
+        }
+        catch (error) {
+            console.error('list_task_files failed:', error);
+            return [];
+        }
     },
     task_file_url: (task_id: string, filename: string): string =>
         `${API_URL}/api/tasks/${encodeURIComponent(task_id)}/files/${encodeURIComponent(filename)}`

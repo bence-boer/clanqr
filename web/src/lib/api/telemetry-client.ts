@@ -1,4 +1,4 @@
-import { API_URL } from './rpc';
+import { API_URL, custom_fetch } from './rpc';
 
 export interface TelemetryEvent {
     id: string
@@ -35,8 +35,7 @@ export interface StructuredLogEntry {
 }
 
 async function fetch_json<ResponseType>(url: string): Promise<ResponseType> {
-    const res = await fetch(url, { credentials: 'include' });
-    if (!res.ok) throw new Error(`Telemetry API error: ${res.status}`);
+    const res = await custom_fetch(url);
     return res.json();
 }
 

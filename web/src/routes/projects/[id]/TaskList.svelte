@@ -118,6 +118,7 @@
                 type="text"
                 placeholder="Task description…"
                 bind:value={new_task_desc}
+                aria-label="Task description"
                 onkeydown={(event) => {
                     if (event.key === 'Enter') handle_add();
                     if (event.key === 'Escape') adding_task = false;

@@ -147,7 +147,7 @@
 </script>
 
 <div class="filter-bar">
-    <div class="filter-row">
+    <div class="filter-row" role="group" aria-label="Filter traits">
         {#each ['all', 'manager', 'ralph'] as const as filter_val (filter_val)}
             <Button variant="filter" active={trait_filter === filter_val} onclick={() => {
                 trait_filter = filter_val;
@@ -162,6 +162,7 @@
         class="category-search"
         placeholder="Filter by name or description…"
         bind:value={category_search}
+        aria-label="Filter traits"
     />
 </div>
 

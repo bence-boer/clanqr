@@ -133,9 +133,11 @@
         {/if}
 
         <PipelineCard {pipeline} on_pause={() => api.pipeline_pause().then(load_data).catch((e: unknown) => {
-            console.error(e); toast_store.error('Failed to pause pipeline');
+            console.error(e);
+            toast_store.error('Failed to pause pipeline');
         })} on_resume={() => api.pipeline_resume().then(load_data).catch((e: unknown) => {
-            console.error(e); toast_store.error('Failed to resume pipeline');
+            console.error(e);
+            toast_store.error('Failed to resume pipeline');
         })} />
 
         <ActivityFeed events={activity_events} />

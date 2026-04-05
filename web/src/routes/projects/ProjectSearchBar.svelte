@@ -24,9 +24,9 @@
 <div class="search-filter-bar">
     <div class="search-box">
         <span class="icon search-icon">search</span>
-        <Input type="text" placeholder="Search projects…" bind:value={search_query} class="search-input" />
+        <Input type="text" placeholder="Search projects…" bind:value={search_query} class="search-input" aria-label="Search projects" />
     </div>
-    <div class="filter-pills">
+    <div class="filter-pills" role="group" aria-label="Filter by status">
         {#each filter_options as filter (filter)}
             <button
                 class="filter-pill"

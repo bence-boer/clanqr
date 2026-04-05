@@ -12,7 +12,7 @@
     $effect(() => {
         const current_content = content;
         if (role !== 'assistant') return;
-        render_markdown(current_content).then(html => {
+        render_markdown(current_content).then((html) => {
             rendered = html;
         });
     });

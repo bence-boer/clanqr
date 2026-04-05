@@ -61,6 +61,13 @@
         return Number(run.estimated_cost ?? 0);
     }
 
+    function handle_sort_key(e: KeyboardEvent, handler: () => void) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handler();
+        }
+    }
+
     let sorted_runs = $derived.by(() => {
         const arr = [...runs];
         const dir = sort_dir === 'asc' ? 1 : -1;
@@ -108,41 +115,13 @@
             <table class="runs-table">
                 <thead>
                     <tr>
-                        <th class="sortable" role="button" tabindex="0" onclick={() => toggle_sort('type')} onkeydown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault(); toggle_sort('type');
-                            }
-                        }}>Type{sort_indicator('type')}</th>
-                        <th class="sortable" role="button" tabindex="0" onclick={() => toggle_sort('model')} onkeydown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault(); toggle_sort('model');
-                            }
-                        }}>Model{sort_indicator('model')}</th>
-                        <th class="sortable" role="button" tabindex="0" onclick={() => toggle_sort('status')} onkeydown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault(); toggle_sort('status');
-                            }
-                        }}>Status{sort_indicator('status')}</th>
-                        <th class="sortable" role="button" tabindex="0" onclick={() => toggle_sort('duration')} onkeydown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault(); toggle_sort('duration');
-                            }
-                        }}>Duration{sort_indicator('duration')}</th>
-                        <th class="sortable" role="button" tabindex="0" onclick={() => toggle_sort('tokens')} onkeydown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault(); toggle_sort('tokens');
-                            }
-                        }}>Tokens{sort_indicator('tokens')}</th>
-                        <th class="sortable" role="button" tabindex="0" onclick={() => toggle_sort('cost')} onkeydown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault(); toggle_sort('cost');
-                            }
-                        }}>Cost{sort_indicator('cost')}</th>
-                        <th class="sortable" role="button" tabindex="0" onclick={() => toggle_sort('date')} onkeydown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault(); toggle_sort('date');
-                            }
-                        }}>Date{sort_indicator('date')}</th>
+                        <th class="sortable" role="button" tabindex="0" onclick={() => toggle_sort('type')} onkeydown={(e) => handle_sort_key(e, () => toggle_sort('type'))}>Type{sort_indicator('type')}</th>
+                        <th class="sortable" role="button" tabindex="0" onclick={() => toggle_sort('model')} onkeydown={(e) => handle_sort_key(e, () => toggle_sort('model'))}>Model{sort_indicator('model')}</th>
+                        <th class="sortable" role="button" tabindex="0" onclick={() => toggle_sort('status')} onkeydown={(e) => handle_sort_key(e, () => toggle_sort('status'))}>Status{sort_indicator('status')}</th>
+                        <th class="sortable" role="button" tabindex="0" onclick={() => toggle_sort('duration')} onkeydown={(e) => handle_sort_key(e, () => toggle_sort('duration'))}>Duration{sort_indicator('duration')}</th>
+                        <th class="sortable" role="button" tabindex="0" onclick={() => toggle_sort('tokens')} onkeydown={(e) => handle_sort_key(e, () => toggle_sort('tokens'))}>Tokens{sort_indicator('tokens')}</th>
+                        <th class="sortable" role="button" tabindex="0" onclick={() => toggle_sort('cost')} onkeydown={(e) => handle_sort_key(e, () => toggle_sort('cost'))}>Cost{sort_indicator('cost')}</th>
+                        <th class="sortable" role="button" tabindex="0" onclick={() => toggle_sort('date')} onkeydown={(e) => handle_sort_key(e, () => toggle_sort('date'))}>Date{sort_indicator('date')}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -152,11 +131,9 @@
                             class:expanded={expanded_row === run.id}
                             tabindex="0"
                             onclick={() => expanded_row = expanded_row === run.id ? null : run.id}
-                            onkeydown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                    e.preventDefault(); expanded_row = expanded_row === run.id ? null : run.id;
-                                }
-                            }}
+                            onkeydown={(e) => handle_sort_key(e, () => {
+                                expanded_row = expanded_row === run.id ? null : run.id;
+                            })}
                         >
                             <td><Badge variant={run.agent_type === 'manager' ? 'info' : run.agent_type === 'chat' ? 'success' : 'warning'}>{run.agent_type}</Badge></td>
                             <td class="model-col">{run.model ?? 'default'}</td>

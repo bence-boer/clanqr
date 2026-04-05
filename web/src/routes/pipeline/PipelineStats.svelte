@@ -10,7 +10,7 @@
         history: AgentSession[]
     } = $props();
 
-    const completed_today = $derived(() => {
+    const completed_today = $derived.by(() => {
         const today = new SvelteDate();
         today.setHours(0, 0, 0, 0);
         const midnight = today.getTime();
@@ -19,7 +19,7 @@
         ).length;
     });
 
-    const avg_duration_ms = $derived(() => {
+    const avg_duration_ms = $derived.by(() => {
         const completed = history.filter((r) => r.status === 'completed' && r.duration_ms);
         if (completed.length === 0) return 0;
         const total = completed.reduce((sum, r) => sum + (r.duration_ms ?? 0), 0);
@@ -34,32 +34,32 @@
         return `${m}m ${s % 60}s`;
     }
 
-    const queue_eta_ms = $derived(() => {
+    const queue_eta_ms = $derived.by(() => {
         const depth = pipeline?.queue_depth ?? 0;
-        const avg = avg_duration_ms();
+        const avg = avg_duration_ms;
         if (depth === 0 || avg === 0) return 0;
         return depth * avg;
     });
 </script>
 
-{#if completed_today() > 0 || (pipeline?.queue_depth ?? 0) > 0}
+{#if completed_today > 0 || (pipeline?.queue_depth ?? 0) > 0}
     <div class="stats-bar">
         <span class="stat">
             <span class="stat-label">Completed today:</span>
-            <span class="stat-value">{completed_today()}</span>
+            <span class="stat-value">{completed_today}</span>
         </span>
-        {#if avg_duration_ms() > 0}
+        {#if avg_duration_ms > 0}
             <span class="stat-sep">·</span>
             <span class="stat">
                 <span class="stat-label">Avg duration:</span>
-                <span class="stat-value">{format_duration_ms(avg_duration_ms())}</span>
+                <span class="stat-value">{format_duration_ms(avg_duration_ms)}</span>
             </span>
         {/if}
-        {#if queue_eta_ms() > 0}
+        {#if queue_eta_ms > 0}
             <span class="stat-sep">·</span>
             <span class="stat">
                 <span class="stat-label">Queue ETA:</span>
-                <span class="stat-value">~{format_duration_ms(queue_eta_ms())}</span>
+                <span class="stat-value">~{format_duration_ms(queue_eta_ms)}</span>
             </span>
         {/if}
     </div>

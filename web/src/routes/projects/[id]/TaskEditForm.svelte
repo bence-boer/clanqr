@@ -1,6 +1,7 @@
 <script lang="ts">
     import { api } from '$lib/api/client';
     import { Button, Input, Select } from '$lib/components/primitives';
+    import { onMount } from 'svelte';
 
     interface Props {
         task_id: string
@@ -36,7 +37,7 @@
         }
     }
 
-    $effect(() => {
+    onMount(() => {
         load_models();
     });
 </script>
@@ -47,6 +48,7 @@
         type="text"
         placeholder="Task title (optional)"
         bind:value={title}
+        aria-label="Task title"
         onkeydown={(event) => {
             if (event.key === 'Enter') on_save();
             if (event.key === 'Escape') on_cancel();
@@ -57,6 +59,7 @@
         placeholder="Task description…"
         bind:value={description}
         rows="4"
+        aria-label="Task description"
         onkeydown={(event) => {
             if (event.key === 'Escape') on_cancel();
         }}

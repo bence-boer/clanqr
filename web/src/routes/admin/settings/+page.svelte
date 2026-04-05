@@ -42,7 +42,8 @@
             draft_concurrency = s.max_concurrent_sessions;
             draft_cost_rate = s.cost_per_premium_request;
         }
-        catch {
+        catch (error) {
+            console.error(error);
             toast_store.error('Failed to load settings');
         }
         finally {
@@ -63,7 +64,8 @@
             settings = updated;
             toast_store.success('Settings saved');
         }
-        catch {
+        catch (error) {
+            console.error(error);
             toast_store.error('Failed to save settings');
         }
         finally {

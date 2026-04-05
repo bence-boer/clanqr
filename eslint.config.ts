@@ -115,6 +115,15 @@ export default [
                     format: [ 'snake_case', 'UPPER_CASE' ]
                 },
                 {
+                    selector: 'variable',
+                    modifiers: [ 'const', 'exported' ],
+                    format: [ 'camelCase' ],
+                    filter: {
+                        match: true,
+                        regex: '^handle(Error|Fetch|ServerError)$'
+                    }
+                },
+                {
                     selector: ['typeLike'],
                     format: ['PascalCase']
                 },
