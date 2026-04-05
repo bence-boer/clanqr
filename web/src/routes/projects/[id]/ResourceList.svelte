@@ -103,8 +103,8 @@
         padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.7rem; font-weight: 500;
     }
     .badge-pending { background: rgba(107, 114, 128, 0.15); color: var(--fg-muted); }
-    .badge-ready { background: rgba(34, 197, 94, 0.12); color: #22c55e; }
-    .badge-error { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+    .badge-ready { background: rgba(var(--success-rgb), 0.12); color: var(--success); }
+    .badge-error { background: rgba(var(--danger-rgb), 0.1); color: var(--danger); }
     .badge-muted { background: rgba(107, 114, 128, 0.15); color: var(--fg-muted); }
     .resource-note {
         font-size: 0.75rem; color: var(--fg-muted); font-style: italic;

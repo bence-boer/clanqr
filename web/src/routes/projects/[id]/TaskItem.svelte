@@ -148,7 +148,7 @@
     .task-failure-reason {
         display: flex; align-items: flex-start; gap: 0.3rem;
         margin-top: 0.35rem; padding: 0.3rem 0.5rem;
-        border-radius: var(--radius); background: rgba(239, 68, 68, 0.08);
-        color: #ef4444; font-size: 0.75rem; line-height: 1.4;
+        border-radius: var(--radius); background: rgba(var(--danger-rgb), 0.08);
+        color: var(--danger); font-size: 0.75rem; line-height: 1.4;
     }
 </style>

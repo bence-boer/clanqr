@@ -177,8 +177,8 @@
     .auto-approve-banner {
         display: flex; align-items: center; gap: 0.4rem;
         padding: 0.5rem 0.75rem; margin-bottom: 0.75rem;
-        background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.2);
-        border-radius: var(--radius); font-size: 0.8rem; color: #22c55e;
+        background: rgba(var(--success-rgb), 0.08); border: 1px solid rgba(var(--success-rgb), 0.2);
+        border-radius: var(--radius); font-size: 0.8rem; color: var(--success);
     }
     .task-add-form {
         display: flex; flex-direction: column; gap: 0.5rem;

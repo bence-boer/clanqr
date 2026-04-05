@@ -182,9 +182,9 @@
         gap: 0.4rem;
         padding: 0.5rem 0.75rem;
         border-radius: var(--radius);
-        background: rgba(239, 68, 68, 0.1);
-        border: 1px solid rgba(239, 68, 68, 0.3);
-        color: #ef4444;
+        background: rgba(var(--danger-rgb), 0.1);
+        border: 1px solid rgba(var(--danger-rgb), 0.3);
+        color: var(--danger);
         font-size: 0.8rem;
     }
     @media (max-width: 768px) {
