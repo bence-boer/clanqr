@@ -53,7 +53,7 @@ jobs:
     steps:
       - name: Setup environment
         run: |
-          cat > /tmp/ralph-api-prod.env << 'ENVEOF'
+          cat > /tmp/ralph-api-prod.env << ENVEOF
           SUPABASE_URL=http://172.17.0.1:54321
           SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
           GITHUB_CLIENT_ID=${{ secrets.GITHUB_CLIENT_ID }}
@@ -65,10 +65,24 @@ jobs:
           FRONTEND_URL=${{ secrets.FRONTEND_URL }}
           NODE_ENV=production
           PORT=3001
+          CLI_URL=localhost:4321
           ENVEOF
+          sed -i 's/^[[:space:]]*//' /tmp/ralph-api-prod.env
           sudo cp /tmp/ralph-api-prod.env $ENV_FILE
           sudo chmod 600 $ENV_FILE
           rm -f /tmp/ralph-api-prod.env
+
+      - name: Verify Copilot CLI is reachable
+        run: |
+          for i in 1 2 3; do
+            if nc -z -w 2 localhost 4321 2>/dev/null; then
+              echo "✅ Copilot CLI is reachable on port 4321"
+              exit 0
+            fi
+            echo "Attempt $i: Copilot CLI not yet reachable, waiting 2s..."
+            sleep 2
+          done
+          echo "::warning::Copilot CLI is not reachable on port 4321 — agent dispatch will be unavailable"
 
       - name: Build agent base image
         run: |

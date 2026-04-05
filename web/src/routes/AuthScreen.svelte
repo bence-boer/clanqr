@@ -5,12 +5,12 @@
         auth_state,
         error = null,
         pending = false,
-        onlogin
+        on_login
     }: {
         auth_state: string
         error?: string | null
         pending?: boolean
-        onlogin: () => void
+        on_login: () => void
     } = $props();
 
     function classify_error(err: string | null): { title: string, message: string } | null {
@@ -77,15 +77,15 @@
 {:else}
     <div class="auth-screen">
         <div class="auth-card">
-            <svg class="github-logo" viewBox="0 0 24 24" width="48" height="48">
+            <svg class="github-logo" viewBox="0 0 24 24" width="48" height="48" aria-hidden="true">
                 <path fill="currentColor" d={gh_d}/>
             </svg>
             <h1>Ralph Agent Workspace</h1>
             {#if classified_error}
                 <AuthFeedback error={error} error_icon="error" error_message={classified_error.message} />
             {/if}
-            <Button variant="primary" onclick={onlogin} disabled={pending}>
-                <svg viewBox="0 0 24 24" width="18" height="18" style="margin-right: 0.4rem;">
+            <Button variant="primary" onclick={on_login} disabled={pending}>
+                <svg viewBox="0 0 24 24" width="18" height="18" style="margin-right: 0.4rem;" aria-hidden="true">
                     <path fill="currentColor" d={gh_d}/>
                 </svg>
                 Sign in with GitHub

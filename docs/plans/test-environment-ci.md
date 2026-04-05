@@ -271,7 +271,7 @@ jobs:
   sanity-checks:
     runs-on: [self-hosted, pi]
     env:
-      APP_DIR: /home/scoy/Developer/repositories/ralph-agent-workspace  # or dedicated prod checkout
+      APP_DIR: /home/scoy/Developer/repositories/clanqr  # or dedicated prod checkout
       BUN_INSTALL: /home/scoy/.bun
     steps:
       # Same as current: git fetch main + reset --hard
@@ -473,7 +473,7 @@ Enable with `systemctl enable ralph-api@prod ralph-api@test`.
 **Planning agent must address:**
 - Current `.deploy-trigger` mechanism — how does systemd watch this file? (Likely a path unit.) Need separate trigger files per environment.
 - Working directory for test: `/home/scoy/Developer/repositories/ralph-test` (separate git clone)
-- Working directory for prod: existing `/home/scoy/Developer/repositories/ralph-agent-workspace` (or renamed to `ralph-prod`)
+- Working directory for prod: existing `/home/scoy/Developer/repositories/clanqr` (or renamed to `ralph-prod`)
 - Web build output location per environment
 - How `FRONTEND_URL` and `RP_ORIGIN` differ per environment
 

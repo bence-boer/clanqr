@@ -12,7 +12,7 @@
 
 <div class="starter-prompts">
     {#each prompts as prompt (prompt.text)}
-        <button class="starter-btn" onclick={() => on_select(prompt.text)}>
+        <button type="button" class="starter-btn" onclick={() => on_select(prompt.text)}>
             <span class="icon" style="font-size: 18px">{prompt.icon}</span>
             <span>{prompt.text}</span>
         </button>

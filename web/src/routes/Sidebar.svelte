@@ -19,9 +19,9 @@
         collapsed = false,
         badges = {},
         notification_bell,
-        onclose,
-        onlogout,
-        ontoggle_collapse
+        on_close,
+        on_logout,
+        on_toggle_collapse
     }: {
         current_path: string
         role?: string | null
@@ -30,9 +30,9 @@
         collapsed?: boolean
         badges?: SidebarBadges
         notification_bell?: Snippet
-        onclose: () => void
-        onlogout: () => void
-        ontoggle_collapse?: () => void
+        on_close: () => void
+        on_logout: () => void
+        on_toggle_collapse?: () => void
     } = $props();
 </script>
 
@@ -50,7 +50,7 @@
         {/if}
     </div>
 
-    <SidebarNav {current_path} {role} {badges} {onclose} />
+    <SidebarNav {current_path} {role} {badges} {on_close} />
 
     <div class="sidebar-footer">
         {#if system_stats}
@@ -63,11 +63,11 @@
             </div>
         {/if}
         <span class="shortcut-hint">⌘K to search</span>
-        <Button variant="ghost" style="width: 100%; justify-content: flex-start;" icon="logout" onclick={onlogout}>
+        <Button variant="ghost" style="width: 100%; justify-content: flex-start;" icon="logout" onclick={on_logout}>
             <span>Sign out</span>
         </Button>
-        {#if ontoggle_collapse}
-            <button class="collapse-toggle" onclick={ontoggle_collapse} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+        {#if on_toggle_collapse}
+            <button class="collapse-toggle" onclick={on_toggle_collapse} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
                 <span class="icon">{collapsed ? 'chevron_right' : 'chevron_left'}</span>
             </button>
         {/if}

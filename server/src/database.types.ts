@@ -50,6 +50,7 @@ export type Database = {
           created_at: string
           duration_ms: number | null
           error: string | null
+          estimated_cost: number
           feature_id: string | null
           files_changed: string[] | null
           finished_at: string | null
@@ -63,8 +64,6 @@ export type Database = {
           status: Database["public"]["Enums"]["agent_session_status"]
           summary: string | null
           task_id: string | null
-          tokens_input: number
-          tokens_output: number
           updated_at: string
           user_id: string | null
         }
@@ -76,6 +75,7 @@ export type Database = {
           created_at?: string
           duration_ms?: number | null
           error?: string | null
+          estimated_cost?: number
           feature_id?: string | null
           files_changed?: string[] | null
           finished_at?: string | null
@@ -89,8 +89,6 @@ export type Database = {
           status?: Database["public"]["Enums"]["agent_session_status"]
           summary?: string | null
           task_id?: string | null
-          tokens_input?: number
-          tokens_output?: number
           updated_at?: string
           user_id?: string | null
         }
@@ -102,6 +100,7 @@ export type Database = {
           created_at?: string
           duration_ms?: number | null
           error?: string | null
+          estimated_cost?: number
           feature_id?: string | null
           files_changed?: string[] | null
           finished_at?: string | null
@@ -115,8 +114,6 @@ export type Database = {
           status?: Database["public"]["Enums"]["agent_session_status"]
           summary?: string | null
           task_id?: string | null
-          tokens_input?: number
-          tokens_output?: number
           updated_at?: string
           user_id?: string | null
         }
@@ -656,6 +653,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      system_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value?: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
       }
       task_artifacts: {
         Row: {

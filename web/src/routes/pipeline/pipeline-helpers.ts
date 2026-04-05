@@ -12,6 +12,7 @@ export function format_duration(started_at: string | null): string {
 export async function reorder_queue(task_ids: string[], reload: () => Promise<void>): Promise<void> {
     try {
         await api.pipeline_reorder(task_ids);
+        toast_store.success('Queue reordered');
     }
     catch (err) {
         console.error('Failed to reorder queue:', err);
@@ -23,6 +24,7 @@ export async function reorder_queue(task_ids: string[], reload: () => Promise<vo
 export async function remove_from_queue(task_id: string, reload: () => Promise<void>): Promise<void> {
     try {
         await api.update_task(task_id, { status: 'queued' } as never);
+        toast_store.success('Task removed');
         await reload();
     }
     catch (err) {
@@ -34,6 +36,7 @@ export async function remove_from_queue(task_id: string, reload: () => Promise<v
 export async function retry_task(task_id: string, reload: () => Promise<void>): Promise<void> {
     try {
         await api.approve_task(task_id);
+        toast_store.success('Task requeued');
         await reload();
     }
     catch (err) {

@@ -4,20 +4,21 @@
     export interface PaginationProperties {
         current_page: number
         total_pages: number
-        onpage_change: (page: number) => void
+        on_page_change: (page: number) => void
     }
 
-    let { current_page, total_pages, onpage_change }: PaginationProperties = $props();
+    let { current_page, total_pages, on_page_change }: PaginationProperties = $props();
 </script>
 
 {#if total_pages > 1}
-    <div class="pagination">
+    <div data-slot="pagination" class="pagination">
         <Button
             variant="secondary"
             size="sm"
             icon="chevron_left"
             disabled={current_page <= 1}
-            onclick={() => onpage_change(current_page - 1)}
+            onclick={() => on_page_change(current_page - 1)}
+            aria-label="Previous page"
         />
         <span class="page-info">Page {current_page} of {total_pages}</span>
         <Button
@@ -25,7 +26,8 @@
             size="sm"
             icon="chevron_right"
             disabled={current_page >= total_pages}
-            onclick={() => onpage_change(current_page + 1)}
+            onclick={() => on_page_change(current_page + 1)}
+            aria-label="Next page"
         />
     </div>
 {/if}

@@ -7,10 +7,10 @@
 
     let {
         agents,
-        filtered_agents = $bindable([])
+        onchange
     }: {
         agents: AgentProcess[]
-        filtered_agents: AgentProcess[]
+        onchange?: (filtered: AgentProcess[]) => void
     } = $props();
 
     let filter_status = $state<StatusFilter>('all');
@@ -24,7 +24,7 @@
         { value: 'failed', label: 'Failed' }
     ];
 
-    $effect(() => {
+    const computed_filtered = $derived.by(() => {
         let result = agents;
 
         if (filter_status !== 'all') {
@@ -40,7 +40,7 @@
             );
         }
 
-        result = [...result].sort((a, b) => {
+        return [...result].sort((a, b) => {
             if (sort_by === 'newest') {
                 return new Date(b.started_at ?? 0).getTime() - new Date(a.started_at ?? 0).getTime();
             }
@@ -52,8 +52,10 @@
             if (a_running !== b_running) return b_running - a_running;
             return new Date(a.started_at ?? 0).getTime() - new Date(b.started_at ?? 0).getTime();
         });
+    });
 
-        filtered_agents = result;
+    $effect(() => {
+        onchange?.(computed_filtered);
     });
 </script>
 
@@ -76,6 +78,7 @@
             placeholder="Search agents..."
             bind:value={search_query}
             style="max-width: 220px"
+            aria-label="Search agents"
         />
 
         <Select bind:value={sort_by} style="max-width: 180px">

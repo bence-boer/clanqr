@@ -10,18 +10,18 @@
         history_page,
         history_total_pages,
         filter_status,
-        onfilter_change,
-        onpage_change,
-        onretry
+        on_filter_change,
+        on_page_change,
+        on_retry
     }: {
         history: AgentSession[]
         history_total: number
         history_page: number
         history_total_pages: number
         filter_status: string
-        onfilter_change: (status: string) => void
-        onpage_change: (page: number) => void
-        onretry?: (task_id: string) => void
+        on_filter_change: (status: string) => void
+        on_page_change: (page: number) => void
+        on_retry?: (task_id: string) => void
     } = $props();
 
     let expanded_run = $state<string | null>(null);
@@ -45,7 +45,7 @@
                 class="filter-select"
                 value={filter_status}
                 onchange={(e) => {
-                    onfilter_change(e.currentTarget.value);
+                    on_filter_change(e.currentTarget.value);
                 }}
             >
                 <option value="">All statuses</option>
@@ -62,11 +62,11 @@
     {:else}
         <div class="history-list">
             {#each history as run (run.id)}
-                <HistoryItem {run} expanded={expanded_run === run.id} on_toggle_log={toggle_run_log} {onretry} />
+                <HistoryItem {run} expanded={expanded_run === run.id} on_toggle_log={toggle_run_log} {on_retry} />
             {/each}
         </div>
 
-        <Pagination current_page={history_page} total_pages={history_total_pages} onpage_change={(page) => onpage_change(page)} />
+        <Pagination current_page={history_page} total_pages={history_total_pages} on_page_change={(page) => on_page_change(page)} />
     {/if}
 </section>
 

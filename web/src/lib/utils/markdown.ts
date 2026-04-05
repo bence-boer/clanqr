@@ -1,56 +1,87 @@
-import DOMPurify from 'dompurify';
-import hljs from 'highlight.js/lib/core';
-import bash from 'highlight.js/lib/languages/bash';
-import css from 'highlight.js/lib/languages/css';
-import diff from 'highlight.js/lib/languages/diff';
-import javascript from 'highlight.js/lib/languages/javascript';
-import json from 'highlight.js/lib/languages/json';
-import markdown from 'highlight.js/lib/languages/markdown';
-import python from 'highlight.js/lib/languages/python';
-import sql from 'highlight.js/lib/languages/sql';
-import typescript from 'highlight.js/lib/languages/typescript';
-import xml from 'highlight.js/lib/languages/xml';
-import yaml from 'highlight.js/lib/languages/yaml';
-import { Marked } from 'marked';
+import type { HLJSApi } from 'highlight.js';
+import type { Marked } from 'marked';
 
-hljs.registerLanguage('javascript', javascript);
-hljs.registerLanguage('js', javascript);
-hljs.registerLanguage('typescript', typescript);
-hljs.registerLanguage('ts', typescript);
-hljs.registerLanguage('python', python);
-hljs.registerLanguage('bash', bash);
-hljs.registerLanguage('sh', bash);
-hljs.registerLanguage('json', json);
-hljs.registerLanguage('css', css);
-hljs.registerLanguage('html', xml);
-hljs.registerLanguage('xml', xml);
-hljs.registerLanguage('sql', sql);
-hljs.registerLanguage('markdown', markdown);
-hljs.registerLanguage('yaml', yaml);
-hljs.registerLanguage('diff', diff);
+let initialized = false;
+let init_promise: Promise<void> | null = null;
+let hljs_instance: HLJSApi;
+let marked_instance: Marked;
+let purify_instance: typeof import('dompurify').default;
 
-const marked_instance = new Marked({
-    renderer: {
-        code({ text, lang }) {
-            const language = lang && hljs.getLanguage(lang) ? lang : 'plaintext';
-            let highlighted: string;
-            try {
-                highlighted = language === 'plaintext'
-                    ? text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-                    : hljs.highlight(text, { language }).value;
-            }
-            catch {
-                highlighted = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            }
-            const escaped_text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-            return `<div class="code-block-wrapper"><button class="copy-code-btn" data-code="${escaped_text}">Copy</button><pre><code class="hljs language-${language}">${highlighted}</code></pre></div>`;
+async function ensure_initialized(): Promise<void> {
+    if (initialized) return;
+    if (init_promise) return init_promise;
+
+    init_promise = (async () => {
+        const [hljs_mod, marked_mod, purify_mod] = await Promise.all([
+            import('highlight.js/lib/core'),
+            import('marked'),
+            import('dompurify')
+        ]);
+
+        hljs_instance = hljs_mod.default;
+
+        const languages = await Promise.all([
+            import('highlight.js/lib/languages/javascript'),
+            import('highlight.js/lib/languages/typescript'),
+            import('highlight.js/lib/languages/python'),
+            import('highlight.js/lib/languages/bash'),
+            import('highlight.js/lib/languages/json'),
+            import('highlight.js/lib/languages/css'),
+            import('highlight.js/lib/languages/xml'),
+            import('highlight.js/lib/languages/markdown'),
+            import('highlight.js/lib/languages/yaml'),
+            import('highlight.js/lib/languages/sql'),
+            import('highlight.js/lib/languages/diff')
+        ]);
+
+        const lang_entries: [string, typeof languages[number]][] = [
+            ['javascript', languages[0]], ['js', languages[0]],
+            ['typescript', languages[1]], ['ts', languages[1]],
+            ['python', languages[2]],
+            ['bash', languages[3]], ['sh', languages[3]],
+            ['json', languages[4]],
+            ['css', languages[5]],
+            ['html', languages[6]], ['xml', languages[6]],
+            ['markdown', languages[7]],
+            ['yaml', languages[8]],
+            ['sql', languages[9]],
+            ['diff', languages[10]]
+        ];
+        for (const [name, mod] of lang_entries) {
+            hljs_instance.registerLanguage(name, mod.default);
         }
-    }
-});
 
-export function render_markdown(content: string): string {
+        purify_instance = purify_mod.default;
+
+        marked_instance = new marked_mod.Marked({
+            renderer: {
+                code({ text, lang }) {
+                    const language = lang && hljs_instance.getLanguage(lang) ? lang : 'plaintext';
+                    let highlighted: string;
+                    try {
+                        highlighted = language === 'plaintext'
+                            ? text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                            : hljs_instance.highlight(text, { language }).value;
+                    }
+                    catch {
+                        highlighted = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    }
+                    const escaped_text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                    return `<div class="code-block-wrapper"><button class="copy-code-btn" data-code="${escaped_text}">Copy</button><pre><code class="hljs language-${language}">${highlighted}</code></pre></div>`;
+                }
+            }
+        });
+
+        initialized = true;
+    })();
+
+    return init_promise;
+}
+
+export async function render_markdown(content: string): Promise<string> {
+    await ensure_initialized();
     const raw_html = marked_instance.parse(content, { async: false }) as string;
-    return DOMPurify.sanitize(raw_html, {
+    return purify_instance.sanitize(raw_html, {
         ADD_TAGS: ['button'],
         ADD_ATTR: ['data-code']
     });
@@ -65,6 +96,7 @@ export function init_code_copy_handlers(container: HTMLElement) {
                 setTimeout(() => {
                     btn.textContent = 'Copy';
                 }, 2000);
+            }).catch(() => {
             });
         };
     });

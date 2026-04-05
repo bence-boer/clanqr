@@ -4,16 +4,31 @@ import { prompt_service } from './prompt_service';
 import { check_and_complete_feature } from './feature_utils';
 import { execute_task as sdk_execute_task } from './sdk_session_service';
 import { logger } from '../utils/logger';
-import { can_start_session, increment_session_count, decrement_session_count, set_on_session_freed } from './session_pool_service';
+import { can_start_session, set_on_session_freed } from './session_pool_service';
 import { event_bus } from './event_bus';
 import { handle_task_failure, type PipelineTask } from './pipeline_failure';
+import { log_store } from './log_store_service';
 
 type PipelineState = 'idle' | 'running' | 'paused';
+
+function format_log_detail(entry: { type: string, data: Record<string, unknown> }): string {
+    const d = entry.data;
+    switch (entry.type) {
+        case 'tool_start': return `${d.tool_name ?? 'unknown'}`;
+        case 'tool_complete': return `${d.tool_name ?? 'unknown'} (${d.success ? '✓' : '✗'})`;
+        case 'agent_intent': return String(d.intent ?? '');
+        case 'agent_output': return String(d.content ?? '').slice(0, 120);
+        case 'usage': return `${d.model ?? ''} +${d.output ?? 0} tokens`;
+        case 'error': return String(d.message ?? d.error ?? '');
+        default: return '';
+    }
+}
 
 interface ActiveRun {
     task_id: string
     run_id: string
     feature_id: string
+    sdk_session_id: string
 }
 
 class PipelineService {
@@ -26,7 +41,8 @@ class PipelineService {
             state: this.state,
             current_task_id: this.active_run?.task_id ?? null,
             current_run_id: this.active_run?.run_id ?? null,
-            current_feature_id: this.active_run?.feature_id ?? null
+            current_feature_id: this.active_run?.feature_id ?? null,
+            current_sdk_session_id: this.active_run?.sdk_session_id ?? null
         };
     }
 
@@ -39,7 +55,14 @@ class PipelineService {
     }
 
     get_log(): string {
-        return '';
+        const sid = this.active_run?.sdk_session_id;
+        if (!sid) return '';
+        const entries = log_store.get(sid);
+        return entries.map((entry) => {
+            const time = new Date(entry.timestamp).toLocaleTimeString();
+            const detail = format_log_detail(entry);
+            return `[${time}] ${entry.type}${detail ? ` — ${detail}` : ''}`;
+        }).join('\n');
     }
 
     async process_next(): Promise<void> {
@@ -143,13 +166,15 @@ class PipelineService {
 
         const prompt = await prompt_service.resolve_for_task(task_id, task_spec);
         const model = task.model || task.features?.execution_model || 'gpt-4.1';
+        const timeout_ms = (task.features?.task_timeout_minutes ?? 30) * 60 * 1000;
 
-        this.active_run = { task_id, run_id: '', feature_id };
-        increment_session_count();
+        this.active_run = { task_id, run_id: '', feature_id, sdk_session_id: '' };
 
         try {
-            const result = await sdk_execute_task(task_id, feature_id, model, prompt);
+            // Session count is managed inside sdk_execute_task (single owner)
+            const result = await sdk_execute_task(task_id, feature_id, model, prompt, timeout_ms);
             this.active_run.run_id = result.session_id;
+            this.active_run.sdk_session_id = result.session_id;
 
             if (result.success) {
                 await supabase.from('tasks').update({
@@ -181,7 +206,6 @@ class PipelineService {
             }
         }
         finally {
-            decrement_session_count();
             this.active_run = null;
         }
 

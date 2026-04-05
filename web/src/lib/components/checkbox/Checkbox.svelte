@@ -21,6 +21,7 @@
         checked = e.currentTarget.checked;
         if (onchange) onchange(e);
     }}
+    data-slot="checkbox"
     class={['custom-checkbox', class_name].filter(Boolean).join(' ')}
     {...rest_props}
 />

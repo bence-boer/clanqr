@@ -284,7 +284,7 @@ You must address ALL sources of overflow, not just one. A `flex-shrink: 0` child
 ## 11 · Architecture Quick Reference
 
 ```
-ralph-agent-workspace/
+clanqr/
 ├── server/                    # Hono API (Bun, port 3001)
 │   └── src/
 │       ├── index.ts           # Entry point, route mounting

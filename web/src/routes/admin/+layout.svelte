@@ -10,10 +10,11 @@
 
     let role_checked = $state(false);
 
-    type AdminRoute = 'users' | 'metrics' | 'maintenance';
+    type AdminRoute = 'users' | 'metrics' | 'maintenance' | 'settings';
     const tabs = [
         { label: 'Users', icon: 'group', value: 'users' },
         { label: 'Metrics', icon: 'monitoring', value: 'metrics' },
+        { label: 'Settings', icon: 'tune', value: 'settings' },
         { label: 'Maintenance', icon: 'build', value: 'maintenance' }
     ] as const satisfies TabItem<AdminRoute>[];
 
@@ -33,7 +34,8 @@
     const PATH_BY_ROUTE_ID: Partial<Record<Exclude<typeof page.route.id, null>, AdminRoute>> = {
         '/admin/users': 'users',
         '/admin/metrics': 'metrics',
-        '/admin/maintenance': 'maintenance'
+        '/admin/maintenance': 'maintenance',
+        '/admin/settings': 'settings'
     };
 
     let active_tab = $derived(PATH_BY_ROUTE_ID[page.route.id ?? '/admin/users'] ?? 'users');
@@ -54,7 +56,7 @@
         <Tabs
             items={tabs}
             value={active_tab}
-            ontabselect={(tab) => {
+            on_tab_select={(tab) => {
                 if (tab !== active_tab) {
                     handle_tab_change(tab);
                 }

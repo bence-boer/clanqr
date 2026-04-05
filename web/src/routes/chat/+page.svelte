@@ -3,7 +3,7 @@
     import { api } from '$lib/api/client';
     import { read_sse_stream } from '$lib/utils/sse';
     import type { ChatSession, ChatSessionFull, ChatMessage } from '$lib/types';
-    import { chat_models, format_session_title, build_message } from './chat-models';
+    import { group_models, format_session_title, build_message, type ModelGroup } from './chat-models';
     import {
         fetch_sessions, fetch_session_detail, create_new_session,
         remove_session, update_session_title, cancel_chat_stream
@@ -15,15 +15,25 @@
     let active_session = $state<ChatSessionFull | null>(null);
     let messages = $state<ChatMessage[]>([]);
     let input_text = $state('');
-    let selected_model = $state('claude-sonnet-4.5');
+    let selected_model = $state('gpt-4.1');
     let is_streaming = $state(false);
     let streaming_content = $state('');
     let loading_sessions = $state(true);
     let loading_messages = $state(false);
     let error_msg = $state('');
     let mobile_sessions_open = $state(false);
+    let model_groups = $state<ModelGroup[]>([]);
 
     onMount(() => {
+        api.list_models().then((models) => {
+            model_groups = group_models(models);
+            if (models.length > 0 && !models.some((m) => m.value === selected_model)) {
+                selected_model = models[0].value;
+            }
+        }).catch(() => {
+            /* fallback: model_groups stays empty */
+        });
+
         load_sessions().then(() => {
             const saved_id = sessionStorage.getItem('active_chat_session');
             if (saved_id) {
@@ -141,11 +151,11 @@
         <span class="icon" style="font-size: 20px">{mobile_sessions_open ? 'close' : 'menu'}</span>
     </button>
     <div class="sessions-container" class:mobile-open={mobile_sessions_open}>
-        <SessionList {sessions} {active_session} {loading_sessions} onselect={select_session} ondelete={delete_session} oncreate={create_session} />
+        <SessionList {sessions} {active_session} {loading_sessions} on_select={select_session} on_delete={delete_session} on_create={create_session} />
     </div>
     <ChatActions
         session={active_session} {messages} {loading_messages} {is_streaming} {streaming_content}
-        bind:input_text bind:selected_model {error_msg} models={chat_models}
+        bind:input_text bind:selected_model {error_msg} models={model_groups}
         {format_session_title} on_send={send_message} on_stop={stop_generating} on_create={create_session} on_rename={rename_session}
     />
 </div>

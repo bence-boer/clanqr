@@ -1,6 +1,7 @@
 <script lang="ts">
     import type { HTMLInputAttributes } from 'svelte/elements';
     import { Label, type LabelProperties } from '../label';
+    import { generate_id } from '$lib/utils/id';
 
     export type InputProperties = HTMLInputAttributes & {
         ref?: HTMLInputElement | null
@@ -19,7 +20,7 @@
         ...rest_props
     }: InputProperties = $props();
 
-    const fallback_id = `input-${crypto.randomUUID().slice(0, 8)}`;
+    const fallback_id = `input-${generate_id().slice(0, 8)}`;
     const input_id = $derived(id || fallback_id);
 </script>
 
@@ -49,10 +50,10 @@
     }
 
     .base-input {
-        background-color: var(--bg, #fff);
-        border: 1px solid var(--border, #ccc);
-        border-radius: var(--radius, 4px);
-        color: var(--fg, #333);
+        background-color: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        color: var(--fg);
         font-family: var(--font, inherit);
         font-size: 0.875rem;
         padding: 0.5rem 0.75rem;

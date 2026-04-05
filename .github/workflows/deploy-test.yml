@@ -19,9 +19,11 @@ jobs:
     steps:
       - name: Pull latest code
         run: |
+          git config --global --add safe.directory $APP_DIR
           cd $APP_DIR
           git fetch https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git develop
           git reset --hard FETCH_HEAD
+          chown -R 1000:1000 .
 
       - name: Install dependencies
         run: |
@@ -53,6 +55,7 @@ jobs:
     steps:
       - name: Ensure test database is running
         run: |
+          git config --global --add safe.directory $APP_DIR
           cd $APP_DIR
           docker compose -f docker-compose.test.yml up -d
           for i in $(seq 1 30); do
@@ -69,8 +72,8 @@ jobs:
 
       - name: Setup environment
         run: |
-          cat > /tmp/ralph-api-test.env << 'ENVEOF'
-          SUPABASE_URL=http://172.17.0.1:54331
+          cat > /tmp/ralph-api-test.env << ENVEOF
+          SUPABASE_URL=http://localhost:54331
           SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
           GITHUB_CLIENT_ID=${{ secrets.GITHUB_CLIENT_ID }}
           GITHUB_CLIENT_SECRET=${{ secrets.GITHUB_CLIENT_SECRET }}
@@ -82,10 +85,27 @@ jobs:
           NODE_ENV=test
           PORT=3011
           LOG_LEVEL=debug
+          CLI_URL=localhost:4321
           ENVEOF
+          # Strip leading whitespace from heredoc indentation
+          sed -i 's/^[[:space:]]*//' /tmp/ralph-api-test.env
           sudo cp /tmp/ralph-api-test.env $ENV_FILE
           sudo chmod 600 $ENV_FILE
           rm -f /tmp/ralph-api-test.env
+
+      - name: Verify Copilot CLI is reachable
+        run: |
+          # The Copilot CLI headless server uses TCP (not HTTP) on port 4321.
+          # CI runner uses host networking — localhost reaches host services directly.
+          for i in 1 2 3; do
+            if nc -z -w 2 localhost 4321 2>/dev/null; then
+              echo "✅ Copilot CLI is reachable on port 4321"
+              exit 0
+            fi
+            echo "Attempt $i: Copilot CLI not yet reachable, waiting 2s..."
+            sleep 2
+          done
+          echo "::warning::Copilot CLI is not reachable on port 4321 — agent dispatch will be unavailable"
 
       - name: Reset and seed test database
         run: |
@@ -107,29 +127,58 @@ jobs:
         run: |
           echo "Waiting for services to restart..."
           sleep 10
-          CURL="docker run --rm --network host curlimages/curl --max-time 5"
-          for i in 1 2 3 4 5 6; do
-            if $CURL -sf http://localhost:3011/health > /dev/null 2>&1; then
+          for i in $(seq 1 20); do
+            if curl -sf --max-time 5 http://localhost:3011/health > /dev/null 2>&1; then
               echo "✅ Test API is healthy"
               break
             fi
-            if [ "$i" -eq 6 ]; then
-              echo "::error::Test API health check failed"
+            if [ "$i" -eq 20 ]; then
+              echo "::error::Test API health check failed after 110s"
               exit 1
             fi
             sleep 5
           done
-          for i in 1 2 3 4 5 6; do
-            if $CURL -sf http://localhost:3012 > /dev/null 2>&1; then
+          for i in $(seq 1 20); do
+            if curl -sf --max-time 5 http://localhost:3012 > /dev/null 2>&1; then
               echo "✅ Test Web is healthy"
               break
             fi
-            if [ "$i" -eq 6 ]; then
-              echo "::error::Test Web health check failed"
+            if [ "$i" -eq 20 ]; then
+              echo "::error::Test Web health check failed after 110s"
               exit 1
             fi
             sleep 5
           done
+
+      - name: Install E2E dependencies
+        run: |
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          cd $APP_DIR && bun install --frozen-lockfile
+          # Install system libraries required by Playwright Chromium
+          cd $APP_DIR/e2e && bun x --bun playwright install-deps chromium
+
+      - name: Run E2E tests (fast suite)
+        env:
+          CI: "true"
+          BASE_URL: http://test.clanqr.dev
+          API_URL: http://localhost:3011
+          PLAYWRIGHT_BROWSERS_PATH: /home/scoy/.cache/ms-playwright
+        run: |
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          cd $APP_DIR/e2e
+          bun x --bun playwright test --grep-invert "agent execution"
+
+      - name: Run E2E tests (agent execution)
+        env:
+          CI: "true"
+          BASE_URL: http://test.clanqr.dev
+          API_URL: http://localhost:3011
+          PLAYWRIGHT_BROWSERS_PATH: /home/scoy/.cache/ms-playwright
+        timeout-minutes: 25
+        run: |
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          cd $APP_DIR/e2e
+          bun x --bun playwright test agent-execution
 
       - name: Rollback on failure
         if: failure()
@@ -137,6 +186,7 @@ jobs:
           export PATH="$BUN_INSTALL/bin:$PATH"
           cd $APP_DIR
           git reset --hard HEAD~1
+          chown -R 1000:1000 .
           cd server && bun install --frozen-lockfile
           cd ../web && bun install --frozen-lockfile
           PUBLIC_API_URL= bun --bun run build

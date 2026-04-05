@@ -41,18 +41,24 @@
   $effect(() => {
       void messages;
       void streaming_content;
-      scroll_to_bottom();
+      const id = setTimeout(() => {
+          if (messages_container) {
+              messages_container.scrollTop = messages_container.scrollHeight;
+          }
+      }, 50);
+      return () => clearTimeout(id);
   });
 
   // Re-bind code copy handlers when messages change
   $effect(() => {
       void messages;
       void is_streaming;
-      setTimeout(() => {
+      const id = setTimeout(() => {
           if (messages_container) {
               init_code_copy_handlers(messages_container);
           }
       }, 100);
+      return () => clearTimeout(id);
   });
 </script>
 

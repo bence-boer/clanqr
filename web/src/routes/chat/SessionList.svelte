@@ -8,23 +8,23 @@
         sessions,
         active_session,
         loading_sessions,
-        onselect,
-        ondelete,
-        oncreate
+        on_select,
+        on_delete,
+        on_create
     }: {
         sessions: ChatSession[]
         active_session: ChatSession | null
         loading_sessions: boolean
-        onselect: (session: ChatSession) => void
-        ondelete: (session_id: string, event: MouseEvent) => void
-        oncreate: () => void
+        on_select: (session: ChatSession) => void
+        on_delete: (session_id: string, event: MouseEvent) => void
+        on_create: () => void
     } = $props();
 </script>
 
 <aside class="sessions-panel">
     <div class="sessions-header">
         <span class="sessions-title">Sessions</span>
-        <Button variant="secondary" size="icon" onclick={oncreate} title="New chat" icon="add" style="border-radius: 50%" aria-label="New chat session" />
+        <Button variant="secondary" size="icon" onclick={on_create} title="New chat" icon="add" style="border-radius: 50%" aria-label="New chat session" />
     </div>
 
     {#if loading_sessions}
@@ -42,8 +42,8 @@
                     <SessionItem
                         {session}
                         is_active={active_session?.id === session.id}
-                        on_select={() => onselect(session)}
-                        on_delete={(event) => ondelete(session.id, event)}
+                        on_select={() => on_select(session)}
+                        on_delete={(event) => on_delete(session.id, event)}
                     />
                 </li>
             {/each}

@@ -13,8 +13,8 @@
     import { format_duration, reorder_queue, remove_from_queue, retry_task } from './pipeline-helpers';
 
     let pipeline = $state<PipelineStatus | null>(null);
-    let queue = $state<Task[]>([]);
-    let history = $state<AgentSession[]>([]);
+    let queue = $state.raw<Task[]>([]);
+    let history = $state.raw<AgentSession[]>([]);
     let history_total = $state(0);
     let history_page = $state(1);
     let history_total_pages = $state(1);
@@ -22,9 +22,6 @@
     let active_tab = $state('queue');
 
     let loading = $state(true);
-    let log_text = $state('');
-    let log_visible = $state(false);
-    let log_loading = $state(false);
     let action_error = $state('');
     let action_busy = $state(false);
 
@@ -54,41 +51,8 @@
         }
     }
 
-    async function load_history() {
-        try {
-            const result = await api.usage_history(history_page, 20, 'ralph', filter_status || undefined);
-            history = result.runs;
-            history_total = result.total;
-            history_total_pages = result.total_pages;
-        }
-        catch (err) {
-            console.error('Failed to load history:', err);
-            toast_store.error('Failed to load history');
-            history = [];
-        }
-    }
-
-    async function refresh_log() {
-        log_loading = true;
-        try {
-            const result = await api.pipeline_log();
-            log_text = result.log;
-            return true;
-        }
-        catch (err) {
-            console.error('Failed to load log:', err);
-            toast_store.error('Failed to load log');
-            log_text = 'Failed to load log.';
-            throw err;
-        }
-        finally {
-            log_loading = false;
-        }
-    }
-
     async function load_all() {
         await Promise.all([load_pipeline(), load_queue()]);
-        if (log_visible) refresh_log();
         loading = false;
     }
 
@@ -97,7 +61,6 @@
             pipeline_status: () => {
                 load_pipeline();
                 load_queue();
-                if (log_visible) refresh_log();
             },
             tasks_update: () => {
                 load_queue();
@@ -115,7 +78,26 @@
     $effect(() => {
         void filter_status;
         void history_page;
-        load_history();
+        let cancelled = false;
+        async function do_fetch() {
+            try {
+                const result = await api.usage_history(history_page, 20, 'ralph', filter_status || undefined);
+                if (cancelled) return;
+                history = result.runs;
+                history_total = result.total;
+                history_total_pages = result.total_pages;
+            }
+            catch (err) {
+                if (cancelled) return;
+                console.error('Failed to load history:', err);
+                toast_store.error('Failed to load history');
+                history = [];
+            }
+        }
+        do_fetch();
+        return () => {
+            cancelled = true;
+        };
     });
 
     async function do_action(action: () => Promise<unknown>, fail_msg: string) {
@@ -141,11 +123,6 @@
         await do_action(() => api.pipeline_stop_current(), 'Failed to stop');
     }
 
-    async function toggle_log() {
-        log_visible = !log_visible;
-        if (log_visible) await refresh_log();
-    }
-
 </script>
 
 <div class="page" aria-busy={loading}>
@@ -163,19 +140,14 @@
     {#if loading}
         <LoadingSpinner label="Loading pipeline..." />
     {:else}
-        <PipelineStatusBar {pipeline} {action_busy} {action_error} onpause={do_pause} onresume={do_resume} onstop={do_stop} />
+        <PipelineStatusBar {pipeline} {action_busy} {action_error} on_pause={do_pause} on_resume={do_resume} on_stop={do_stop} />
 
         <PipelineStats {pipeline} {history} />
 
         <CurrentTask
             {pipeline}
-            {log_visible}
-            {log_text}
-            {log_loading}
             {action_busy}
-            ontoggle_log={toggle_log}
-            onstop={do_stop}
-            onrefresh_log={refresh_log}
+            on_stop={do_stop}
             {format_duration}
         />
 
@@ -184,7 +156,7 @@
         </div>
 
         {#if active_tab === 'queue'}
-            <TaskQueue {queue} onreorder={(ids) => reorder_queue(ids, load_queue)} onremove={(id) => remove_from_queue(id, load_queue)} />
+            <TaskQueue {queue} on_reorder={(ids) => reorder_queue(ids, load_queue)} on_remove={(id) => remove_from_queue(id, load_queue)} />
         {:else}
             <PipelineHistory
                 {history}
@@ -192,14 +164,14 @@
                 {history_page}
                 {history_total_pages}
                 {filter_status}
-                onfilter_change={(status) => {
+                on_filter_change={(status) => {
                     filter_status = status;
                     history_page = 1;
                 }}
-                onpage_change={(page) => {
+                on_page_change={(page) => {
                     history_page = page;
                 }}
-                onretry={(id) => retry_task(id, load_queue)}
+                on_retry={(id) => retry_task(id, load_queue)}
             />
         {/if}
     {/if}

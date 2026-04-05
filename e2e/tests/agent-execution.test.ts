@@ -23,8 +23,6 @@ async function poll_until(
 // ── 1. Direct task pipeline: create → approve → execute → verify ──────────────
 
 test.describe.serial("agent execution: direct task pipeline", () => {
-    test.skip(!!process.env.CI, "Agent execution tests require Docker + Copilot CLI + long timeouts");
-
     let project_id: string;
     let feature_id: string;
     let task_id: string;
@@ -66,7 +64,7 @@ test.describe.serial("agent execution: direct task pipeline", () => {
         expect(res.ok()).toBeTruthy();
         const feature = await res.json();
         feature_id = feature.id;
-        expect(feature.status).toBe("Draft");
+        expect(feature.status).toBe("draft");
     });
 
     test("3. create task directly via API", async ({ request }) => {
@@ -86,7 +84,7 @@ test.describe.serial("agent execution: direct task pipeline", () => {
         expect(res.ok()).toBeTruthy();
         const task = await res.json();
         task_id = task.id;
-        expect(task.status).toBe("Pending_Approval");
+        expect(task.status).toBe("queued");
     });
 
     test("4. approve task and trigger pipeline", async ({ request }) => {
@@ -95,7 +93,7 @@ test.describe.serial("agent execution: direct task pipeline", () => {
         });
         expect(res.ok()).toBeTruthy();
         const task = await res.json();
-        expect(task.status).toBe("Approved");
+        expect(task.status).toBe("approved");
     });
 
     test("5. wait for task execution to complete", async ({ request }) => {
@@ -109,7 +107,7 @@ test.describe.serial("agent execution: direct task pipeline", () => {
                 if (!res.ok()) return false;
                 const task = await res.json();
                 // Terminal states
-                if (task.status === "Complete" || task.status === "Failed") return true;
+                if (task.status === "complete" || task.status === "failed") return true;
                 return false;
             },
             AGENT_TIMEOUT_MS - 30_000,
@@ -123,7 +121,7 @@ test.describe.serial("agent execution: direct task pipeline", () => {
         });
         expect(res.ok()).toBeTruthy();
         const task = await res.json();
-        expect(task.status).toBe("Complete");
+        expect(task.status).toBe("complete");
     });
 
     test("6. verify agent_runs record exists", async ({ request }) => {
@@ -137,8 +135,8 @@ test.describe.serial("agent execution: direct task pipeline", () => {
 
         // Find the run for our task
         const task_run = runs.find(
-            (r: { task_id: string; type: string }) =>
-                r.task_id === task_id && r.type === "ralph"
+            (r: { task_id: string; agent_type: string }) =>
+                r.task_id === task_id && r.agent_type === "ralph"
         );
         expect(task_run).toBeTruthy();
         expect(task_run.status).toBe("completed");
@@ -153,15 +151,66 @@ test.describe.serial("agent execution: direct task pipeline", () => {
         expect(feature.tasks).toBeDefined();
         const completed_task = feature.tasks.find((t: { id: string }) => t.id === task_id);
         expect(completed_task).toBeTruthy();
-        expect(completed_task.status).toBe("Complete");
+        expect(completed_task.status).toBe("complete");
+    });
+
+    test("8. verify telemetry events were captured", async ({ request }) => {
+        // Get agent status to find the SDK session ID for our task
+        const status_res = await request.get(`${API_URL}/api/agents/status`, {
+            headers: AUTH,
+        });
+        expect(status_res.ok()).toBeTruthy();
+        const agents = await status_res.json();
+        const ralph_agent = agents.find(
+            (a: { task_id: string; agent_type: string }) =>
+                a.task_id === task_id && a.agent_type === "ralph"
+        );
+        expect(ralph_agent).toBeTruthy();
+        expect(ralph_agent.sdk_session_id).toBeTruthy();
+
+        // Verify events exist via telemetry API (using SDK session ID)
+        const events_res = await request.get(
+            `${API_URL}/api/telemetry/sessions/${ralph_agent.sdk_session_id}/events`,
+            { headers: AUTH }
+        );
+        expect(events_res.ok()).toBeTruthy();
+        const events = await events_res.json();
+        expect(events.total).toBeGreaterThan(0);
+        expect(events.events.length).toBeGreaterThan(0);
+
+        // Verify tool calls were persisted
+        const tools_res = await request.get(
+            `${API_URL}/api/telemetry/sessions/${ralph_agent.sdk_session_id}/tools`,
+            { headers: AUTH }
+        );
+        expect(tools_res.ok()).toBeTruthy();
+        const tools = await tools_res.json();
+        expect(tools.tools.length).toBeGreaterThan(0);
+
+        // Verify session summary is accessible
+        const summary_res = await request.get(
+            `${API_URL}/api/telemetry/sessions/${ralph_agent.sdk_session_id}/summary`,
+            { headers: AUTH }
+        );
+        expect(summary_res.ok()).toBeTruthy();
+        const summary = await summary_res.json();
+        expect(summary.agent_type).toBe("ralph");
+        expect(summary.status).toBe("completed");
+        expect(summary.event_count).toBeGreaterThan(0);
+
+        // Verify token data was persisted (use summary which has all columns)
+        expect(summary.prompt_tokens).toBeGreaterThan(0);
+        expect(summary.completion_tokens).toBeGreaterThan(0);
+
+        // Verify estimated_cost is a valid number (0 is expected for free/0x models)
+        expect(summary.estimated_cost).toBeDefined();
+        expect(Number(summary.estimated_cost)).toBeGreaterThanOrEqual(0);
     });
 });
 
 // ── 2. Full manager flow: submit → manager creates tasks → execute ────────────
 
 test.describe.serial("agent execution: full manager flow", () => {
-    test.skip(!!process.env.CI, "Agent execution tests require Docker + Copilot CLI + long timeouts");
-
     let project_id: string;
     let feature_id: string;
 
@@ -214,7 +263,7 @@ test.describe.serial("agent execution: full manager flow", () => {
         });
         expect(res.ok()).toBeTruthy();
         const feature = await res.json();
-        expect(feature.status).toBe("Submitted");
+        expect(feature.status).toBe("submitted");
     });
 
     test("4. wait for manager to create tasks", async ({ request }) => {
@@ -227,10 +276,10 @@ test.describe.serial("agent execution: full manager flow", () => {
                 });
                 if (!res.ok()) return false;
                 const feature = await res.json();
-                // Manager done when tasks exist (auto_approve moves feature to In_Progress)
+                // Manager done when tasks exist (auto_approve moves feature to in_progress)
                 if (feature.tasks && feature.tasks.length > 0) return true;
-                // Also check if feature moved past Submitted
-                if (feature.status !== "Submitted" && feature.status !== "In_Progress") return true;
+                // Also check if feature moved past submitted
+                if (feature.status !== "submitted" && feature.status !== "in_progress") return true;
                 return false;
             },
             AGENT_TIMEOUT_MS - 30_000,
@@ -257,7 +306,7 @@ test.describe.serial("agent execution: full manager flow", () => {
                 const feature = await res.json();
                 if (!feature.tasks || feature.tasks.length === 0) return false;
                 // All tasks must be in a terminal state
-                const terminal = ["Complete", "Failed", "Skipped"];
+                const terminal = ["complete", "failed", "skipped"];
                 return feature.tasks.every((t: { status: string }) =>
                     terminal.includes(t.status)
                 );
@@ -277,7 +326,7 @@ test.describe.serial("agent execution: full manager flow", () => {
 
         // At least one task should have completed
         const completed = feature.tasks.filter(
-            (t: { status: string }) => t.status === "Complete"
+            (t: { status: string }) => t.status === "complete"
         );
         expect(completed.length).toBeGreaterThan(0);
     });
@@ -292,15 +341,15 @@ test.describe.serial("agent execution: full manager flow", () => {
 
         // Should have at least a manager run for this feature
         const manager_run = runs.find(
-            (r: { feature_id: string; type: string }) =>
-                r.feature_id === feature_id && r.type === "manager"
+            (r: { feature_id: string; agent_type: string }) =>
+                r.feature_id === feature_id && r.agent_type === "manager"
         );
         expect(manager_run).toBeTruthy();
 
         // Should have at least one ralph run
         const ralph_runs = runs.filter(
-            (r: { feature_id: string; type: string }) =>
-                r.feature_id === feature_id && r.type === "ralph"
+            (r: { feature_id: string; agent_type: string }) =>
+                r.feature_id === feature_id && r.agent_type === "ralph"
         );
         expect(ralph_runs.length).toBeGreaterThan(0);
     });

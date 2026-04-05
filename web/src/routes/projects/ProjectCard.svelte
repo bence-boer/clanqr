@@ -78,8 +78,8 @@
 
 {#if editing}
     <div class="project-card editing">
-        <Input type="text" class="input" bind:value={edit_name} placeholder="Project name" />
-        <Textarea bind:value={edit_description} placeholder="Description" rows={2} />
+        <Input type="text" class="input" bind:value={edit_name} placeholder="Project name" aria-label="Project name" />
+        <Textarea bind:value={edit_description} placeholder="Description" rows={2} aria-label="Project description" />
         <div class="project-footer">
             <Button variant="secondary" size="sm" onclick={cancel_edit}>Cancel</Button>
             <Button variant="primary" size="sm" onclick={save_edit} disabled={saving_edit || !edit_name.trim()}>
@@ -97,6 +97,7 @@
                         event.stopPropagation();
                         on_toggle_select(project.id);
                     }}
+                    aria-label="Select {project.name}"
                 />
                 <h3>{project.name}</h3>
             </div>
@@ -133,15 +134,15 @@
                 {new Date(project.created_at).toLocaleDateString()}
             </span>
             <div class="project-card-actions">
-                <Button variant="secondary" size="sm" icon="edit" onclick={start_edit} />
+                <Button variant="secondary" size="sm" icon="edit" onclick={start_edit} aria-label="Edit project" />
                 {#if is_archived}
-                    <Button variant="secondary" size="sm" icon="unarchive" onclick={(event: Event) => {
+                    <Button variant="secondary" size="sm" icon="unarchive" aria-label="Unarchive project" onclick={(event: Event) => {
                         event.preventDefault();
                         event.stopPropagation();
                         on_unarchive(project.id);
                     }} />
                 {:else}
-                    <Button variant="secondary" size="sm" icon="archive" onclick={(event: Event) => {
+                    <Button variant="secondary" size="sm" icon="archive" aria-label="Archive project" onclick={(event: Event) => {
                         event.preventDefault();
                         event.stopPropagation();
                         on_archive(project.id);
@@ -151,6 +152,7 @@
                     variant="danger"
                     size="sm"
                     icon="delete"
+                    aria-label="Delete project"
                     onclick={(event: Event) => {
                         event.preventDefault();
                         event.stopPropagation();

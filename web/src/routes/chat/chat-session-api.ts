@@ -13,7 +13,8 @@ export async function fetch_sessions(): Promise<ChatSession[]> {
             updated_at: s.updated_at
         }));
     }
-    catch {
+    catch (error) {
+        console.error(error);
         toast_store.error('Failed to load chat sessions');
         return [];
     }
@@ -40,7 +41,8 @@ export async function fetch_session_detail(session_id: string): Promise<ChatSess
             messages
         };
     }
-    catch {
+    catch (error) {
+        console.error(error);
         toast_store.error('Failed to load messages');
         return null;
     }
@@ -49,6 +51,7 @@ export async function fetch_session_detail(session_id: string): Promise<ChatSess
 export async function create_new_session(model: string): Promise<ChatSession | null> {
     try {
         const raw = await api.create_chat_session({ model });
+        toast_store.success('Session created');
         return {
             id: raw.id,
             title: raw.title ?? null,
@@ -57,7 +60,8 @@ export async function create_new_session(model: string): Promise<ChatSession | n
             updated_at: raw.updated_at
         };
     }
-    catch {
+    catch (error) {
+        console.error(error);
         toast_store.error('Failed to create session');
         return null;
     }
@@ -66,9 +70,11 @@ export async function create_new_session(model: string): Promise<ChatSession | n
 export async function remove_session(session_id: string): Promise<boolean> {
     try {
         await api.delete_chat_session(session_id);
+        toast_store.success('Session deleted');
         return true;
     }
-    catch {
+    catch (error) {
+        console.error(error);
         toast_store.error('Failed to delete session');
         return false;
     }
@@ -77,6 +83,7 @@ export async function remove_session(session_id: string): Promise<boolean> {
 export async function update_session_title(session_id: string, title: string): Promise<ChatSession | null> {
     try {
         const raw = await api.rename_chat_session(session_id, title);
+        toast_store.success('Session renamed');
         return {
             id: raw.id,
             title: raw.title ?? null,
@@ -85,7 +92,8 @@ export async function update_session_title(session_id: string, title: string): P
             updated_at: raw.updated_at
         };
     }
-    catch {
+    catch (error) {
+        console.error(error);
         toast_store.error('Failed to rename session');
         return null;
     }

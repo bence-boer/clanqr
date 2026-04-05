@@ -56,7 +56,8 @@
             system_stats = stats;
             system_alerts = alerts_resp.alerts;
         }
-        catch {
+        catch (error) {
+            console.error(error);
             toast_store.error('Failed to load system stats');
         }
     }
@@ -125,13 +126,19 @@
     {#if loading}
         <LoadingSpinner label="Loading..." />
     {:else}
-        <KpiBar {pipeline} {active_agents} {pending_approval_count} {system_stats} onhealth_click={() => health_expanded = !health_expanded} />
+        <KpiBar {pipeline} {active_agents} {pending_approval_count} {system_stats} on_health_click={() => health_expanded = !health_expanded} />
 
         {#if health_expanded}
-            <SystemStatsCard {system_stats} {system_alerts} {stats_auto_refresh} onrefresh={load_system_stats} ontoggle_auto_refresh={toggle_stats_refresh} />
+            <SystemStatsCard {system_stats} {system_alerts} {stats_auto_refresh} on_refresh={load_system_stats} on_toggle_auto_refresh={toggle_stats_refresh} />
         {/if}
 
-        <PipelineCard {pipeline} onpause={() => api.pipeline_pause().then(load_data)} onresume={() => api.pipeline_resume().then(load_data)} />
+        <PipelineCard {pipeline} on_pause={() => api.pipeline_pause().then(load_data).catch((e: unknown) => {
+            console.error(e);
+            toast_store.error('Failed to pause pipeline');
+        })} on_resume={() => api.pipeline_resume().then(load_data).catch((e: unknown) => {
+            console.error(e);
+            toast_store.error('Failed to resume pipeline');
+        })} />
 
         <ActivityFeed events={activity_events} />
     {/if}

@@ -7,14 +7,13 @@
     import { use_event_stream } from '$lib/utils/event-stream.svelte';
     import { onMount } from 'svelte';
     import AgentGrid from './AgentGrid.svelte';
-    import LogPanel from './LogPanel.svelte';
+    import SessionDetailPanel from './SessionDetailPanel.svelte';
     import MonitoringFilters from './MonitoringFilters.svelte';
-    import { get_empty_state } from './monitoring.utils';
+    import { get_empty_state } from './monitoring-utils';
 
-    let agents = $state<AgentProcess[]>([]);
+    let agents = $state.raw<AgentProcess[]>([]);
     let pipeline = $state<PipelineStatus | null>(null);
-    let selected_log = $state<string | null>(null);
-    let log_content = $state('');
+    let selected_agent = $state<AgentProcess | null>(null);
     let loading = $state(true);
     let stopping = $state(false);
     let filtered_agents = $state<AgentProcess[]>([]);
@@ -27,6 +26,11 @@
             ]);
             agents = Array.isArray(status) ? status : [];
             pipeline = pipeline_data;
+            if (selected_agent) {
+                const current_id = selected_agent.id;
+                const updated = agents.find((a) => a.id === current_id);
+                if (updated) selected_agent = updated;
+            }
         }
         catch (error) {
             console.error('Failed to load agent status:', error);
@@ -51,22 +55,19 @@
         load_status();
     });
 
-    async function view_log(task_id: string) {
-        selected_log = task_id;
-        log_content = 'Agent logs are now available via task artifacts.';
-    }
-
-    async function refresh_log() {
-        if (!selected_log) return;
+    function select_agent(agent_id: string) {
+        selected_agent = agents.find((a) => a.id === agent_id) ?? null;
     }
 
     async function stop_all() {
         stopping = true;
         try {
             await api.stop_all_agents();
+            toast_store.success('All agents stopped');
             await load_status();
         }
-        catch {
+        catch (error) {
+            console.error(error);
             toast_store.error('Failed to stop agents');
         }
         finally {
@@ -74,17 +75,9 @@
         }
     }
 
-    function close_log() {
-        selected_log = null;
-        log_content = '';
-    }
-
     let running_count = $derived(agents.filter((a) => a.status === 'running').length);
     let completed_count = $derived(agents.filter((a) => a.status === 'completed').length);
     let failed_count = $derived(agents.filter((a) => a.status === 'failed').length);
-    let selected_agent_status = $derived(
-        selected_log ? agents.find((a) => a.id === selected_log)?.status ?? null : null
-    );
     let empty_state = $derived(agents.length === 0 ? get_empty_state(pipeline) : null);
 </script>
 
@@ -110,7 +103,7 @@
     </div>
 
     {#if !loading && agents.length > 0}
-        <MonitoringFilters {agents} bind:filtered_agents />
+        <MonitoringFilters {agents} onchange={(result) => filtered_agents = result} />
     {/if}
 
     {#if loading}
@@ -132,17 +125,11 @@
             detail="Try adjusting your filters or search query."
         />
     {:else}
-        <AgentGrid agents={filtered_agents} on_view_log={view_log} />
+        <AgentGrid agents={filtered_agents} on_view_log={select_agent} />
     {/if}
 
-    {#if selected_log}
-        <LogPanel
-            {selected_log}
-            {log_content}
-            agent_status={selected_agent_status}
-            on_close={close_log}
-            on_refresh={refresh_log}
-        />
+    {#if selected_agent}
+        <SessionDetailPanel agent={selected_agent} on_close={() => selected_agent = null} />
     {/if}
 </div>
 

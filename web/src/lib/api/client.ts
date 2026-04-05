@@ -1,5 +1,5 @@
 import type * as Types from '$lib/types';
-import { API_URL, BASE_URL, client, unwrap } from './rpc';
+import { API_URL, BASE_URL, client, custom_fetch, unwrap } from './rpc';
 import { chat_api } from './chat-client';
 
 export { BASE_URL, client };
@@ -12,7 +12,7 @@ export const api = {
         unwrap(await (await client.api.projects[':id'].$get({ param: { id } })).json()),
     create_project: async (data: { name: string, description?: string }): Promise<Types.Project> =>
         unwrap(await (await client.api.projects.$post({ json: data })).json()),
-    update_project: async (id: string, data: { name?: string, description?: string | null }): Promise<Types.Project> =>
+    update_project: async (id: string, data: { name?: string, description?: string | null, status?: 'active' | 'archived' | 'planning' }): Promise<Types.Project> =>
         unwrap(await (await client.api.projects[':id'].$patch({ param: { id }, json: data })).json()),
     delete_project: async (id: string): Promise<{ success: boolean }> =>
         unwrap(await (await client.api.projects[':id'].$delete({ param: { id } })).json()),
@@ -68,14 +68,15 @@ export const api = {
         unwrap(await (await client.api.agents.resume.$post()).json()),
     pipeline_stop_current: async (): Promise<{ success: boolean }> =>
         unwrap(await (await client.api.agents['stop-current'].$post()).json()),
+    agent_logs: async (sdk_session_id: string): Promise<{ entries: { timestamp: string, type: string, summary: string }[], text?: string }> => {
+        const res = await custom_fetch(`${API_URL}/api/agents/logs/${encodeURIComponent(sdk_session_id)}`);
+        return res.json();
+    },
     pipeline_reorder: async (task_ids: string[]): Promise<{ success: boolean }> => {
-        const response = await fetch(`${API_URL}/api/agents/queue/reorder`, {
+        const response = await custom_fetch(`${API_URL}/api/agents/queue/reorder`, {
             method: 'PATCH',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ task_ids })
         });
-        if (!response.ok) throw new Error('Failed to reorder queue');
         return response.json();
     },
 
@@ -132,6 +133,8 @@ export const api = {
         unwrap(await (await client.api.system.alerts.$get()).json()),
     list_models: async (): Promise<Types.ModelOption[]> =>
         unwrap(await (await client.api.system.models.$get()).json()),
+    get_defaults: async (): Promise<Types.SdkDefaults> =>
+        unwrap(await (await client.api.system.defaults.$get()).json()),
 
     // ── Usage ─────────────────────────────────────────────────────────────────
     usage_summary: async (): Promise<Types.UsageSummary> =>
@@ -159,49 +162,15 @@ export const api = {
 
     // ── Task Artifacts ─────────────────────────────────────────────────────────
     list_task_files: async (task_id: string): Promise<Types.TaskArtifact[]> => {
-        const response = await fetch(`${API_URL}/api/tasks/${encodeURIComponent(task_id)}/files`, {
-            credentials: 'include'
-        });
-        if (!response.ok) return [];
-        return response.json();
+        try {
+            const response = await custom_fetch(`${API_URL}/api/tasks/${encodeURIComponent(task_id)}/files`);
+            return response.json();
+        }
+        catch (error) {
+            console.error('list_task_files failed:', error);
+            return [];
+        }
     },
     task_file_url: (task_id: string, filename: string): string =>
-        `${API_URL}/api/tasks/${encodeURIComponent(task_id)}/files/${encodeURIComponent(filename)}`,
-
-    // ── Admin ─────────────────────────────────────────────────────────────────
-    list_users: async (): Promise<Types.User[]> =>
-        unwrap(await (await client.api.admin.$get()).json()),
-    update_user_role: async (id: string, role: 'admin' | 'member') =>
-        unwrap(await (await client.api.admin[':id'].$patch({ param: { id }, json: { role } })).json()),
-    delete_user: async (id: string): Promise<{ success: boolean }> =>
-        unwrap(await (await client.api.admin[':id'].$delete({ param: { id } })).json()),
-    revoke_user_sessions: async (id: string): Promise<{ success: boolean }> =>
-        unwrap(await (await client.api.admin[':id'].sessions.$delete({ param: { id } })).json()),
-
-    // ── Invites ──────────────────────────────────────────────────────────────
-    create_invite: async (expires_in_days?: number) => {
-        const response = await fetch(`${API_URL}/api/admin/invites`, {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(expires_in_days ? { expires_in_days } : {})
-        });
-        if (!response.ok) throw new Error('Failed to create invite');
-        return response.json();
-    },
-    list_invites: async () => {
-        const response = await fetch(`${API_URL}/api/admin/invites`, {
-            credentials: 'include'
-        });
-        if (!response.ok) throw new Error('Failed to list invites');
-        return response.json();
-    },
-    revoke_invite: async (id: string): Promise<{ success: boolean }> => {
-        const response = await fetch(`${API_URL}/api/admin/invites/${encodeURIComponent(id)}`, {
-            method: 'DELETE',
-            credentials: 'include'
-        });
-        if (!response.ok) throw new Error('Failed to revoke invite');
-        return response.json();
-    }
+        `${API_URL}/api/tasks/${encodeURIComponent(task_id)}/files/${encodeURIComponent(filename)}`
 };

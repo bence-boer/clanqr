@@ -3,6 +3,7 @@
     import { Button, Input, Select, Textarea } from '$lib/components/primitives';
     import { toast_store } from '$lib/stores/toast.svelte';
     import type { Feature } from '$lib/types';
+    import { onMount } from 'svelte';
 
     interface Props {
         feature: Feature
@@ -41,7 +42,8 @@
             if (!model_options.find((m) => m.value === edit_planning_model) && model_options.length > 0) edit_planning_model = model_options[0].value;
             if (!model_options.find((m) => m.value === edit_execution_model) && model_options.length > 0) edit_execution_model = model_options[0].value;
         }
-        catch {
+        catch (error) {
+            console.error(error);
             toast_store.error('Failed to load models');
         }
         finally {
@@ -49,7 +51,7 @@
         }
     }
 
-    $effect(() => {
+    onMount(() => {
         load_models();
     });
 

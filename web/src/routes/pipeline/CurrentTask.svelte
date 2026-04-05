@@ -1,33 +1,24 @@
 <script lang="ts">
     import { resolve } from '$app/paths';
-    import { CodeBlock, EmptyState } from '$lib/components';
+    import { EmptyState } from '$lib/components';
     import { Button } from '$lib/components/primitives';
     import type { PipelineStatus } from '$lib/types';
+    import LiveEventPanel from './LiveEventPanel.svelte';
 
     let {
         pipeline,
-        log_visible,
-        log_text,
-        log_loading,
         action_busy,
-        ontoggle_log,
-        onstop,
-        onrefresh_log,
+        on_stop,
         format_duration
     }: {
         pipeline: PipelineStatus | null
-        log_visible: boolean
-        log_text: string
-        log_loading: boolean
         action_busy: boolean
-        ontoggle_log: () => void
-        onstop: () => void
-        onrefresh_log: () => Promise<boolean> | Promise<void>
+        on_stop: () => void
         format_duration: (started_at: string | null) => string
     } = $props();
 
-    // §4.1 — Live elapsed timer
     let elapsed = $state('');
+    let log_visible = $state(false);
 
     $effect(() => {
         const task = pipeline?.current_task;
@@ -43,26 +34,6 @@
         };
         update();
         const id = setInterval(update, 1000);
-        return () => clearInterval(id);
-    });
-
-    // §4.2 — Auto-refresh log with §14.6 backoff
-    let log_refresh_interval = $state(3000);
-    const LOG_MIN_INTERVAL = 3000;
-    const LOG_MAX_INTERVAL = 30000;
-
-    $effect(() => {
-        if (!log_visible || !pipeline?.current_task) return;
-        const interval = log_refresh_interval;
-        const id = setInterval(async () => {
-            try {
-                await onrefresh_log();
-                log_refresh_interval = LOG_MIN_INTERVAL;
-            }
-            catch {
-                log_refresh_interval = Math.min(log_refresh_interval * 2, LOG_MAX_INTERVAL);
-            }
-        }, interval);
         return () => clearInterval(id);
     });
 </script>
@@ -89,7 +60,6 @@
                             <span class="breadcrumb-text">{task.project_name}</span>
                         {/if}
                     {/if}
-
                     {#if task.feature_title}
                         {#if task.project_name}
                             <span class="breadcrumb-sep">/</span>
@@ -120,33 +90,18 @@
             </div>
 
             <div class="current-task-actions">
-                <Button variant="secondary" size="sm" icon="terminal" onclick={ontoggle_log}>
+                <Button variant="secondary" size="sm" icon="terminal" onclick={() => {
+                    log_visible = !log_visible;
+                }}>
                     {log_visible ? 'Hide Log' : 'View Log'}
                 </Button>
-                <Button variant="danger" size="sm" icon="stop" onclick={onstop} disabled={action_busy}>Stop</Button>
+                <Button variant="danger" size="sm" icon="stop" onclick={on_stop} disabled={action_busy}>Stop</Button>
             </div>
 
-            {#if log_visible}
-                <div class="log-panel">
-                    <div class="log-toolbar">
-                        <span class="log-label">
-                            {#if pipeline?.current_task}
-                                <span class="live-dot"></span> Live
-                            {:else}
-                                Live Output
-                            {/if}
-                        </span>
-                        <Button
-                            variant="ghost" size="icon" icon="refresh"
-                            onclick={onrefresh_log}
-                            disabled={log_loading}
-                            title="Refresh"
-                            aria-label="Refresh log"
-                        />
-                    </div>
-                    <CodeBlock content={log_text} />
-                </div>
-            {/if}
+            <LiveEventPanel
+                sdk_session_id={pipeline?.current_sdk_session_id}
+                visible={log_visible}
+            />
         </div>
     {:else}
         <EmptyState icon="hourglass_empty" message="No task is currently running" />
@@ -160,29 +115,33 @@
         text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.75rem;
         display: flex; align-items: center; gap: 0.4rem;
     }
-    .current-task-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; }
+    .current-task-card {
+        background: var(--bg-surface); border: 1px solid var(--border);
+        border-radius: var(--radius); padding: 1rem 1.25rem;
+    }
     .current-task-body { min-width: 0; }
-    .breadcrumb { display: flex; align-items: center; gap: 0.35rem; font-size: 0.875rem; flex-wrap: wrap; margin-bottom: 0.3rem; }
-    .breadcrumb-link { color: var(--accent); text-decoration: none; display: inline-flex; align-items: center; gap: 0.2rem; font-weight: 500; }
+    .breadcrumb {
+        display: flex; align-items: center; gap: 0.35rem;
+        font-size: 0.875rem; flex-wrap: wrap; margin-bottom: 0.3rem;
+    }
+    .breadcrumb-link {
+        color: var(--accent); text-decoration: none;
+        display: inline-flex; align-items: center; gap: 0.2rem; font-weight: 500;
+    }
     .breadcrumb-link:hover { text-decoration: underline; }
     .breadcrumb-text { color: var(--fg-muted); }
     .breadcrumb-sep { color: var(--border); font-size: 0.8rem; }
-    .task-title { font-size: 1rem; color: var(--fg); font-weight: 600; line-height: 1.4; margin-bottom: 0.3rem; }
-    .task-desc { font-size: 0.85rem; color: var(--fg-muted); margin-bottom: 0.45rem; line-height: 1.4; }
-    .task-meta { font-size: 0.8rem; color: var(--fg-muted); display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+    .task-title {
+        font-size: 1rem; color: var(--fg); font-weight: 600;
+        line-height: 1.4; margin-bottom: 0.3rem;
+    }
+    .task-desc {
+        font-size: 0.85rem; color: var(--fg-muted);
+        margin-bottom: 0.45rem; line-height: 1.4;
+    }
+    .task-meta {
+        font-size: 0.8rem; color: var(--fg-muted);
+        display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;
+    }
     .current-task-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem; }
-    .log-panel { margin-top: 0.85rem; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-    .log-toolbar {
-        display: flex; align-items: center; justify-content: space-between;
-        padding: 0.4rem 0.75rem; background: var(--bg-elevated); border-bottom: 1px solid var(--border);
-    }
-    .log-label { font-size: 0.75rem; color: var(--fg-muted); font-weight: 600; display: flex; align-items: center; gap: 0.4rem; }
-    .live-dot {
-        display: inline-block; width: 8px; height: 8px; border-radius: 50%;
-        background: var(--success); animation: pulse-dot 1.5s ease-in-out infinite;
-    }
-    @keyframes pulse-dot {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.4; }
-    }
 </style>

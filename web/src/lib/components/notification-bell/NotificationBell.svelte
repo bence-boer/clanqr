@@ -3,6 +3,7 @@
     import { resolve } from '$app/paths';
     import type { Pathname } from '$app/types';
     import { notification_store, type Notification } from '$lib/stores/notifications.svelte';
+    import { format_relative_short } from '$lib/utils/format';
 
     let open = $state(false);
 
@@ -26,18 +27,6 @@
         notification_store.mark_all_read();
     }
 
-    function format_time(iso: string): string {
-        const d = new Date(iso);
-        const now = new Date();
-        const diff_ms = now.getTime() - d.getTime();
-        const diff_min = Math.floor(diff_ms / 60_000);
-        if (diff_min < 1) return 'just now';
-        if (diff_min < 60) return `${diff_min}m ago`;
-        const diff_hr = Math.floor(diff_min / 60);
-        if (diff_hr < 24) return `${diff_hr}h ago`;
-        return `${Math.floor(diff_hr / 24)}d ago`;
-    }
-
     const type_icon: Record<Notification['type'], string> = {
         success: 'check_circle',
         danger: 'error',
@@ -50,7 +39,7 @@
     if (open) close();
 }} />
 
-<div class="bell-wrapper">
+<div data-slot="notification-bell" class="bell-wrapper">
     <button class="bell-btn" onclick={(e: MouseEvent) => {
         e.stopPropagation();
         toggle();
@@ -75,10 +64,10 @@
                 <div class="notification-list">
                     {#each notification_store.items.slice(0, 20) as n (n.id)}
                         <button class="notification-item" class:unread={!n.read} onclick={() => handle_click(n)}>
-                            <span class="icon n-icon {n.type}" style="font-size:16px">{type_icon[n.type]}</span>
+                            <span class={['icon', 'n-icon', n.type].join(' ')} style="font-size:16px">{type_icon[n.type]}</span>
                             <div class="n-content">
                                 <span class="n-message">{n.message}</span>
-                                <span class="n-time">{format_time(n.timestamp)}</span>
+                                <span class="n-time">{format_relative_short(n.timestamp)}</span>
                             </div>
                         </button>
                     {/each}
@@ -99,7 +88,7 @@
     .badge {
         position: absolute; top: 0; right: 0; min-width: 16px; height: 16px;
         padding: 0 4px; border-radius: 999px; font-size: 0.6rem; font-weight: 700;
-        background: var(--danger, #c9544a); color: #fff;
+        background: var(--danger); color: var(--fg);
         display: flex; align-items: center; justify-content: center; line-height: 1;
     }
     .dropdown {
@@ -128,11 +117,11 @@
         color: inherit; font-family: inherit; font-size: inherit; transition: background 0.1s;
     }
     .notification-item:hover { background: var(--bg-elevated, var(--bg)); }
-    .notification-item.unread { background: rgba(99, 102, 241, 0.06); }
-    .n-icon.success { color: var(--success, #22c55e); }
-    .n-icon.danger { color: var(--danger, #c9544a); }
-    .n-icon.warning { color: var(--warning, #e89a2e); }
-    .n-icon.info { color: var(--accent, #6366f1); }
+    .notification-item.unread { background: rgba(var(--accent-rgb), 0.06); }
+    .n-icon.success { color: var(--success); }
+    .n-icon.danger { color: var(--danger); }
+    .n-icon.warning { color: var(--warning); }
+    .n-icon.info { color: var(--info); }
     .n-content { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; flex: 1; }
     .n-message { font-size: 0.78rem; color: var(--fg); line-height: 1.35; }
     .n-time { font-size: 0.65rem; color: var(--fg-muted); }

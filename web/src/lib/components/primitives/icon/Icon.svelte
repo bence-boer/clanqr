@@ -25,7 +25,7 @@
     };
 </script>
 
-<span class={['icon', class_name, (type === 'progress_activity' ? 'spin' : ''), size_classes[size]].filter(Boolean).join(' ')} {...rest_props}>{type}</span>
+<span data-slot="icon" class={['icon', class_name, (type === 'progress_activity' ? 'spin' : ''), size_classes[size]].filter(Boolean).join(' ')} {...rest_props}>{type}</span>
 
 <style>
     .icon {

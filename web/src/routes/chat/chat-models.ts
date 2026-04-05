@@ -1,28 +1,31 @@
 import { generate_id } from '$lib/utils/id';
-import type { ChatMessage } from '$lib/types';
+import type { ChatMessage, ModelOption } from '$lib/types';
 
 export interface ModelGroup {
     group: string
     models: string[]
 }
 
-export const chat_models: ModelGroup[] = [
-    {
-        group: 'Claude',
-        models: [
-            'claude-sonnet-4.6', 'claude-sonnet-4.5', 'claude-haiku-4.5',
-            'claude-opus-4.6', 'claude-opus-4.6-fast', 'claude-opus-4.5', 'claude-sonnet-4'
-        ]
-    },
-    { group: 'Gemini', models: ['gemini-3-pro-preview'] },
-    {
-        group: 'GPT',
-        models: [
-            'gpt-5.3-codex', 'gpt-5.2-codex', 'gpt-5.2', 'gpt-5.1-codex-max',
-            'gpt-5.1-codex', 'gpt-5.1', 'gpt-5.1-codex-mini', 'gpt-5-mini', 'gpt-4.1'
-        ]
+export function group_models(models: ModelOption[]): ModelGroup[] {
+    const groups = new Map<string, string[]>();
+    for (const m of models) {
+        const id = m.value.toLowerCase();
+        let group: string;
+        if (id.startsWith('claude') || id.startsWith('anthropic')) group = 'Claude';
+        else if (id.startsWith('gpt') || id.startsWith('o1') || id.startsWith('o3') || id.startsWith('o4')) group = 'GPT';
+        else if (id.startsWith('gemini')) group = 'Gemini';
+        else group = 'Other';
+
+        const existing = groups.get(group);
+        if (existing) {
+            existing.push(m.value);
+        }
+        else {
+            groups.set(group, [m.value]);
+        }
     }
-];
+    return Array.from(groups.entries()).map(([group, models]) => ({ group, models }));
+}
 
 export function format_session_title(session: { title?: string | null, created_at: string }): string {
     return session.title ?? `Chat ${new Date(session.created_at).toLocaleDateString()}`;

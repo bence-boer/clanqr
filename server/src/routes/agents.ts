@@ -5,7 +5,19 @@ import { pipeline_service } from '../services/pipeline_service';
 import { get_session_concurrency } from '../services/session_pool_service';
 import { plan_feature } from '../services/sdk_session_service';
 import { prompt_service } from '../services/prompt_service';
+import { log_store } from '../services/log_store_service';
 import { logger } from '../utils/logger';
+
+function summarize_entry(type: string, data: Record<string, unknown> = {}): string {
+    if (type === 'tool_start' || type === 'tool_complete') return `${data.tool_name ?? 'unknown'}`;
+    if (type === 'agent_output' || type === 'agent_message') {
+        const text = String(data.text ?? data.content ?? '');
+        return text.length > 120 ? text.slice(0, 120) + '…' : text;
+    }
+    if (type === 'usage') return `${data.input_tokens ?? 0}in/${data.output_tokens ?? 0}out`;
+    if (type === 'error' || type === 'warning') return String(data.message ?? data.text ?? type);
+    return type;
+}
 
 export const agents_routes = new Hono<AppBindings>()
     // ── Pipeline status & controls ────────────────────────────────────────────
@@ -40,6 +52,7 @@ export const agents_routes = new Hono<AppBindings>()
             state: pipeline_info.state,
             current_task,
             current_run_id: pipeline_info.current_run_id,
+            current_sdk_session_id: pipeline_info.current_sdk_session_id,
             queue_depth: count ?? 0
         });
     })
@@ -124,11 +137,19 @@ export const agents_routes = new Hono<AppBindings>()
 
     .get('/status', async (context) => {
         const supabase = context.get('supabase');
-        const { data } = await supabase.from('agent_sessions')
-            .select('id, agent_type, status, sdk_session_id, started_at, finished_at, feature_id, task_id')
+        const one_hour_ago = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+        const cols = 'id, agent_type, status, sdk_session_id, started_at, finished_at, feature_id, task_id, model, prompt_tokens, completion_tokens, estimated_cost';
+        const { data: running } = await supabase.from('agent_sessions')
+            .select(cols)
             .in('status', ['running', 'pending'])
             .order('started_at', { ascending: false });
-        return context.json(data ?? []);
+        const { data: recent } = await supabase.from('agent_sessions')
+            .select(cols)
+            .in('status', ['completed', 'failed', 'cancelled'])
+            .gte('finished_at', one_hour_ago)
+            .order('finished_at', { ascending: false })
+            .limit(20);
+        return context.json([...(running ?? []), ...(recent ?? [])]);
     })
 
     .post('/stop-all', async (context) => {
@@ -137,4 +158,34 @@ export const agents_routes = new Hono<AppBindings>()
             .update({ status: 'cancelled', finished_at: new Date().toISOString() })
             .eq('status', 'running');
         return context.json({ success: true, message: 'All agents stopped' });
+    })
+
+    .get('/logs/:session_id', async (context) => {
+        const session_id = context.req.param('session_id');
+        if (!session_id) return context.json({ error: 'Missing session_id' }, 400);
+
+        const raw_entries = log_store.get(session_id);
+
+        if (raw_entries.length === 0) {
+            const supabase = context.get('supabase');
+            const { data } = await supabase.from('agent_sessions')
+                .select('summary, error, status')
+                .eq('sdk_session_id', session_id)
+                .single();
+            if (data) {
+                const fallback = data.error
+                    ? `Status: ${data.status}\nError: ${data.error}`
+                    : data.summary
+                        ? `Status: ${data.status}\nSummary: ${data.summary}`
+                        : `Status: ${data.status}`;
+                return context.json({ entries: [], text: fallback });
+            }
+        }
+
+        const entries = raw_entries.map((e) => ({
+            timestamp: e.timestamp,
+            type: e.type,
+            summary: summarize_entry(e.type, e.data as Record<string, unknown>)
+        }));
+        return context.json({ entries });
     });

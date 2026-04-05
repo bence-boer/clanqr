@@ -6,14 +6,14 @@
         system_stats,
         system_alerts = [],
         stats_auto_refresh,
-        onrefresh,
-        ontoggle_auto_refresh
+        on_refresh,
+        on_toggle_auto_refresh
     }: {
         system_stats: SystemStats | null
         system_alerts?: SystemAlert[]
         stats_auto_refresh: boolean
-        onrefresh: () => void
-        ontoggle_auto_refresh: () => void
+        on_refresh: () => void
+        on_toggle_auto_refresh: () => void
     } = $props();
 </script>
 
@@ -21,8 +21,8 @@
     <div class="section-header">
         <h3>System Stats</h3>
         <div class="section-actions">
-            <Button variant="ghost" size="icon" onclick={onrefresh} title="Refresh stats" icon="refresh" aria-label="Refresh stats" />
-            <Button variant={stats_auto_refresh ? 'primary' : 'secondary'} onclick={ontoggle_auto_refresh} title="Auto-refresh every 15s" icon="update">
+            <Button variant="ghost" size="icon" onclick={on_refresh} title="Refresh stats" icon="refresh" aria-label="Refresh stats" />
+            <Button variant={stats_auto_refresh ? 'primary' : 'secondary'} onclick={on_toggle_auto_refresh} title="Auto-refresh every 15s" icon="update">
                 Auto-refresh
             </Button>
         </div>
@@ -151,7 +151,7 @@
         background: var(--danger);
     }
     .progress-fill.warm {
-        background: #f4a261;
+        background: var(--warning);
     }
 
     .muted-text {
@@ -177,15 +177,15 @@
     }
 
     .alert-warning {
-        background: rgba(244, 162, 97, 0.12);
-        color: #f4a261;
-        border: 1px solid rgba(244, 162, 97, 0.3);
+        background: rgba(var(--warning-rgb), 0.12);
+        color: var(--warning);
+        border: 1px solid rgba(var(--warning-rgb), 0.3);
     }
 
     .alert-critical {
-        background: rgba(201, 84, 74, 0.12);
+        background: rgba(var(--danger-rgb), 0.12);
         color: var(--danger);
-        border: 1px solid rgba(201, 84, 74, 0.3);
+        border: 1px solid rgba(var(--danger-rgb), 0.3);
     }
 
     @media (max-width: 768px) {

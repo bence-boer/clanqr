@@ -102,6 +102,15 @@ export type SystemAlert = SystemAlerts['alerts'][number];
 export type ModelOption = {
     value: string
     label: string
+    billing_multiplier?: number
+    capabilities?: {
+        supports_vision?: boolean
+        supports_reasoning_effort?: boolean
+        max_context_tokens?: number
+    }
+    policy_state?: string
+    reasoning_efforts?: string[]
+    default_reasoning_effort?: string
 };
 
 // ── Usage ─────────────────────────────────────────────────────────────────────
@@ -138,6 +147,15 @@ export type TaskArtifact = {
     size_bytes: number
     mime_type: string
     created_at: string
+};
+
+// ── System Settings ──────────────────────────────────────────────────────────
+export type SdkDefaults = {
+    default_model: string
+    default_reasoning_effort: string
+    default_timeout_minutes: number
+    max_concurrent_sessions: number
+    cost_per_premium_request: number
 };
 
 // Re-export material symbols (not API-derived)
