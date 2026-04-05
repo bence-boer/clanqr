@@ -1,5 +1,6 @@
 <script lang="ts">
     import { Button } from '$lib/components/primitives';
+    import { generate_id } from '$lib/utils/id';
     import type { Snippet } from 'svelte';
 
     interface Props {
@@ -30,7 +31,7 @@
 
     let dialog_ref: HTMLDialogElement | null = $state(null);
 
-    const modal_id = crypto.randomUUID().slice(0, 8);
+    const modal_id = generate_id().slice(0, 8);
 
     $effect(() => {
         if (!dialog_ref) return;
