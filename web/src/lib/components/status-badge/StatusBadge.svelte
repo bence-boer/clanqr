@@ -13,4 +13,4 @@
     const label = $derived(status.replace(/_/g, ' '));
 </script>
 
-<Badge variant={badge_variant} {icon}>{label}</Badge>
+<Badge variant={badge_variant} {icon} data-slot="status-badge">{label}</Badge>

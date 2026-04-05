@@ -90,7 +90,7 @@
 
 <div class="history-item" class:flash-success={is_new}>
     <div class="history-item-main">
-        <span class="icon run-status-icon {status_class(run.status)}">{status_icon(run.status)}</span>
+        <span class={['icon', 'run-status-icon', status_class(run.status)].join(' ')}>{status_icon(run.status)}</span>
         <div class="history-item-copy">
             {#if project_name || feature_title}
                 <div class="run-breadcrumb">

@@ -141,7 +141,7 @@
                 {#each resolved_traits as rt (rt.id)}
                     <div class="resolved-trait">
                         <span class="artifact-name">{rt.name}</span>
-                        <span class="scope-badge {rt.scope_source}">{scope_labels[rt.scope_source] ?? rt.scope_source}</span>
+                        <span class={['scope-badge', rt.scope_source].join(' ')}>{scope_labels[rt.scope_source] ?? rt.scope_source}</span>
                     </div>
                 {/each}
             {/if}

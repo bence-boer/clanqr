@@ -11,9 +11,9 @@
 </script>
 
 {#if toast_store.items.length > 0}
-    <div class="toast-container" aria-live="polite">
+    <div data-slot="toast" class="toast-container" aria-live="polite">
         {#each toast_store.items as toast (toast.id)}
-            <div class="toast toast-{toast.type}" role="alert">
+            <div class={['toast', `toast-${toast.type}`].join(' ')} role="alert">
                 <span class="icon" style="font-size:16px">{icon_map[toast.type]}</span>
                 <span class="toast-message">{toast.message}</span>
                 <Button variant="ghost" size="icon" icon="close" onclick={() => toast_store.dismiss(toast.id)} aria-label="Dismiss" />

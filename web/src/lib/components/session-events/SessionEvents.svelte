@@ -65,7 +65,7 @@
     }
 </script>
 
-<div class="events-feed" bind:this={scroll_el}>
+<div data-slot="session-events" class="events-feed" bind:this={scroll_el}>
     {#if entries.length === 0}
         <p class="empty">{is_live ? 'Waiting for events…' : 'No events recorded.'}</p>
     {:else}

@@ -21,7 +21,7 @@
     const resolved_icon = $derived(icon ?? default_icons[variant]);
 </script>
 
-<div class="error-banner variant-{variant}" role="alert">
+<div data-slot="error-banner" class={['error-banner', `variant-${variant}`].join(' ')} role="alert">
     <span class="icon banner-icon">{resolved_icon}</span>
     <span class="banner-message">{message}</span>
 </div>

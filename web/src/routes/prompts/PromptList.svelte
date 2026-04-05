@@ -3,6 +3,7 @@
     import { EmptyState } from '$lib/components';
     import { Button } from '$lib/components/primitives';
     import { Textarea } from '$lib/components/primitives/textarea';
+    import { toast_store } from '$lib/stores/toast.svelte';
     import type { PromptRecord } from '$lib/types';
 
     interface PromptEditState {
@@ -46,7 +47,9 @@
             edit_state[agent_type] = { editing: false, content: state.content, saving: false };
             on_updated();
         }
-        catch {
+        catch (error) {
+            console.error(error);
+            toast_store.error('Failed to save prompt');
             state.saving = false;
         }
     }
@@ -82,13 +85,14 @@
                 </div>
 
                 <Textarea
-                    class="prompt-textarea {role_state?.editing ? 'editable' : ''}"
+                    class={['prompt-textarea', role_state?.editing ? 'editable' : ''].filter(Boolean).join(' ')}
                     readonly={!role_state?.editing}
                     value={role_state?.content ?? prompt.content}
                     oninput={(event) => {
                         if (role_state) role_state.content = (event.target as HTMLTextAreaElement).value;
                     }}
                     rows={18}
+                    aria-label="{prompt.agent_type.charAt(0).toUpperCase() + prompt.agent_type.slice(1)} prompt content"
                 />
 
                 {#if role_state?.editing}

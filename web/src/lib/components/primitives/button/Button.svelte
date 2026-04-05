@@ -50,6 +50,7 @@
     {...rest_props}
     bind:this={ref}
     disabled={rest_props.disabled || loading}
+    data-slot="button"
     class={['base-btn', variant_classes[variant], size_classes[size], active ? 'active' : '', class_name].filter(Boolean).join(' ')}
 >
     {#if loading}

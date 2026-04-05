@@ -31,7 +31,7 @@
 <div class="kpi-bar">
     <a href={resolve('/pipeline')} class="kpi-item">
         <span class="kpi-label">Pipeline</span>
-        <span class="kpi-value kpi-{pipeline?.state ?? 'idle'}">{pipeline ? pipeline_label(pipeline.state) : '—'}</span>
+        <span class={['kpi-value', `kpi-${pipeline?.state ?? 'idle'}`].join(' ')}>{pipeline ? pipeline_label(pipeline.state) : '—'}</span>
     </a>
     <a href={resolve('/projects')} class="kpi-item">
         <span class="kpi-label">Awaiting Approval</span>
@@ -43,7 +43,7 @@
     </a>
     <button class="kpi-item kpi-health" onclick={on_health_click}>
         <span class="kpi-label">System Health</span>
-        <span class="health-dot health-{health}"></span>
+        <span class={['health-dot', `health-${health}`].join(' ')}></span>
     </button>
 </div>
 

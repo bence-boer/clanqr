@@ -63,6 +63,7 @@
 
 <dialog
     bind:this={dialog_ref}
+    data-slot="confirm-modal"
     class="confirm-modal"
     class:variant-danger={variant === 'danger'}
     class:variant-warning={variant === 'warning'}

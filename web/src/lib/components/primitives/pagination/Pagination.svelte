@@ -11,7 +11,7 @@
 </script>
 
 {#if total_pages > 1}
-    <div class="pagination">
+    <div data-slot="pagination" class="pagination">
         <Button
             variant="secondary"
             size="sm"

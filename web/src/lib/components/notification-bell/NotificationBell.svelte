@@ -39,7 +39,7 @@
     if (open) close();
 }} />
 
-<div class="bell-wrapper">
+<div data-slot="notification-bell" class="bell-wrapper">
     <button class="bell-btn" onclick={(e: MouseEvent) => {
         e.stopPropagation();
         toggle();
@@ -64,7 +64,7 @@
                 <div class="notification-list">
                     {#each notification_store.items.slice(0, 20) as n (n.id)}
                         <button class="notification-item" class:unread={!n.read} onclick={() => handle_click(n)}>
-                            <span class="icon n-icon {n.type}" style="font-size:16px">{type_icon[n.type]}</span>
+                            <span class={['icon', 'n-icon', n.type].join(' ')} style="font-size:16px">{type_icon[n.type]}</span>
                             <div class="n-content">
                                 <span class="n-message">{n.message}</span>
                                 <span class="n-time">{format_relative_short(n.timestamp)}</span>

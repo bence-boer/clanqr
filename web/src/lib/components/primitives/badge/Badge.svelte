@@ -28,7 +28,7 @@
     };
 </script>
 
-<span {...rest_props} class="badge {variant_classes[variant]} {class_name}">
+<span {...rest_props} data-slot="badge" class={['badge', variant_classes[variant], class_name].filter(Boolean).join(' ')}>
     {#if icon}
         <span class="icon" style="font-size:11px">{icon}</span>
     {/if}

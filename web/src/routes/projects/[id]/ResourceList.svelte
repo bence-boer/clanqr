@@ -43,8 +43,8 @@
                         {resource.title ?? resource.url}
                     </a>
                     <div class="resource-actions">
-                        <span class="badge {status_display.class_name}">
-                            <span class="icon {status_display.class_name === 'badge-pending' ? 'spin' : ''}" style="font-size:11px">
+                        <span class={['badge', status_display.class_name].join(' ')}>
+                            <span class={['icon', status_display.class_name === 'badge-pending' ? 'spin' : ''].filter(Boolean).join(' ')} style="font-size:11px">
                                 {status_display.icon}
                             </span>
                             {status_display.label}
@@ -73,8 +73,8 @@
         <p class="resource-note">This resource will be available for future tasks.</p>
     {/if}
     <div class="add-resource-row">
-        <Input type="url" placeholder="https://..." bind:value={new_resource_url} />
-        <Input type="text" placeholder="Title" bind:value={new_resource_title} class="input-title" />
+        <Input type="url" placeholder="https://..." bind:value={new_resource_url} aria-label="Resource URL" />
+        <Input type="text" placeholder="Title" bind:value={new_resource_title} class="input-title" aria-label="Resource title" />
         <Button variant="primary" size="sm" onclick={add_resource} disabled={!new_resource_url.trim()}>
             <span class="icon" style="font-size:14px">add</span> Add
         </Button>
