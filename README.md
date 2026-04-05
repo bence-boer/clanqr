@@ -117,7 +117,7 @@ them manually before pushing.
 ## Architecture
 
 ```
-ralph-agent-workspace/
+clanqr/
   server/                   Hono API (Bun, port 3001)
     src/
       index.ts              Entry point, middleware + route mounting
