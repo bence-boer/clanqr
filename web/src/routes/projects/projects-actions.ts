@@ -68,7 +68,7 @@ export async function archive_project_action(id: string): Promise<boolean> {
     try {
         await api.update_project(
             id,
-            { status: 'archived' } as Record<string, unknown> as { name?: string, description?: string | null }
+            { status: 'archived' }
         );
         toast_store.success('Project archived');
         return true;
@@ -84,7 +84,7 @@ export async function unarchive_project_action(id: string): Promise<boolean> {
     try {
         await api.update_project(
             id,
-            { status: 'active' } as Record<string, unknown> as { name?: string, description?: string | null }
+            { status: 'active' }
         );
         toast_store.success('Project restored');
         return true;
@@ -105,7 +105,7 @@ export async function save_project_edit_action(
         await api.update_project(id, {
             name: name.trim(),
             description: description.trim() || null
-        } as Partial<Project>);
+        });
         toast_store.success('Project updated');
         return true;
     }

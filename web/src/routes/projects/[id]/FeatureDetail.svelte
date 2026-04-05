@@ -7,7 +7,7 @@
     import ResourceList from './ResourceList.svelte';
     import FeatureEditForm from './FeatureEditForm.svelte';
     import TaskProgressBar from './TaskProgressBar.svelte';
-    import { create_feature_handlers } from './feature_handlers';
+    import { create_feature_handlers } from './feature-handlers';
 
     interface Props {
         feature: Feature

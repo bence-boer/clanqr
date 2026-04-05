@@ -12,7 +12,7 @@
     import FeatureDetail from './FeatureDetail.svelte';
     import FeatureForm from './FeatureForm.svelte';
     import FeatureList from './FeatureList.svelte';
-    import * as actions from './feature_actions';
+    import * as actions from './feature-actions';
 
     let project = $state<Project | null>(null);
     let features = $state<Feature[]>([]);

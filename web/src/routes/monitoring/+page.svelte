@@ -9,7 +9,7 @@
     import AgentGrid from './AgentGrid.svelte';
     import SessionDetailPanel from './SessionDetailPanel.svelte';
     import MonitoringFilters from './MonitoringFilters.svelte';
-    import { get_empty_state } from './monitoring.utils';
+    import { get_empty_state } from './monitoring-utils';
 
     let agents = $state.raw<AgentProcess[]>([]);
     let pipeline = $state<PipelineStatus | null>(null);

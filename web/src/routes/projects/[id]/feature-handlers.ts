@@ -26,7 +26,7 @@ export function create_feature_handlers(get_feature: () => Feature, on_update: (
             await safe_call(() => api.delete_task(task_id), 'delete task', on_update);
         },
         toggle_auto_approve: (enabled: boolean) => safe_call(
-            () => api.update_feature(get_feature().id, { auto_approve: enabled } as Partial<Feature>),
+            () => api.update_feature(get_feature().id, { auto_approve: enabled }),
             'update auto-approve', on_update
         ),
         add_resource: async (url: string, title?: string) => {
@@ -39,7 +39,7 @@ export function create_feature_handlers(get_feature: () => Feature, on_update: (
             planning_model: string | null
             execution_model: string | null
         }) => {
-            await safe_call(() => api.update_feature(get_feature().id, data as Partial<Feature>), 'update feature', on_update);
+            await safe_call(() => api.update_feature(get_feature().id, data), 'update feature', on_update);
         }
     };
 }

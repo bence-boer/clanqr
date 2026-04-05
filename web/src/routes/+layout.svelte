@@ -50,7 +50,7 @@
         const saved = localStorage.getItem('sidebar_collapsed');
         if (saved === 'true') sidebar_collapsed = true;
 
-        if (!current_path.startsWith('/invite')) {
+        if (current_path !== '/invite' && !current_path.startsWith('/invite/')) {
             do_auth_check();
         }
 
@@ -67,7 +67,7 @@
 
     // Re-check auth when navigating away from invite pages
     $effect(() => {
-        if (!current_path.startsWith('/invite') && !auth_check_done) {
+        if (current_path !== '/invite' && !current_path.startsWith('/invite/') && !auth_check_done) {
             do_auth_check();
         }
     });
@@ -103,7 +103,7 @@
     <title>Ralph Agent Workspace</title>
 </svelte:head>
 
-{#if current_path.startsWith('/invite')}
+{#if current_path === '/invite' || current_path.startsWith('/invite/')}
     {@render children()}
 {:else if auth_store.state !== 'authenticated'}
     <AuthScreen auth_state={auth_store.state} error={auth_store.error} pending={auth_store.pending} on_login={handle_login} />

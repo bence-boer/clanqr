@@ -12,7 +12,7 @@ export const api = {
         unwrap(await (await client.api.projects[':id'].$get({ param: { id } })).json()),
     create_project: async (data: { name: string, description?: string }): Promise<Types.Project> =>
         unwrap(await (await client.api.projects.$post({ json: data })).json()),
-    update_project: async (id: string, data: { name?: string, description?: string | null }): Promise<Types.Project> =>
+    update_project: async (id: string, data: { name?: string, description?: string | null, status?: 'active' | 'archived' | 'planning' }): Promise<Types.Project> =>
         unwrap(await (await client.api.projects[':id'].$patch({ param: { id }, json: data })).json()),
     delete_project: async (id: string): Promise<{ success: boolean }> =>
         unwrap(await (await client.api.projects[':id'].$delete({ param: { id } })).json()),
