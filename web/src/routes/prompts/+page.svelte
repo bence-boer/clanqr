@@ -177,8 +177,8 @@
     confirm_label="Sync"
     variant="warning"
     loading={syncing}
-    onconfirm={sync_from_repo}
-    oncancel={() => (show_sync_confirm = false)}
+    on_confirm={sync_from_repo}
+    on_cancel={() => (show_sync_confirm = false)}
 />
 
 <style>

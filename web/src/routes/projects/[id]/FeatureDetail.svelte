@@ -132,8 +132,8 @@
     confirm_label="Submit"
     variant="default"
     open={show_submit_confirm}
-    onconfirm={handle_submit}
-    oncancel={() => (show_submit_confirm = false)}
+    on_confirm={handle_submit}
+    on_cancel={() => (show_submit_confirm = false)}
 />
 
 <ConfirmModal
@@ -142,8 +142,8 @@
     confirm_label="Delete"
     variant="danger"
     open={show_delete_confirm}
-    onconfirm={handle_delete}
-    oncancel={() => (show_delete_confirm = false)}
+    on_confirm={handle_delete}
+    on_cancel={() => (show_delete_confirm = false)}
 />
 
 <style>

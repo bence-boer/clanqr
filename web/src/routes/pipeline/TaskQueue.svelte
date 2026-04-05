@@ -6,12 +6,12 @@
 
     let {
         queue,
-        onreorder,
-        onremove
+        on_reorder,
+        on_remove
     }: {
         queue: Task[]
-        onreorder: (task_ids: string[]) => void
-        onremove: (task_id: string) => void
+        on_reorder: (task_ids: string[]) => void
+        on_remove: (task_id: string) => void
     } = $props();
 
     let drag_index = $state<number | null>(null);
@@ -48,7 +48,7 @@
         const [moved] = reordered.splice(drag_index, 1);
         reordered.splice(index, 0, moved);
         queue = reordered;
-        onreorder(reordered.map((t) => t.id));
+        on_reorder(reordered.map((t) => t.id));
         drag_index = null;
         drop_index = null;
     }
@@ -65,7 +65,7 @@
 
     function confirm_remove() {
         if (remove_target) {
-            onremove(remove_target.id);
+            on_remove(remove_target.id);
         }
         remove_open = false;
         remove_target = null;
@@ -115,8 +115,8 @@
     message="Remove '{remove_target?.title ?? remove_target?.description?.slice(0, 40) ?? 'task'}' from queue? It will need to be re-approved."
     confirm_label="Remove"
     variant="warning"
-    onconfirm={confirm_remove}
-    oncancel={cancel_remove}
+    on_confirm={confirm_remove}
+    on_cancel={cancel_remove}
 />
 
 <style>

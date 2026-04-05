@@ -56,7 +56,7 @@
         <Tabs
             items={tabs}
             value={active_tab}
-            ontabselect={(tab) => {
+            on_tab_select={(tab) => {
                 if (tab !== active_tab) {
                     handle_tab_change(tab);
                 }

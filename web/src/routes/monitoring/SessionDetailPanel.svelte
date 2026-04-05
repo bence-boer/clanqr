@@ -103,7 +103,7 @@
         </Button>
     </div>
 
-    <Tabs items={tabs} value={active_tab} ontabselect={(v) => active_tab = v} />
+    <Tabs items={tabs} value={active_tab} on_tab_select={(v) => active_tab = v} />
 
     <div class="detail-body">
         {#if active_tab === 'events'}

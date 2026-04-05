@@ -106,10 +106,10 @@
 {#if current_path.startsWith('/invite')}
     {@render children()}
 {:else if auth_store.state !== 'authenticated'}
-    <AuthScreen auth_state={auth_store.state} error={auth_store.error} pending={auth_store.pending} onlogin={handle_login} />
+    <AuthScreen auth_state={auth_store.state} error={auth_store.error} pending={auth_store.pending} on_login={handle_login} />
 {:else}
     <div class="app" class:sidebar-open={sidebar_open} class:sidebar-collapsed={sidebar_collapsed}>
-        <button class="mobile-toggle" onclick={() => (sidebar_open = !sidebar_open)}>
+        <button class="mobile-toggle" onclick={() => (sidebar_open = !sidebar_open)} aria-label="Toggle navigation menu">
             <span class="icon">{sidebar_open ? 'close' : 'menu'}</span>
         </button>
 
@@ -123,9 +123,9 @@
           {system_stats}
            {sidebar_open}
             collapsed={sidebar_collapsed}
-            onclose={close_sidebar}
-            onlogout={handle_logout}
-            ontoggle_collapse={toggle_sidebar_collapse}>
+            on_close={close_sidebar}
+            on_logout={handle_logout}
+            on_toggle_collapse={toggle_sidebar_collapse}>
             {#snippet notification_bell()}
                 <NotificationBell />
             {/snippet}

@@ -10,8 +10,8 @@
         cancel_label?: string
         variant?: 'danger' | 'warning' | 'default'
         loading?: boolean
-        onconfirm: () => void
-        oncancel: () => void
+        on_confirm: () => void
+        on_cancel: () => void
         children?: Snippet
     }
 
@@ -23,12 +23,14 @@
         cancel_label = 'Cancel',
         variant = 'default',
         loading = false,
-        onconfirm,
-        oncancel,
+        on_confirm,
+        on_cancel,
         children
     }: Props = $props();
 
     let dialog_ref: HTMLDialogElement | null = $state(null);
+
+    const modal_id = crypto.randomUUID().slice(0, 8);
 
     $effect(() => {
         if (!dialog_ref) return;
@@ -42,19 +44,19 @@
 
     function handle_backdrop_click(e: MouseEvent) {
         if (e.target === dialog_ref) {
-            oncancel();
+            on_cancel();
         }
     }
 
     function handle_cancel(e: Event) {
         e.preventDefault();
-        oncancel();
+        on_cancel();
     }
 
     function handle_keydown(e: KeyboardEvent) {
         if (e.key === 'Enter' && !loading) {
             e.preventDefault();
-            onconfirm();
+            on_confirm();
         }
     }
 </script>
@@ -67,10 +69,10 @@
     onclick={handle_backdrop_click}
     oncancel={handle_cancel}
     onkeydown={handle_keydown}
-    aria-labelledby="confirm-title"
+    aria-labelledby="confirm-title-{modal_id}"
 >
     <div class="modal-content" role="presentation" onclick={(e) => e.stopPropagation()}>
-        <h3 id="confirm-title" class="modal-title">{title}</h3>
+        <h3 id="confirm-title-{modal_id}" class="modal-title">{title}</h3>
         {#if message}
             <p class="modal-message">{message}</p>
         {/if}
@@ -80,12 +82,12 @@
             </div>
         {/if}
         <div class="modal-actions">
-            <Button variant="ghost" onclick={oncancel} disabled={loading}>
+            <Button variant="ghost" onclick={on_cancel} disabled={loading}>
                 {cancel_label}
             </Button>
             <Button
                 variant={variant === 'danger' ? 'danger' : 'primary'}
-                onclick={onconfirm}
+                onclick={on_confirm}
                 {loading}
             >
                 {confirm_label}

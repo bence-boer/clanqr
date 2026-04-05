@@ -10,7 +10,7 @@
         run,
         expanded,
         on_toggle_log,
-        onretry
+        on_retry
     }: {
         run: AgentSession & {
             tasks?: {
@@ -28,7 +28,7 @@
         }
         expanded: boolean
         on_toggle_log: (id: string) => void
-        onretry?: (task_id: string) => void
+        on_retry?: (task_id: string) => void
     } = $props();
 
     const log_content = $derived(run.tasks?.agent_log ?? null);
@@ -140,8 +140,8 @@
     <div class="history-item-footer">
         <Badge variant={status_class(run.status) as 'success' | 'danger' | 'muted' | 'info'}>{run.status}</Badge>
         <div class="footer-actions">
-            {#if run.status === 'failed' && run.task_id && onretry}
-                <Button variant="secondary" size="sm" icon="replay" onclick={() => onretry(run.task_id ?? '')}>Retry</Button>
+            {#if run.status === 'failed' && run.task_id && on_retry}
+                <Button variant="secondary" size="sm" icon="replay" onclick={() => on_retry(run.task_id ?? '')}>Retry</Button>
             {/if}
             {#if log_content}
                 <Button variant="ghost" size="sm" icon="terminal" onclick={() => on_toggle_log(run.id)}>

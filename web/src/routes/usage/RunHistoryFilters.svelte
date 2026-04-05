@@ -7,12 +7,12 @@
         date_range: DateRange
         filter_type: string
         filter_status: string
-        ondate_range_change?: (value: DateRange) => void
-        onfilter_type_change: (value: string) => void
-        onfilter_status_change: (value: string) => void
+        on_date_range_change?: (value: DateRange) => void
+        on_filter_type_change: (value: string) => void
+        on_filter_status_change: (value: string) => void
     }
 
-    let { date_range, filter_type, filter_status, ondate_range_change, onfilter_type_change, onfilter_status_change }: Props = $props();
+    let { date_range, filter_type, filter_status, on_date_range_change, on_filter_type_change, on_filter_status_change }: Props = $props();
 
     const date_range_options: { value: DateRange, label: string }[] = [
         { value: 'today', label: 'Today' },
@@ -22,31 +22,31 @@
     ];
 
     function on_type_change(event: Event) {
-        onfilter_type_change((event.currentTarget as HTMLSelectElement).value);
+        on_filter_type_change((event.currentTarget as HTMLSelectElement).value);
     }
 
     function on_status_change(event: Event) {
-        onfilter_status_change((event.currentTarget as HTMLSelectElement).value);
+        on_filter_status_change((event.currentTarget as HTMLSelectElement).value);
     }
 </script>
 
 <div class="filters">
-    <div class="date-pills">
+    <div class="date-pills" role="group" aria-label="Filter by date range">
         {#each date_range_options as opt (opt.value)}
             <button
                 class="date-pill"
                 class:active={date_range === opt.value}
-                onclick={() => ondate_range_change?.(opt.value)}
+                onclick={() => on_date_range_change?.(opt.value)}
             >{opt.label}</button>
         {/each}
     </div>
-    <Select style="flex: 1;" onchange={on_type_change} value={filter_type}>
+    <Select style="flex: 1;" onchange={on_type_change} value={filter_type} aria-label="Filter by type">
         <option value="">All types</option>
         <option value="manager">manager</option>
         <option value="ralph">ralph</option>
         <option value="chat">chat</option>
     </Select>
-    <Select style="flex: 1;" onchange={on_status_change} value={filter_status}>
+    <Select style="flex: 1;" onchange={on_status_change} value={filter_status} aria-label="Filter by status">
         <option value="">All statuses</option>
         <option value="completed">completed</option>
         <option value="failed">failed</option>

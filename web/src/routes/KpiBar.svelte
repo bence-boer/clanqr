@@ -7,10 +7,10 @@
         active_agents: number
         pending_approval_count: number
         system_stats: SystemStats | null
-        onhealth_click?: () => void
+        on_health_click?: () => void
     }
 
-    const { pipeline, active_agents, pending_approval_count, system_stats, onhealth_click }: Props = $props();
+    const { pipeline, active_agents, pending_approval_count, system_stats, on_health_click }: Props = $props();
 
     function health_status(stats: SystemStats | null): 'green' | 'yellow' | 'red' {
         if (!stats) return 'red';
@@ -41,7 +41,7 @@
         <span class="kpi-label">Active Agents</span>
         <span class="kpi-value">{active_agents}</span>
     </a>
-    <button class="kpi-item kpi-health" onclick={onhealth_click}>
+    <button class="kpi-item kpi-health" onclick={on_health_click}>
         <span class="kpi-label">System Health</span>
         <span class="health-dot health-{health}"></span>
     </button>

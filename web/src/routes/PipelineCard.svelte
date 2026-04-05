@@ -5,12 +5,12 @@
 
     let {
         pipeline,
-        onpause,
-        onresume
+        on_pause,
+        on_resume
     }: {
         pipeline: PipelineStatus | null
-        onpause: () => void
-        onresume: () => void
+        on_pause: () => void
+        on_resume: () => void
     } = $props();
 
     function pipeline_state_label(state: string) {
@@ -45,9 +45,9 @@
             </div>
             <div class="pipeline-actions">
                 {#if pipeline.state === 'running'}
-                    <Button size="sm" icon="pause" onclick={onpause}>Pause</Button>
+                    <Button size="sm" icon="pause" onclick={on_pause}>Pause</Button>
                 {:else if pipeline.state === 'paused'}
-                    <Button variant="primary" size="sm" icon="play_arrow" onclick={onresume}>Resume</Button>
+                    <Button variant="primary" size="sm" icon="play_arrow" onclick={on_resume}>Resume</Button>
                 {:else if pipeline.queue_depth > 0}
                     <a href={resolve('/pipeline')} style="text-decoration:none"><Button variant="primary" size="sm" icon="play_arrow">View Queue</Button></a>
                 {/if}

@@ -96,9 +96,14 @@
                     bind:value={edit_title_value}
                     onkeydown={handle_title_keydown}
                     onblur={save_title}
+                    aria-label="Edit session title"
                 />
             {:else}
-                <span class="chat-session-title" ondblclick={start_edit_title} role="button" tabindex="0">
+                <span class="chat-session-title" ondblclick={start_edit_title} role="button" tabindex="0" onkeydown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault(); start_edit_title();
+                    }
+                }}>
                     {format_session_title(active_session)}
                     <button class="edit-title-btn" onclick={start_edit_title} aria-label="Edit title">
                         <span class="icon" style="font-size: 14px">edit</span>
@@ -129,7 +134,7 @@
             <ErrorBanner message={error_msg} />
         {/if}
 
-        <ChatInput bind:input_text {is_streaming} onsend={on_send} onstop={on_stop} />
+        <ChatInput bind:input_text {is_streaming} on_send={on_send} on_stop={on_stop} />
     {/if}
 </div>
 
