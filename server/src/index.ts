@@ -25,9 +25,11 @@ import { telemetry_routes } from './routes/telemetry';
 import { traits_routes } from './routes/traits';
 import { activity_routes } from './routes/activity';
 import { usage_routes } from './routes/usage';
+import { agent_types_routes } from './routes/agent_types';
 import { pipeline_service } from './services/pipeline_service';
 import { prompt_service } from './services/prompt_service';
 import { watcher_service } from './services/watcher_service';
+import { agent_registry_service } from './services/agent_registry_service';
 import { logger } from './utils/logger';
 
 const allowed_origins = env.FRONTEND_URL.split(',').map((origin) => origin.trim());
@@ -104,6 +106,7 @@ const app = new Hono<AppBindings>()
     .route('/api/usage', usage_routes)
     .route('/api/telemetry', telemetry_routes)
     .route('/api/activity', activity_routes)
+    .route('/api/agent-types', agent_types_routes)
     // Admin routes (role check handled inside admin_routes, auth already applied by /api/* above)
     .route('/api/admin', admin_routes);
 
@@ -117,7 +120,7 @@ async function boot() {
     const { data: interrupted_runs } = await supabase
         .from('agent_sessions')
         .select('feature_id')
-        .eq('agent_type', 'manager')
+        .eq('agent_type', 'orchestrator')
         .eq('status', 'running');
     const interrupted_feature_ids: string[] = (interrupted_runs ?? [])
         .map((r) => r.feature_id)
@@ -161,17 +164,20 @@ async function boot() {
     // 2. Sync base prompts from repo files → DB
     await prompt_service.sync_from_repo();
 
-    // 3. Cleanup expired data
+    // 3. Sync agent type definitions from filesystem → DB
+    await agent_registry_service.sync_agent_types();
+
+    // 4. Cleanup expired data
     await cleanup_expired_data(supabase);
 
     setInterval(() => {
         cleanup_expired_data(supabase).catch((err) => logger.error('Cleanup error', { service: 'boot', error: String(err) }));
     }, 24 * 60 * 60 * 1000);
 
-    // 4. Start watcher service (manager-only — pipeline handles task execution)
+    // 5. Start watcher service (orchestrator-only — pipeline handles task execution)
     watcher_service.start();
 
-    // 5. Start pipeline service — trigger on any already-approved tasks
+    // 6. Start pipeline service — trigger on any already-approved tasks
     pipeline_service.process_next().catch((err) => logger.error('Pipeline start error', { service: 'boot', error: String(err) }));
     logger.info('Pipeline service started', { service: 'boot' });
 }

@@ -7,7 +7,7 @@ import { logger } from '../utils/logger';
 const history_query_schema = z.object({
     page: z.coerce.number().int().min(1).default(1),
     per_page: z.coerce.number().int().min(1).max(100).default(20),
-    type: z.enum(['manager', 'ralph', 'researcher', 'editor', 'chat', 'custom']).optional(),
+    type: z.enum(['orchestrator', 'explorer', 'architect', 'implementer', 'verifier', 'reviewer', 'synthesizer', 'researcher', 'chat', 'custom']).optional(),
     status: z.enum(['pending', 'running', 'paused', 'completed', 'failed', 'cancelled']).optional()
 });
 

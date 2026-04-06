@@ -62,7 +62,7 @@ class WatcherService {
             const { data: recent_run } = await supabase
                 .from('agent_sessions')
                 .select('id, status')
-                .eq('agent_type', 'manager')
+                .eq('agent_type', 'orchestrator')
                 .eq('feature_id', feature.id)
                 .in('status', ['running', 'completed'])
                 .order('created_at', { ascending: false })
