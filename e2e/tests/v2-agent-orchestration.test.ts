@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { authenticate, API_URL, AUTH_HEADERS } from "./helpers";
+import { authenticate, API_URL, AUTH_HEADERS, ADMIN_AUTH_HEADERS } from "./helpers";
 
 // ── Agent Types API ───────────────────────────────────────────────────────────
 
@@ -64,12 +64,19 @@ test.describe("agent types API", () => {
 
     test("sync agent types returns success with count", async ({ request }) => {
         const res = await request.post(`${API_URL}/api/agent-types/sync`, {
-            headers: AUTH_HEADERS,
+            headers: ADMIN_AUTH_HEADERS,
         });
         expect(res.ok()).toBeTruthy();
         const body = await res.json();
         expect(body.success).toBe(true);
         expect(typeof body.count).toBe("number");
+    });
+
+    test("sync agent types requires admin", async ({ request }) => {
+        const res = await request.post(`${API_URL}/api/agent-types/sync`, {
+            headers: AUTH_HEADERS,
+        });
+        expect(res.status()).toBe(403);
     });
 
     test("agent types require authentication", async ({ request }) => {
@@ -163,6 +170,17 @@ test.describe.serial("task dependencies API", () => {
         expect(deps.length).toBeGreaterThanOrEqual(1);
         const match = deps.find((d) => d.depends_on_task_id === task_a_id);
         expect(match).toBeDefined();
+    });
+
+    test("adding a cyclic dependency returns 400", async ({ request }) => {
+        // B already depends on A; adding A depends on B would create a cycle
+        const res = await request.post(`${API_URL}/api/tasks/${task_a_id}/dependencies`, {
+            headers: AUTH_HEADERS,
+            data: { depends_on_task_id: task_b_id },
+        });
+        expect(res.status()).toBe(400);
+        const body = await res.json();
+        expect(body.error).toBeDefined();
     });
 
     test("delete a dependency", async ({ request }) => {
