@@ -18,6 +18,7 @@ const VERIFIABLE_ROLES = new Set(['implementer', 'architect']);
 export interface VerificationResult {
     verdict: 'approved' | 'rejected'
     reasons: string[]
+    verdict_source?: 'stub' | 'agent'
 }
 
 export type VerificationOutcome = 'approved' | 'retry' | 'escalate';
@@ -70,15 +71,17 @@ export async function dispatch_verifier(
         return { verdict: 'rejected', reasons: ['Task not found for verification'] };
     }
 
-    // TODO: Wire to run_agent_session with verifier agent type when
-    //       sdk_session_service is rewritten
-    logger.info('dispatch_verifier: stub approval', {
+    // TODO(verification): This stub auto-approves every task. Replace with a
+    //   real verifier agent session (via run_agent_session) once
+    //   sdk_session_service supports spawning verifier sessions. Until then no
+    //   task is genuinely verified — consumers should check verdict_source.
+    logger.warn('dispatch_verifier: returning stub approval (no real verifier configured)', {
         service: 'verification',
         task_id,
         feature_id
     });
 
-    return { verdict: 'approved', reasons: [] };
+    return { verdict: 'approved', reasons: [], verdict_source: 'stub' };
 }
 
 // ── handle_verification_result ───────────────────────────────────────────────

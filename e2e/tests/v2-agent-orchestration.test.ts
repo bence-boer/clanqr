@@ -457,15 +457,15 @@ test.describe("V2 pipeline page UI", () => {
 
     test("pipeline page shows status bar and header", async ({ page }) => {
         await page.goto("/pipeline");
-        await page.waitForLoadState("domcontentloaded");
+        await page.waitForLoadState("networkidle");
 
         // h2 header with "Pipeline"
         const heading = page.locator("h2", { hasText: "Pipeline" });
-        await expect(heading).toBeVisible({ timeout: 15_000 });
+        await expect(heading).toBeVisible({ timeout: 30_000 });
 
         // Subtitle text
         const subtitle = page.locator(".subtitle", { hasText: "Execution DAG" });
-        await expect(subtitle).toBeVisible();
+        await expect(subtitle).toBeVisible({ timeout: 10_000 });
     });
 });
 

@@ -109,6 +109,7 @@
             {/if}
             {#if ['queued', 'approved'].includes(task.status)}
                 <Button variant="ghost" size="sm" icon="edit" title="Edit" aria-label="Edit task" onclick={() => on_start_edit(task)} />
+                <span class="action-separator" aria-hidden="true"></span>
                 <Button variant="danger" size="sm" icon="delete" title="Delete" aria-label="Delete task" onclick={() => on_delete(task.id)} />
             {/if}
             <Button variant="secondary" size="sm" icon="tune" title="Artifacts" onclick={() => on_toggle_artifacts(task.id)}>Artifacts</Button>
@@ -152,6 +153,12 @@
     .task-actions {
         margin-top: 0.5rem; display: flex;
         gap: 0.5rem; align-items: center; flex-wrap: wrap;
+    }
+    .action-separator {
+        width: 1px;
+        height: 1.25rem;
+        background: var(--border);
+        flex-shrink: 0;
     }
     .task-accordion { margin-top: 0.6rem; }
     .task-prompt {
