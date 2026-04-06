@@ -1,5 +1,6 @@
 <script lang="ts">
     import { Button, Input, Select, Textarea } from '$lib/components/primitives';
+    import { AGENT_TYPE_VISUALS, V2_AGENT_TYPES } from '$lib/components/agent-type-badge/agent-type-colors';
     import type { TraitTarget } from '$lib/types';
 
     interface TraitFormData {
@@ -37,16 +38,9 @@
         <div class="form-row">
             <Input id="trait-name" type="text" class="form-input" bind:value={form.name} placeholder="e.g. verbose_logging" label="Name" required />
             <Select id="trait-target" bind:value={form.target} label="Target" required>
-                <option value="orchestrator">Orchestrator</option>
-                <option value="explorer">Explorer</option>
-                <option value="architect">Architect</option>
-                <option value="implementer">Implementer</option>
-                <option value="verifier">Verifier</option>
-                <option value="reviewer">Reviewer</option>
-                <option value="synthesizer">Synthesizer</option>
-                <option value="researcher">Researcher</option>
-                <option value="chat">Chat</option>
-                <option value="custom">Custom</option>
+                {#each V2_AGENT_TYPES as at (at)}
+                    <option value={at}>{AGENT_TYPE_VISUALS[at].label}</option>
+                {/each}
             </Select>
         </div>
 

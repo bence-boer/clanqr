@@ -1,6 +1,7 @@
 <script lang="ts">
     import { api } from '$lib/api/client';
     import { Button, Input, Select } from '$lib/components/primitives';
+    import { V2_AGENT_TYPES } from '$lib/components/agent-type-badge/agent-type-colors';
     import { onMount } from 'svelte';
 
     interface V2Fields {
@@ -51,7 +52,12 @@
         load_models();
     });
 
-    const agent_types = ['orchestrator', 'explorer', 'architect', 'implementer', 'verifier', 'reviewer', 'synthesizer', 'researcher', 'custom'] as const;
+    function handle_save() {
+        if (model === '') model = null;
+        return on_save();
+    }
+
+    const agent_types = V2_AGENT_TYPES.filter((t) => t !== 'chat');
     const strategies = ['sequential', 'parallel', 'background'] as const;
 </script>
 
@@ -79,7 +85,7 @@
     ></textarea>
     <div class="task-model-field">
         <Select id="task-model-{task_id}" label={`Model Override ${loading_models ? '(...)' : ''}`} bind:value={model} class="input select" disabled={loading_models}>
-            <option value={null}>Feature default</option>
+            <option value="">Feature default</option>
             {#each model_options as m (m.value)}
                 <option value={m.value}>{m.label}</option>
             {/each}
@@ -100,7 +106,7 @@
         <Input type="text" placeholder="Context paths (comma-separated)" bind:value={v2.context_paths_text} aria-label="Context paths" />
     </div>
     <div class="task-edit-actions">
-        <Button variant="primary" size="sm" onclick={on_save} disabled={saving}>Save</Button>
+        <Button variant="primary" size="sm" onclick={handle_save} disabled={saving}>Save</Button>
         <Button variant="secondary" size="sm" onclick={on_cancel}>Cancel</Button>
     </div>
 </div>

@@ -23,6 +23,8 @@ export const AGENT_TYPE_VISUALS: Record<AgentTypeKey, AgentTypeVisual> = {
     custom: { label: 'Custom', icon: 'smart_toy', color: 'var(--fg-muted)', css_var: '--fg-muted' }
 };
 
+export const V2_AGENT_TYPES = Object.keys(AGENT_TYPE_VISUALS) as AgentTypeKey[];
+
 export function get_agent_visual(agent_type: string): AgentTypeVisual {
     return AGENT_TYPE_VISUALS[agent_type as AgentTypeKey] ?? AGENT_TYPE_VISUALS.custom;
 }

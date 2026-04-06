@@ -54,9 +54,13 @@ export interface DagData {
 }
 
 export function map_dag_response(raw: unknown): DagData {
+    if (!raw || typeof raw !== 'object') throw new Error('Invalid DAG response');
     const data = raw as Record<string, unknown>;
-    const raw_nodes = (data.nodes ?? []) as Record<string, unknown>[];
-    const raw_edges = (data.edges ?? []) as Record<string, unknown>[];
+    if (!Array.isArray(data.nodes) || !Array.isArray(data.edges)) {
+        throw new Error('Invalid DAG response shape: expected nodes and edges arrays');
+    }
+    const raw_nodes = data.nodes as Record<string, unknown>[];
+    const raw_edges = data.edges as Record<string, unknown>[];
 
     const nodes: DagNode[] = raw_nodes.map((n) => ({
         id: n.id as string,

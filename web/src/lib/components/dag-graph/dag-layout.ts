@@ -28,10 +28,12 @@ function assign_layers(nodes: DagNode[], edges: DagEdge[]): Map<string, number> 
     // Longest-path layering via BFS
     const layer_map = new Map<string, number>();
     const queue: string[] = [];
+    const in_queue = new Set<string>();
 
     for (const id of node_ids) {
         if ((in_edges.get(id)?.size ?? 0) === 0) {
             queue.push(id);
+            in_queue.add(id);
             layer_map.set(id, 0);
         }
     }
@@ -40,6 +42,7 @@ function assign_layers(nodes: DagNode[], edges: DagEdge[]): Map<string, number> 
     if (queue.length === 0 && node_ids.size > 0) {
         const first = node_ids.values().next().value as string;
         queue.push(first);
+        in_queue.add(first);
         layer_map.set(first, 0);
     }
 
@@ -55,8 +58,9 @@ function assign_layers(nodes: DagNode[], edges: DagEdge[]): Map<string, number> 
             // Only add to queue if all parents processed
             const parents = in_edges.get(next) ?? new Set<string>();
             const all_done = [...parents].every((p) => layer_map.has(p));
-            if (all_done && !queue.includes(next)) {
+            if (all_done && !in_queue.has(next)) {
                 queue.push(next);
+                in_queue.add(next);
             }
         }
     }

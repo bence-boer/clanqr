@@ -2,7 +2,7 @@
     import { api } from '$lib/api/client';
     import { EmptyState, ErrorBanner } from '$lib/components';
     import { Button } from '$lib/components/primitives';
-    import { AgentTypeBadge } from '$lib/components/agent-type-badge';
+    import { AgentTypeBadge, V2_AGENT_TYPES } from '$lib/components/agent-type-badge';
     import type { Trait, TraitAssignment, TraitTarget } from '$lib/types';
     import TraitForm from './TraitForm.svelte';
     import TraitRow from './TraitRow.svelte';
@@ -24,6 +24,7 @@
     let { traits, on_updated, show_form = $bindable(false) }: Props = $props();
 
     let trait_filter = $state<'all' | TraitTarget>('all');
+    const trait_filter_options: ('all' | TraitTarget)[] = ['all', ...V2_AGENT_TYPES.filter((t) => t !== 'chat' && t !== 'custom')];
     let category_search = $state('');
 
     let filtered_traits = $derived.by(() => {
@@ -149,7 +150,7 @@
 
 <div class="filter-bar">
     <div class="filter-row" role="group" aria-label="Filter traits">
-        {#each ['all', 'orchestrator', 'implementer', 'explorer', 'architect', 'verifier', 'reviewer', 'synthesizer', 'researcher'] as const as filter_val (filter_val)}
+        {#each trait_filter_options as filter_val (filter_val)}
             <Button variant="filter" active={trait_filter === filter_val} onclick={() => {
                 trait_filter = filter_val;
             }}>
