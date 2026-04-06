@@ -112,7 +112,7 @@ export function get_mock_session_result(
     const content = get_mock_response(agent_type);
     const files_changed = agent_type === 'implementer'
         ? implementer_result.files_changed
-        : undefined;
+        : [];
 
     return {
         content,

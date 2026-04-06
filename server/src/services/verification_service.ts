@@ -74,7 +74,8 @@ export async function dispatch_verifier(
     // TODO(verification): This stub auto-approves every task. Replace with a
     //   real verifier agent session (via run_agent_session) once
     //   sdk_session_service supports spawning verifier sessions. Until then no
-    //   task is genuinely verified — consumers should check verdict_source.
+    //   task is genuinely verified. NOTE: verdict_source is returned but not
+    //   yet persisted to DB — add a column when the real verifier is wired up.
     logger.warn('dispatch_verifier: returning stub approval (no real verifier configured)', {
         service: 'verification',
         task_id,
