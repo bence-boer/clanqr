@@ -29,7 +29,7 @@ jobs:
         run: |
           export PATH="$BUN_INSTALL/bin:$PATH"
           cd $APP_DIR/server && bun install --frozen-lockfile
-          cd $APP_DIR/web && bun install --frozen-lockfile
+          cd $APP_DIR/web && echo "PUBLIC_API_URL=" > .env && bun install --frozen-lockfile
 
       - name: Type-check server
         run: |
