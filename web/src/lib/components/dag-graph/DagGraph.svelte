@@ -37,7 +37,7 @@
             width={layout.width}
             height={layout.height}
             class="dag-svg"
-            role="img"
+            role="group"
             aria-label="Task dependency graph"
         >
             <defs>
@@ -69,6 +69,7 @@
                         style:--node-color={visual.color}
                         onclick={() => on_node_click?.(ln.id)}
                         title={ln.node.label}
+                        aria-label="{ln.node.label} — {ln.node.status}"
                     >
                         <span class="node-icon icon"
                             class:spin={is_running(ln.node.status)}

@@ -1,7 +1,8 @@
 <script lang="ts">
     import { api } from '$lib/api/client';
-    import { ConfirmModal, EmptyState, ErrorBanner, LoadingSpinner } from '$lib/components';
+    import { ConfirmModal, EmptyState, ErrorBanner, LoadingSpinner, Tabs } from '$lib/components';
     import { Button } from '$lib/components/primitives/button';
+    import type { TabItem } from '$lib/components/tabs/types';
     import { toast_store } from '$lib/stores/toast.svelte';
     import type { PromptRecord, Trait } from '$lib/types';
     import { onMount } from 'svelte';
@@ -10,6 +11,11 @@
 
     // ── Tab state ──────────────────────────────────────────────────────────────
     let active_tab = $state<'prompts' | 'traits'>('prompts');
+
+    const tab_items: TabItem<'prompts' | 'traits'>[] = [
+        { label: 'Base Prompts', value: 'prompts', icon: 'description' },
+        { label: 'Traits Library', value: 'traits', icon: 'psychology' }
+    ];
 
     // ── Prompts state ──────────────────────────────────────────────────────────
     let prompts = $state<PromptRecord[]>([]);
@@ -119,31 +125,7 @@
         {/if}
     </div>
 
-    <div class="tabs">
-        <Button
-            variant="tab"
-            active={active_tab === 'prompts'}
-            onclick={() => {
-                active_tab = 'prompts';
-            }}
-            icon="description"
-        >
-            Base Prompts
-        </Button>
-        <Button
-            variant="tab"
-            active={active_tab === 'traits'}
-            onclick={() => {
-                active_tab = 'traits';
-            }}
-            icon="psychology"
-        >
-            Traits Library
-            {#if traits.length > 0}
-                <span class="count-badge">{traits.length}</span>
-            {/if}
-        </Button>
-    </div>
+    <Tabs items={tab_items} bind:value={active_tab} aria_label="Prompts & Traits" />
 
     <!-- ── Tab 1: Base Prompts ──────────────────────────────────────────────── -->
     {#if active_tab === 'prompts'}
@@ -200,22 +182,6 @@
         display: flex;
         align-items: center;
         gap: 0.5rem;
-    }
-
-    .tabs {
-        display: flex;
-        gap: 0.25rem;
-        border-bottom: 1px solid var(--border);
-        margin-bottom: 1.5rem;
-    }
-
-    .count-badge {
-        background: var(--bg-elevated);
-        color: var(--fg-muted);
-        font-size: 0.65rem;
-        padding: 0.1rem 0.4rem;
-        border-radius: 10px;
-        font-weight: 600;
     }
 
 </style>

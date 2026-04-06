@@ -1,6 +1,6 @@
 <script lang="ts">
     import { api } from '$lib/api/client';
-    import { ErrorBanner, LoadingSpinner, Tabs } from '$lib/components';
+    import { ConfirmModal, ErrorBanner, LoadingSpinner, Tabs } from '$lib/components';
     import type { DagEdge, DagNode } from '$lib/components/dag-graph';
     import { WaveProgress, type WaveInfo } from '$lib/components/wave-progress';
     import { toast_store } from '$lib/stores/toast.svelte';
@@ -28,6 +28,7 @@
     let loading = $state(true);
     let action_error = $state('');
     let action_busy = $state(false);
+    let show_stop_confirm = $state(false);
     const pipeline_sections = [{ label: 'DAG', value: 'dag' }, { label: 'History', value: 'history' }];
     const selected_node = $derived(dag_nodes.find((n) => n.id === selected_node_id) ?? null);
     function reset_dag() {
@@ -44,7 +45,6 @@
             toast_store.error('Failed to load pipeline');
         }
     }
-
     async function load_dag() {
         const fid = pipeline?.current_feature_id;
         if (!fid) {
@@ -77,7 +77,6 @@
     onMount(() => {
         load_all();
     });
-
     $effect(() => {
         void filter_status;
         void history_page;
@@ -118,7 +117,7 @@
     const do_pause = () => do_action(() => api.pipeline_pause(), 'Failed to pause');
     const do_resume = () => do_action(() => api.pipeline_resume(), 'Failed to resume');
     async function do_stop() {
-        if (!confirm('Stop the currently running task?')) return;
+        show_stop_confirm = false;
         await do_action(() => api.pipeline_stop_current(), 'Failed to stop');
     }
     async function handle_verify(task_id: string) {
@@ -131,7 +130,6 @@
             toast_store.error('Failed to trigger verification');
         }
     }
-
     function toggle_node(id: string) {
         selected_node_id = selected_node_id === id ? null : id;
     }
@@ -146,7 +144,6 @@
         history_page = page;
     }
 </script>
-
 <div class="page" aria-busy={loading}>
     <div class="page-header">
         <h2>Pipeline</h2>
@@ -155,11 +152,10 @@
     {#if stream.is_stale}
         <ErrorBanner variant="stale" message="Data may be outdated — unable to reach server" />
     {/if}
-
     {#if loading}
         <LoadingSpinner label="Loading pipeline..." />
     {:else}
-        <PipelineStatusBar {pipeline} {action_busy} {action_error} on_pause={do_pause} on_resume={do_resume} on_stop={do_stop} />
+        <PipelineStatusBar {pipeline} {action_busy} {action_error} on_pause={do_pause} on_resume={do_resume} on_stop={() => (show_stop_confirm = true)} />
         <PipelineStats {pipeline} {history} />
         {#if waves.length > 0}
             <div class="wave-bar"><WaveProgress {waves} /></div>
@@ -168,25 +164,28 @@
         {#if active_tab === 'dag'}
             <div class="dag-layout">
                 <div class="dag-main">
-                    <DagView nodes={dag_nodes} edges={dag_edges}
-                        selected_id={selected_node_id} on_node_click={toggle_node} />
+                    <DagView nodes={dag_nodes} edges={dag_edges} selected_id={selected_node_id} on_node_click={toggle_node} />
                 </div>
                 {#if selected_node}
                     <aside class="dag-aside">
-                        <DagNodeDetail node={selected_node}
-                            on_close={clear_node_selection} on_verify={handle_verify} />
+                        <DagNodeDetail node={selected_node} on_close={clear_node_selection} on_verify={handle_verify} />
                     </aside>
                 {/if}
             </div>
         {:else}
-            <PipelineHistory {history} {history_total} {history_page} {history_total_pages}
-                {filter_status} on_filter_change={handle_filter_change}
-                on_page_change={handle_page_change}
+            <PipelineHistory {history} {history_total} {history_page} {history_total_pages} {filter_status}
+                on_filter_change={handle_filter_change} on_page_change={handle_page_change}
                 on_retry={(id) => retry_task(id, () => load_dag())} />
         {/if}
     {/if}
 </div>
-
+<ConfirmModal
+    title="Stop Running Task" message="Stop the currently running task? This cannot be undone."
+    confirm_label="Stop" variant="danger"
+    open={show_stop_confirm}
+    on_confirm={do_stop}
+    on_cancel={() => (show_stop_confirm = false)}
+/>
 <style>
     .page { max-width: 1100px; } .page-header { margin-bottom: 1.5rem; }
     .page-header h2 { font-size: 1.5rem; color: var(--fg); }
