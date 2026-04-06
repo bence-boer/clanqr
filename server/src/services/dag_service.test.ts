@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test';
-import { validate_dag, type DagTask } from './dag_service';
+import { validate_dag, insert_dag_from_plan, type DagTask } from './dag_service';
+import type { TypedSupabaseClient } from '../db';
 
 function make_task(id: string, deps: string[] = []): DagTask {
     return {
@@ -82,5 +83,35 @@ describe('validate_dag', () => {
         expect(result.valid).toBe(false);
         expect(result.errors.some((e) => e.includes('unknown task'))).toBe(true);
         expect(result.errors.some((e) => e.includes('Cycle'))).toBe(true);
+    });
+});
+
+describe('insert_dag_from_plan', () => {
+    it('throws when task bulk insert fails', async () => {
+        const failing_db = {
+            from: () => ({
+                insert: () => ({
+                    select: () => Promise.resolve({ data: null, error: { message: 'DB error' } })
+                })
+            })
+        } as unknown as TypedSupabaseClient;
+        const tasks = [make_task('A')];
+        await expect(insert_dag_from_plan('feat-1', tasks, failing_db)).rejects.toThrow(
+            'Failed to insert DAG tasks'
+        );
+    });
+
+    it('throws when insert returns no data', async () => {
+        const empty_db = {
+            from: () => ({
+                insert: () => ({
+                    select: () => Promise.resolve({ data: null, error: null })
+                })
+            })
+        } as unknown as TypedSupabaseClient;
+        const tasks = [make_task('A')];
+        await expect(insert_dag_from_plan('feat-1', tasks, empty_db)).rejects.toThrow(
+            'no data returned'
+        );
     });
 });

@@ -2,7 +2,7 @@
 import { parse_manager_output, parse_implementer_output } from '../sdk/output_parser';
 import { run_session, build_session_update } from './session_runner_service';
 import { can_start_session, increment_session_count, decrement_session_count } from './session_pool_service';
-import { create_supabase_client } from '../db';
+import { create_supabase_client, type TypedSupabaseClient } from '../db';
 import { event_bus } from './event_bus';
 import { logger } from '../utils/logger';
 import { get_models } from './model_service';
@@ -67,11 +67,15 @@ async function get_cost_rate(): Promise<number> {
     }
 }
 
-// ── Generic session runner ───────────────────────────────────────────────────
+export async function mark_session_failed(id: string, msg: string, supabase?: TypedSupabaseClient) {
+    await (supabase ?? create_supabase_client()).from('agent_sessions')
+        .update({ status: 'failed', error: msg }).eq('id', id);
+}
 
 export async function run_agent_session(config: AgentSessionConfig): Promise<AgentSessionResult> {
     const sdk_sid = build_session_id(config.agent_type, config.entity_id);
     increment_session_count();
+    let run_id = '';
 
     try {
         const db = create_supabase_client();
@@ -86,7 +90,7 @@ export async function run_agent_session(config: AgentSessionConfig): Promise<Age
         };
         const { data: run } = await db.from('agent_sessions')
             .insert(insert_payload).select('id').single();
-        const run_id = run?.id ?? '';
+        run_id = run?.id ?? '';
 
         const sdk_config: SdkSessionConfig = {
             session_id: sdk_sid,
@@ -118,12 +122,13 @@ export async function run_agent_session(config: AgentSessionConfig): Promise<Age
         };
     }
     catch (err) {
+        if (run_id) await mark_session_failed(run_id, String(err));
         logger.error('run_agent_session failed', {
             service: 'sdk_session', agent_type: config.agent_type,
             entity_id: config.entity_id, error: String(err)
         });
         return {
-            session_id: sdk_sid, db_session_id: '',
+            session_id: sdk_sid, db_session_id: run_id,
             success: false, content: '', error: String(err),
             metrics: { prompt_tokens: 0, completion_tokens: 0, total_cost: 0, duration_ms: 0, files_changed: [] }
         };

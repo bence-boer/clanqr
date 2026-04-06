@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test';
-import { should_verify } from './verification_service';
+import { should_verify, dispatch_verifier } from './verification_service';
+import { create_mock_supabase } from '../test-utils';
 
 describe('should_verify', () => {
     it('returns true for implementer with definition_of_done', () => {
@@ -32,5 +33,26 @@ describe('should_verify', () => {
 
     it('returns false when definition_of_done is whitespace-only', () => {
         expect(should_verify({ agent_type: 'implementer', definition_of_done: '   \n\t  ' })).toBe(false);
+    });
+});
+
+describe('dispatch_verifier', () => {
+    it('returns rejected when task is not found', async () => {
+        const { client } = create_mock_supabase({ tasks: [] });
+        const result = await dispatch_verifier('nonexistent-id', 'feat-1', client as never);
+        expect(result.verdict).toBe('rejected');
+        expect(result.reasons).toContain('Task not found for verification');
+    });
+
+    it('returns approved stub when task exists', async () => {
+        const { client } = create_mock_supabase({
+            tasks: [{
+                id: 'task-1', title: 'T', description: 'D',
+                definition_of_done: 'Tests pass', output: '', agent_type: 'implementer'
+            }]
+        });
+        const result = await dispatch_verifier('task-1', 'feat-1', client as never);
+        expect(result.verdict).toBe('approved');
+        expect(result.reasons).toEqual([]);
     });
 });

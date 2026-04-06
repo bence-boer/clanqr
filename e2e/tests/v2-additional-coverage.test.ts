@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { API_URL, AUTH_HEADERS, ADMIN_AUTH_HEADERS } from "./helpers";
+import { API_URL, AUTH_HEADERS } from "./helpers";
 
 // ── Verification API — happy path (M5) ───────────────────────────────────────
 

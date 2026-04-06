@@ -5,6 +5,7 @@ import { task_dependency_routes } from './task_dependencies';
 
 const TASK_ID = '00000000-0000-0000-0000-000000000020';
 const TASK2_ID = '00000000-0000-0000-0000-000000000021';
+const TASK3_ID = '00000000-0000-0000-0000-000000000022';
 const FEATURE_ID = '00000000-0000-0000-0000-000000000010';
 const DEP_ID = '00000000-0000-0000-0000-000000000030';
 
@@ -19,6 +20,17 @@ function setup() {
                 description: 'Second task',
                 status: 'queued',
                 sort_order: 1,
+                retry_count: 0,
+                max_retries: 1,
+                created_at: '2026-01-01T00:00:00Z',
+                updated_at: '2026-01-01T00:00:00Z'
+            },
+            {
+                id: TASK3_ID,
+                feature_id: FEATURE_ID,
+                description: 'Third task',
+                status: 'queued',
+                sort_order: 2,
                 retry_count: 0,
                 max_retries: 1,
                 created_at: '2026-01-01T00:00:00Z',
@@ -81,14 +93,14 @@ describe('task_dependency routes', () => {
         it('creates a new dependency', async () => {
             const { app, store } = setup();
             const before = store.task_dependencies.length;
-            const res = await app.request(`/api/tasks/${TASK_ID}/dependencies`, {
+            const res = await app.request(`/api/tasks/${TASK3_ID}/dependencies`, {
                 method: 'POST',
                 headers: { ...auth_headers(), 'Content-Type': 'application/json' },
                 body: JSON.stringify({ depends_on_task_id: TASK2_ID })
             });
             expect(res.status).toBe(201);
             const body = (await res.json()) as Record<string, unknown>;
-            expect(body.task_id).toBe(TASK_ID);
+            expect(body.task_id).toBe(TASK3_ID);
             expect(body.depends_on_task_id).toBe(TASK2_ID);
             expect(store.task_dependencies.length).toBe(before + 1);
         });
@@ -101,6 +113,36 @@ describe('task_dependency routes', () => {
                 body: JSON.stringify({ depends_on_task_id: TASK2_ID })
             });
             expect(res.status).toBe(401);
+        });
+
+        it('returns 400 when dependency would create a cycle', async () => {
+            const { app, store } = setup();
+            const before = store.task_dependencies.length;
+            // TASK2 already depends on TASK_ID. Adding TASK_ID→TASK2 creates a cycle.
+            const res = await app.request(`/api/tasks/${TASK_ID}/dependencies`, {
+                method: 'POST',
+                headers: { ...auth_headers(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ depends_on_task_id: TASK2_ID })
+            });
+            expect(res.status).toBe(400);
+            const body = (await res.json()) as Record<string, unknown>;
+            expect((body.error as string).toLowerCase()).toInclude('cycle');
+            // Dependency should have been rolled back
+            expect(store.task_dependencies.length).toBe(before);
+        });
+
+        it('returns 400 for self-dependency cycle', async () => {
+            const { app, store } = setup();
+            const before = store.task_dependencies.length;
+            const res = await app.request(`/api/tasks/${TASK_ID}/dependencies`, {
+                method: 'POST',
+                headers: { ...auth_headers(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ depends_on_task_id: TASK_ID })
+            });
+            expect(res.status).toBe(400);
+            const body = (await res.json()) as Record<string, unknown>;
+            expect((body.error as string).toLowerCase()).toInclude('cycle');
+            expect(store.task_dependencies.length).toBe(before);
         });
     });
 

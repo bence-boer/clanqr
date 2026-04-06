@@ -50,7 +50,7 @@ function build_graph(ids: Set<string>, edges: { from: string, to: string }[]) {
     return { in_deg, adj };
 }
 /** Returns sorted levels, or null on cycle. */
-function kahns_levels(ids: Set<string>, edges: { from: string, to: string }[]): string[][] | null {
+export function kahns_levels(ids: Set<string>, edges: { from: string, to: string }[]): string[][] | null {
     const { in_deg, adj } = build_graph(ids, edges);
     const levels: string[][] = [];
     let cur = [...ids].filter((id) => in_deg.get(id) === 0);
@@ -107,8 +107,7 @@ export async function insert_dag_from_plan(
     }));
     const { data: inserted, error } = await db.from('tasks').insert(rows).select('id');
     if (error || !inserted) {
-        logger.error('Failed to insert DAG tasks', { service: 'dag', error: error?.message });
-        return { task_id_map };
+        throw new Error(`Failed to insert DAG tasks: ${error?.message ?? 'no data returned'}`);
     }
     for (let i = 0; i < tasks.length; i++) {
         task_id_map.set(tasks[i].task_id, inserted[i].id);

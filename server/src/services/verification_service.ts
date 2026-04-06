@@ -67,7 +67,7 @@ export async function dispatch_verifier(
             task_id,
             error: error?.message
         });
-        return { verdict: 'approved', reasons: [] };
+        return { verdict: 'rejected', reasons: ['Task not found for verification'] };
     }
 
     // TODO: Wire to run_agent_session with verifier agent type when
