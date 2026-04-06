@@ -51,7 +51,7 @@ export const usage_routes = new Hono<AppBindings>()
 
         let data_query = supabase
             .from('agent_sessions')
-            .select('*, tasks(id, title, feature_id, features(id, title, project_id, projects(id, name)))')
+            .select('*, tasks!agent_sessions_task_id_fkey(id, title, feature_id, features(id, title, project_id, projects(id, name)))')
             .order('created_at', { ascending: false })
             .range(offset, offset + per_page - 1);
 
@@ -69,7 +69,7 @@ export const usage_routes = new Hono<AppBindings>()
 
         const error = count_error || data_error;
         if (error) {
-            logger.error('Failed to fetch history', { route: 'GET /api/usage/history', error: String(error) });
+            logger.error('Failed to fetch history', { route: 'GET /api/usage/history', error: JSON.stringify(error) });
             return context.json({ error: 'Failed to fetch history' }, 500);
         }
 

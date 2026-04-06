@@ -66,7 +66,7 @@ export const telemetry_routes = new Hono<AppBindings>()
         if (!uuid) return context.json({ error: 'Session not found' }, 404);
 
         const { data, error } = await supabase.from('agent_sessions')
-            .select('*, tasks(id, title, feature_id, features(id, title, project_id, projects(id, name)))')
+            .select('*, tasks!agent_sessions_task_id_fkey(id, title, feature_id, features(id, title, project_id, projects(id, name)))')
             .eq('id', uuid).single();
 
         if (error || !data) return context.json({ error: 'Session not found' }, 404);
