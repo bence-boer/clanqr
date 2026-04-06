@@ -100,7 +100,7 @@ describe('parse_implementer_output', () => {
 
 describe('parse_verifier_output', () => {
     it('parses valid verifier JSON', () => {
-        const json = JSON.stringify({ verdict: 'approved', criteria: [] });
+        const json = '```json\n' + JSON.stringify({ verdict: 'approved', criteria: [] }) + '\n```';
         const result = parse_verifier_output(json);
         expect('verdict' in result && result.verdict).toBe('approved');
     });
@@ -113,7 +113,7 @@ describe('parse_verifier_output', () => {
 
 describe('parse_reviewer_output', () => {
     it('parses valid reviewer JSON', () => {
-        const json = JSON.stringify({ verdict: 'ship', findings: [] });
+        const json = '```json\n' + JSON.stringify({ verdict: 'ship', findings: [] }) + '\n```';
         const result = parse_reviewer_output(json);
         expect('verdict' in result && result.verdict).toBe('ship');
     });
