@@ -1,4 +1,6 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
+import { zValidator } from '@hono/zod-validator';
 import type { AppBindings } from '../middleware/supabase';
 import { validate_uuid_params, require_param } from '../middleware/validate_params';
 import { pipeline_service } from '../services/pipeline_service';
@@ -9,6 +11,10 @@ import { log_store } from '../services/log_store_service';
 import { get_dag } from '../services/dag_service';
 import { dispatch_verifier } from '../services/verification_service';
 import { logger } from '../utils/logger';
+
+const reorder_schema = z.object({
+    task_ids: z.array(z.string().uuid()).min(1).max(100)
+});
 
 function summarize_entry(type: string, data: Record<string, unknown> = {}): string {
     if (type === 'tool_start' || type === 'tool_complete') return `${data.tool_name ?? 'unknown'}`;
@@ -63,17 +69,21 @@ export const agents_routes = new Hono<AppBindings>()
     })
     .get('/queue/log', (c) => c.json({ log: pipeline_service.get_log() }))
 
-    .patch('/queue/reorder', async (context) => {
+    .patch('/queue/reorder', zValidator('json', reorder_schema), async (context) => {
         const supabase = context.get('supabase');
-        const { task_ids } = await context.req.json();
-        if (!Array.isArray(task_ids) || task_ids.length === 0)
-            return context.json({ error: 'task_ids must be a non-empty array' }, 400);
-        for (let i = 0; i < task_ids.length; i++) {
-            const { error } = await supabase.from('tasks')
-                .update({ sort_order: i }).eq('id', task_ids[i]).eq('status', 'approved');
-            if (error) return context.json({ error: error.message }, 500);
+        const { task_ids } = context.req.valid('json');
+        try {
+            for (let i = 0; i < task_ids.length; i++) {
+                const { error } = await supabase.from('tasks')
+                    .update({ sort_order: i }).eq('id', task_ids[i]).eq('status', 'approved');
+                if (error) throw error;
+            }
+            return context.json({ success: true });
         }
-        return context.json({ success: true });
+        catch (error) {
+            logger.error('Failed to reorder tasks', { route: 'PATCH /api/agents/queue/reorder', error: String(error) });
+            return context.json({ error: 'Failed to reorder tasks' }, 500);
+        }
     })
 
 // ── SDK session management ────────────────────────────────────────────────

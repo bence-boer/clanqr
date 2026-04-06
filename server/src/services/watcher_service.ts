@@ -60,7 +60,11 @@ class WatcherService {
             .select('*, resources(*), projects(*)')
             .eq('status', 'submitted');
 
-        if (error || !features) return;
+        if (error) {
+            logger.error('Failed to query submitted features', { service: 'watcher', error: error.message });
+            return;
+        }
+        if (!features) return;
 
         for (const feature of features) {
             if ((feature.manager_retry_count ?? 0) >= MAX_MANAGER_RETRIES) {

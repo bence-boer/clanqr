@@ -25,7 +25,7 @@ export async function reorder_queue(task_ids: string[], reload: () => Promise<vo
 
 export async function remove_from_queue(task_id: string, reload: () => Promise<void>): Promise<void> {
     try {
-        await api.update_task(task_id, { status: 'queued' } as never);
+        await api.update_task(task_id, { status: 'queued' });
         toast_store.success('Task removed');
         await reload();
     }
@@ -80,7 +80,7 @@ export function map_dag_response(raw: unknown): DagData {
 
     const wave_count = (data.wave_count as number) ?? 0;
     const waves: WaveInfo[] = [];
-    for (let w = 1; w <= wave_count; w++) {
+    for (let w = 0; w < wave_count; w++) {
         const wave_nodes = nodes.filter((n) => n.wave === w);
         const all_done = wave_nodes.every((n) => n.status === 'completed');
         const any_fail = wave_nodes.some((n) => n.status === 'failed');
@@ -89,7 +89,7 @@ export function map_dag_response(raw: unknown): DagData {
         if (all_done && wave_nodes.length > 0) status = 'completed';
         else if (any_fail) status = 'failed';
         else if (any_run) status = 'running';
-        waves.push({ wave: w, status, task_count: wave_nodes.length });
+        waves.push({ wave: w + 1, status, task_count: wave_nodes.length });
     }
     return { nodes, edges, waves };
 }
