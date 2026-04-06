@@ -505,15 +505,10 @@ test.describe("agent types page UI", () => {
         await page.goto("/agent-types");
         await page.waitForLoadState("domcontentloaded");
 
-        // Wait for loading to finish (spinner should disappear)
-        const spinner = page.locator("text=Loading agent types");
-        await expect(spinner).not.toBeVisible({ timeout: 15_000 });
-
-        // Either we see type cards or the empty state
-        const cards = page.locator(".type-card");
+        // Wait for either type cards or the empty state to appear (auto-waiting
+        // avoids a race where the spinner disappears before the DOM updates).
+        const cards = page.locator(".type-card").first();
         const empty_state = page.locator("text=No agent types found");
-        const card_count = await cards.count();
-        const has_empty = await empty_state.isVisible().catch(() => false);
-        expect(card_count > 0 || has_empty).toBeTruthy();
+        await expect(cards.or(empty_state)).toBeVisible({ timeout: 15_000 });
     });
 });
