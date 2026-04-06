@@ -122,6 +122,10 @@ export async function run_session(
 ): Promise<SdkSessionResult> {
     if (is_test_mode()) {
         await new Promise((r) => setTimeout(r, MOCK_DELAY_MS));
+        persist_event(db_session_id, 'turn.start', { turnId: 'mock-turn-1' });
+        persist_event(db_session_id, 'turn.complete', { turnId: 'mock-turn-1' });
+        persist_tool_call(db_session_id, 'mock-tool-1', 'mock_tool', { input: 'test' });
+        update_tool_result(db_session_id, 'mock-tool-1', true, 'Mock result');
         return get_mock_session_result(config.agent_type, config.session_id);
     }
 
