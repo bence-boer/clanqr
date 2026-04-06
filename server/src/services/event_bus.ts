@@ -53,12 +53,24 @@ export interface PingEvent {
     data: { timestamp: string }
 }
 
+export interface DagUpdateEvent {
+    type: 'dag:update'
+    data: { feature_id: string, wave_count: number }
+}
+
+export interface VerificationUpdateEvent {
+    type: 'verification:update'
+    data: { task_id: string, feature_id: string, verdict: string, retry_count: number }
+}
+
 export type ServerEvent =
   | PipelineStatusEvent
   | AgentsUpdateEvent
   | FeaturesUpdateEvent
   | TasksUpdateEvent
-  | PingEvent;
+  | PingEvent
+  | DagUpdateEvent
+  | VerificationUpdateEvent;
 
 // ── EventBus implementation ──────────────────────────────────────────────────
 

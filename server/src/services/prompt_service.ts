@@ -10,8 +10,8 @@ import { logger } from '../utils/logger';
 const PROMPTS_DIR = join(import.meta.dir, '../../../agents/prompts');
 
 const PROMPT_FILES: Record<string, string> = {
-    manager: join(PROMPTS_DIR, 'manager.md'),
-    ralph: join(PROMPTS_DIR, 'ralph.md')
+    orchestrator: join(PROMPTS_DIR, 'manager.md'),
+    implementer: join(PROMPTS_DIR, 'ralph.md')
 };
 
 class PromptService {
@@ -78,11 +78,11 @@ class PromptService {
         const db = supabase ?? create_supabase_client();
 
         // 1. Base prompt from DB
-        const base_prompt = await this.get_prompt('ralph', db);
+        const base_prompt = await this.get_prompt('implementer', db);
         let prompt = base_prompt ?? 'You are Clanqr, a coding agent. Execute the assigned task carefully and thoroughly.';
 
         // 2. Resolve traits for this task
-        const traits = await resolve_task_traits(db, task_id, 'ralph');
+        const traits = await resolve_task_traits(db, task_id, 'implementer');
 
         // 3. Get linked skills content
         const { data: skill_links } = await db
@@ -130,11 +130,11 @@ class PromptService {
     ): Promise<string> {
         const db = supabase ?? create_supabase_client();
 
-        const base_prompt = await this.get_prompt('manager', db);
+        const base_prompt = await this.get_prompt('orchestrator', db);
         let prompt = base_prompt ?? 'You are a Manager Agent. Research and plan — never write implementation code.';
 
-        // Resolve traits for this feature (manager target)
-        const traits = await resolve_feature_traits(db, feature_id, project_id, 'manager');
+        // Resolve traits for this feature (orchestrator target)
+        const traits = await resolve_feature_traits(db, feature_id, project_id, 'orchestrator');
 
         const traits_text = traits.length > 0
             ? `---\nADDITIONAL INSTRUCTIONS:\n\n${traits.map((t) => `### ${t.name}\n${t.content}`).join('\n\n')}`

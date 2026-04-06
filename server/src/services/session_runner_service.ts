@@ -7,6 +7,7 @@ import {
     map_event, should_forward, should_persist,
     extract_usage, extract_shutdown, type ExtractedUsage
 } from '../sdk/event_mapper';
+import { get_agent_tool_permissions } from '../sdk/types';
 import { stream_service } from './stream_service';
 import { log_store } from './log_store_service';
 import { persist_event, persist_tool_call, update_tool_result } from './telemetry_persist_service';
@@ -118,11 +119,12 @@ export async function run_session(
     db_session_id: string
 ): Promise<SdkSessionResult> {
     const client = await get_connected_client();
-    const hooks = build_hooks(config, '');
+    const permissions = await get_agent_tool_permissions(config.agent_type);
+    const hooks = build_hooks(config, '', permissions);
     const session = await client.createSession({
         sessionId: config.session_id,
         model: config.model,
-        customAgents: get_custom_agents(),
+        customAgents: await get_custom_agents(),
         agent: config.agent_type,
         hooks,
         onPermissionRequest: async () => ({ kind: 'approved' as const })

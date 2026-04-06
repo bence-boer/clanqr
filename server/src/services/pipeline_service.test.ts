@@ -41,7 +41,11 @@ mock.module('./session_pool_service', () => ({
 }));
 
 mock.module('./sdk_session_service', () => ({
-    execute_task: () => Promise.resolve({ session_id: 'test-session', success: true, content: 'done' })
+    execute_task: () => Promise.resolve({ session_id: 'test-session', success: true, content: 'done' }),
+    run_agent_session: () => Promise.resolve({
+        session_id: 'test-session', db_session_id: 'db-1', success: true, content: 'done',
+        metrics: { prompt_tokens: 0, completion_tokens: 0, total_cost: 0, duration_ms: 0, files_changed: [] }
+    })
 }));
 
 mock.module('./prompt_service', () => ({
@@ -52,6 +56,26 @@ mock.module('./prompt_service', () => ({
 
 mock.module('./feature_utils', () => ({
     check_and_complete_feature: () => Promise.resolve(false)
+}));
+
+mock.module('./dag_service', () => ({
+    get_ready_tasks: () => Promise.resolve([]),
+    get_dag: () => Promise.resolve({ nodes: [], edges: [], wave_count: 0 }),
+    compute_waves: () => Promise.resolve(0)
+}));
+
+mock.module('./verification_service', () => ({
+    should_verify: () => false,
+    dispatch_verifier: () => Promise.resolve({ verdict: 'approved', reasons: [] }),
+    handle_verification_result: () => Promise.resolve('approved')
+}));
+
+mock.module('./event_bus', () => ({
+    event_bus: { emit: () => {}, subscribe: () => () => {} }
+}));
+
+mock.module('./log_store_service', () => ({
+    log_store: { get: () => [], append: () => {} }
 }));
 
 mock.module('../utils/logger', () => ({
@@ -76,7 +100,8 @@ import { pipeline_service } from './pipeline_service';
 
 describe('PipelineService', () => {
     beforeEach(() => {
-        Object.assign(pipeline_service, { state: 'idle', active_run: null, is_processing: false });
+        Object.assign(pipeline_service, { state: 'idle', is_processing: false });
+        pipeline_service.active_runs.clear();
         mock_can_start = true;
         mock_store = { tasks: [], features: [], agent_sessions: [] };
     });
@@ -85,8 +110,8 @@ describe('PipelineService', () => {
         it('returns idle state with no active run', () => {
             const status = pipeline_service.get_status();
             expect(status.state).toBe('idle');
-            expect(status.current_task_id).toBeNull();
-            expect(status.current_run_id).toBeNull();
+            expect(status.active_task_ids).toEqual([]);
+            expect(status.active_run_count).toBe(0);
             expect(status.current_feature_id).toBeNull();
         });
 
@@ -96,14 +121,14 @@ describe('PipelineService', () => {
         });
 
         it('reflects active run info', () => {
-            Object.assign(pipeline_service, {
-                state: 'running',
-                active_run: { task_id: 'task-1', run_id: 'run-1', feature_id: 'feat-1' }
+            Object.assign(pipeline_service, { state: 'running' });
+            pipeline_service.active_runs.set('task-1', {
+                task_id: 'task-1', feature_id: 'feat-1', session_id: '', started_at: Date.now()
             });
             const status = pipeline_service.get_status();
             expect(status.state).toBe('running');
-            expect(status.current_task_id).toBe('task-1');
-            expect(status.current_run_id).toBe('run-1');
+            expect(status.active_task_ids).toContain('task-1');
+            expect(status.active_run_count).toBe(1);
             expect(status.current_feature_id).toBe('feat-1');
         });
     });
@@ -147,9 +172,12 @@ describe('PipelineService', () => {
         });
 
         it('returns immediately when active_run exists', async () => {
-            Object.assign(pipeline_service, { active_run: { task_id: 'x', run_id: 'y', feature_id: 'z' } });
+            pipeline_service.active_runs.set('x', {
+                task_id: 'x', feature_id: 'z', session_id: '', started_at: Date.now()
+            });
             await pipeline_service.process_next();
-            expect(pipeline_service.get_status().state).toBe('idle');
+            // Still has the active run (wasn't cleared)
+            expect(pipeline_service.active_runs.size).toBe(1);
         });
 
         it('sets state to idle when no tasks available', async () => {
@@ -176,7 +204,7 @@ describe('PipelineService', () => {
                 agent_sessions: []
             };
             await pipeline_service.process_next();
-            expect(pipeline_service.get_status().current_task_id).toBeNull();
+            expect(pipeline_service.get_status().active_task_ids).toEqual([]);
         });
     });
 
