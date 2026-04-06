@@ -36,7 +36,21 @@ mock.module('../sdk/output_parser', () => ({
     parse_orchestrator_output: () => ({ tasks: [] })
 }));
 mock.module('./pipeline_service', () => ({
-    pipeline_service: { process_ready_tasks: () => Promise.resolve() }
+    pipeline_service: {
+        process_ready_tasks: () => Promise.resolve(),
+        process_next: () => Promise.resolve(),
+        get_status: () => ({
+            state: 'idle', active_task_ids: [],
+            active_run_count: 0, current_feature_id: null,
+            wave_info: null
+        }),
+        get_log: () => '',
+        pause: () => {
+        },
+        resume: () => {
+        },
+        stop_current: () => Promise.resolve()
+    }
 }));
 
 import { watcher_service } from './watcher_service';
