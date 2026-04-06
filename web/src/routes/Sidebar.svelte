@@ -62,7 +62,6 @@
                 {/if}
             </div>
         {/if}
-        <span class="shortcut-hint">⌘K to search</span>
         <Button variant="ghost" style="width: 100%; justify-content: flex-start;" icon="logout" onclick={on_logout}>
             <span>Sign out</span>
         </Button>
@@ -100,7 +99,6 @@
     .sidebar.collapsed :global(.nav-links a span:not(.icon)),
     .sidebar.collapsed :global(.nav-links a .nav-badge),
     .sidebar.collapsed .sidebar-footer .system-mini-stats,
-    .sidebar.collapsed .sidebar-footer .shortcut-hint,
     .sidebar.collapsed .sidebar-footer :global(button span:not(.icon)) {
         display: none;
     }
@@ -154,15 +152,6 @@
         font-size: 0.75rem;
         color: var(--fg-muted);
         margin-bottom: 0.25rem;
-    }
-
-    .shortcut-hint {
-        display: block;
-        font-size: 0.7rem;
-        color: var(--fg-muted);
-        opacity: 0.5;
-        padding: 0.25rem 0.75rem;
-        text-align: center;
     }
 
     .collapse-toggle {

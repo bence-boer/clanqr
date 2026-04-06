@@ -1,6 +1,6 @@
 <script lang="ts">
     import { Button, Badge } from '$lib/components/primitives';
-    import { EmptyState, Checkbox } from '$lib/components';
+    import { ConfirmModal, EmptyState, Checkbox } from '$lib/components';
     import type { Feature, TaskRow } from '$lib/types';
     import { status_icon, status_class } from '$lib/utils/status';
     import { SvelteSet } from 'svelte/reactivity';
@@ -16,6 +16,7 @@
 
     let selected_ids = $state<Set<string>>(new Set());
     let deleting = $state(false);
+    let show_delete_confirm = $state(false);
     let all_selected = $derived(features.length > 0 && selected_ids.size === features.length);
 
     function toggle_select(id: string, event: MouseEvent) {
@@ -37,7 +38,11 @@
 
     async function delete_selected() {
         if (selected_ids.size === 0) return;
-        if (!confirm(`Delete ${selected_ids.size} feature(s)?`)) return;
+        show_delete_confirm = true;
+    }
+
+    async function confirm_delete_selected() {
+        show_delete_confirm = false;
         deleting = true;
         try {
             await on_delete_selected(selected_ids);
@@ -103,6 +108,16 @@
         {/each}
     {/if}
 </section>
+
+<ConfirmModal
+    title="Delete Features"
+    message={`Delete ${selected_ids.size} feature(s)? This cannot be undone.`}
+    confirm_label="Delete"
+    variant="danger"
+    open={show_delete_confirm}
+    on_confirm={confirm_delete_selected}
+    on_cancel={() => (show_delete_confirm = false)}
+/>
 
 <style>
     .features-panel {

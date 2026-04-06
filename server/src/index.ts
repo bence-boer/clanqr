@@ -5,6 +5,7 @@ import { logger as hono_logger } from 'hono/logger';
 import { secureHeaders } from 'hono/secure-headers';
 import { create_supabase_client } from './db';
 import { env } from './env';
+import { is_test_mode, set_test_mode } from './test_mode';
 import { auth_middleware } from './middleware/auth';
 import { metrics_middleware } from './middleware/metrics';
 import { rate_limit } from './middleware/rate_limit';
@@ -79,7 +80,20 @@ const app = new Hono<AppBindings>()
     .use('*', supabase_middleware())
     // Health check (no auth)
     .get('/health', (context) => {
-        return context.json({ status: 'ok', timestamp: new Date().toISOString() });
+        return context.json({
+            status: 'ok',
+            timestamp: new Date().toISOString(),
+            test_mode: is_test_mode()
+        });
+    })
+    // Runtime test-mode toggle (non-production only, no auth)
+    .post('/test-mode', (context) => {
+        if (env.NODE_ENV === 'production') {
+            return context.json({ error: 'Not available in production' }, 403);
+        }
+        const enabled = context.req.query('enabled') === 'true';
+        set_test_mode(enabled);
+        return context.json({ test_mode: is_test_mode() });
     })
     // Auth mutation routes (register/login) rate-limited: 10 req/min
     // Status check uses global rate limit only (called on every page load)

@@ -168,17 +168,34 @@ jobs:
           cd $APP_DIR/e2e
           bun x --bun playwright test --grep-invert "agent execution"
 
+      - name: Enable TEST_MODE for agent execution
+        run: |
+          RESP=$(curl -sf -X POST "http://localhost:3011/test-mode?enabled=true" 2>/dev/null || echo '{}')
+          if echo "$RESP" | grep -q '"test_mode":true'; then
+            echo "✅ TEST_MODE enabled via API"
+          else
+            echo "::error::Failed to enable TEST_MODE via API. Response: $RESP"
+            exit 1
+          fi
+
       - name: Run E2E tests (agent execution)
         env:
           CI: "true"
           BASE_URL: http://test.clanqr.dev
           API_URL: http://localhost:3011
           PLAYWRIGHT_BROWSERS_PATH: /home/scoy/.cache/ms-playwright
+          TEST_MODE: "true"
         timeout-minutes: 25
         run: |
           export PATH="$BUN_INSTALL/bin:$PATH"
           cd $APP_DIR/e2e
           bun x --bun playwright test agent-execution
+
+      - name: Disable TEST_MODE after agent execution
+        if: always()
+        run: |
+          curl -sf -X POST "http://localhost:3011/test-mode?enabled=false" > /dev/null 2>&1 || true
+          echo "✅ TEST_MODE disabled via API"
 
       - name: Rollback on failure
         if: failure()

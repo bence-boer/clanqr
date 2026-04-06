@@ -1,6 +1,7 @@
 <script lang="ts">
     import { api } from '$lib/api/client';
     import { Button, Input, Select, Textarea } from '$lib/components/primitives';
+    import { ConfirmModal } from '$lib/components';
     import { toast_store } from '$lib/stores/toast.svelte';
     import type { Feature } from '$lib/types';
     import { onMount } from 'svelte';
@@ -27,6 +28,7 @@
     let loading_models = $state(false);
     let saving = $state(false);
     let models_loaded = $state(false);
+    let show_conflict_confirm = $state(false);
     let started_at = feature.updated_at;
 
     const plan_label = $derived(`Planning Model ${loading_models ? '(...)' : ''}`);
@@ -59,8 +61,14 @@
         e?.preventDefault();
         if (!edit_title.trim()) return;
         if (started_at && feature.updated_at !== started_at) {
-            if (!confirm('This feature was modified elsewhere. Save anyway?')) return;
+            show_conflict_confirm = true;
+            return;
         }
+        await perform_save();
+    }
+
+    async function perform_save() {
+        show_conflict_confirm = false;
         saving = true;
         try {
             await on_save({
@@ -94,6 +102,16 @@
         </Button>
     </div>
 </form>
+
+<ConfirmModal
+    title="Save Conflict"
+    message="This feature was modified elsewhere. Save anyway?"
+    confirm_label="Save Anyway"
+    variant="warning"
+    open={show_conflict_confirm}
+    on_confirm={perform_save}
+    on_cancel={() => (show_conflict_confirm = false)}
+/>
 
 <style>
     .edit-feature-form { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.25rem; }

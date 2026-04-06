@@ -1,5 +1,5 @@
 /** V2 DAG-aware pipeline — parallel task execution with verification gates. */
-import { create_supabase_client } from '../db';
+import { create_supabase_client, type TypedSupabaseClient } from '../db';
 import { logger } from '../utils/logger';
 import { can_start_session, set_on_session_freed } from './session_pool_service';
 import { event_bus } from './event_bus';
@@ -28,6 +28,7 @@ class PipelineService {
     private state: PipelineState = 'idle';
     private active_runs = new Map<string, ActiveRun>();
     private is_processing = false;
+    private cached_wave_info: PipelineStatus['wave_info'] = null;
 
     private build_status(): PipelineStatus {
         const task_ids = [...this.active_runs.keys()];
@@ -37,7 +38,7 @@ class PipelineService {
             active_task_ids: task_ids,
             active_run_count: this.active_runs.size,
             current_feature_id: first_run?.feature_id ?? null,
-            wave_info: null
+            wave_info: this.cached_wave_info
         };
     }
 
@@ -90,6 +91,12 @@ class PipelineService {
             else if ((this.state as PipelineState) !== 'paused') {
                 this.state = 'idle';
             }
+
+            const first = this.active_runs.values().next().value as ActiveRun | undefined;
+            this.cached_wave_info = first
+                ? await this.fetch_wave_info(first.feature_id, supabase)
+                : null;
+
             this.emit_status();
         }
         catch (error) {
@@ -137,11 +144,28 @@ class PipelineService {
             await supabase.from('tasks').update({ status: 'approved' }).eq('id', task_id);
         }
         this.active_runs.clear();
+        this.cached_wave_info = null;
         if (this.state !== 'paused') this.state = 'idle';
         this.emit_status();
     }
 
     // ── Private ──────────────────────────────────────────────────────────────
+
+    private async fetch_wave_info(
+        feature_id: string, supabase: TypedSupabaseClient
+    ): Promise<PipelineStatus['wave_info']> {
+        const { data } = await supabase
+            .from('tasks').select('wave_number, status').eq('feature_id', feature_id);
+        if (!data || data.length === 0) return null;
+        const with_waves = data.filter((t) => t.wave_number != null);
+        if (with_waves.length === 0) return null;
+        const total_waves = Math.max(...with_waves.map((t) => t.wave_number as number)) + 1;
+        const pending = with_waves.filter((t) => t.status !== 'complete' && t.status !== 'skipped');
+        const current_wave = pending.length > 0
+            ? Math.min(...pending.map((t) => t.wave_number as number))
+            : total_waves - 1;
+        return { current_wave, total_waves };
+    }
 
     private dispatch_task(task: PipelineTask): void {
         const { id: task_id, feature_id } = task;

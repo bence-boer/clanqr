@@ -14,7 +14,7 @@
         on_node_click?: (node_id: string) => void
     } = $props();
 
-    let show_legend = $state(false);
+    let show_legend = $state(true);
 
     const legend_types = $derived.by(() => {
         const used = new Set(nodes.map((n) => n.agent_type));

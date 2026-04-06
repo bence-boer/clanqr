@@ -12,6 +12,12 @@
 
     const { pipeline, active_agents, pending_approval_count, system_stats, on_health_click }: Props = $props();
 
+    const health_labels: Record<string, string> = {
+        green: 'Healthy',
+        yellow: 'Degraded',
+        red: 'Offline'
+    };
+
     function health_status(stats: SystemStats | null): 'green' | 'yellow' | 'red' {
         if (!stats) return 'red';
         if (stats.cpu_percent > 90 || stats.memory_percent > 90 || stats.storage_percent > 90) return 'red';
@@ -43,7 +49,10 @@
     </a>
     <button class="kpi-item kpi-health" onclick={on_health_click}>
         <span class="kpi-label">System Health</span>
-        <span class={['health-dot', `health-${health}`].join(' ')}></span>
+        <span class="health-indicator">
+            <span class={['health-dot', `health-${health}`].join(' ')} aria-hidden="true"></span>
+            <span class={['health-text', `health-text-${health}`].join(' ')}>{health_labels[health]}</span>
+        </span>
     </button>
 </div>
 
@@ -102,8 +111,24 @@
         width: 12px;
         height: 12px;
         border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .health-indicator {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
         margin-top: 0.15rem;
     }
+
+    .health-text {
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .health-text-green { color: var(--success); }
+    .health-text-yellow { color: var(--accent); }
+    .health-text-red { color: var(--danger); }
 
     .health-green { background: var(--success); }
     .health-yellow { background: var(--accent); }

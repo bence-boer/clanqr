@@ -2,6 +2,7 @@
     import { onMount } from 'svelte';
     import { api } from '$lib/api/client';
     import { read_sse_stream } from '$lib/utils/sse';
+    import { ConfirmModal } from '$lib/components';
     import type { ChatSession, ChatSessionFull, ChatMessage } from '$lib/types';
     import { group_models, format_session_title, build_message, type ModelGroup } from './chat-models';
     import {
@@ -23,6 +24,7 @@
     let error_msg = $state('');
     let mobile_sessions_open = $state(false);
     let model_groups = $state<ModelGroup[]>([]);
+    let pending_delete_session_id = $state<string | null>(null);
 
     onMount(() => {
         api.list_models().then((models) => {
@@ -70,10 +72,15 @@
         await select_session(session);
     }
 
-    async function delete_session(session_id: string, event: MouseEvent) {
+    function delete_session(session_id: string, event: MouseEvent) {
         event.stopPropagation();
-        if (!confirm('Delete this session?')) return;
-        if (!await remove_session(session_id)) return;
+        pending_delete_session_id = session_id;
+    }
+
+    async function confirm_delete_session() {
+        const session_id = pending_delete_session_id;
+        pending_delete_session_id = null;
+        if (!session_id || !await remove_session(session_id)) return;
         sessions = sessions.filter((s) => s.id !== session_id);
         if (active_session?.id === session_id) {
             active_session = null;
@@ -159,6 +166,10 @@
         {format_session_title} on_send={send_message} on_stop={stop_generating} on_create={create_session} on_rename={rename_session}
     />
 </div>
+
+<ConfirmModal title="Delete Session" message="Delete this session? This cannot be undone."
+    confirm_label="Delete" variant="danger" open={pending_delete_session_id !== null}
+    on_confirm={confirm_delete_session} on_cancel={() => (pending_delete_session_id = null)} />
 
 <style>
     .chat-page {

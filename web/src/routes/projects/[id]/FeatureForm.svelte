@@ -31,6 +31,7 @@
     let form_error = $state<string | null>(null);
     let model_options = $state<ModelOpt[]>([]);
     let loading_models = $state(true);
+    let default_model_value = $state('');
 
     onMount(async () => {
         try {
@@ -41,6 +42,7 @@
             model_options = models;
             if (model_options.length > 0) {
                 const default_model = model_options.find((m) => m.value === defaults.default_model);
+                default_model_value = default_model?.value ?? '';
                 planning_model = default_model?.value ?? model_options[0].value;
                 execution_model = default_model?.value ?? model_options[0].value;
             }
@@ -91,6 +93,11 @@
 
     const plan_label = $derived(`Planning Model${loading_models ? ' (loading...)' : ''}`);
     const exec_label = $derived(`Execution Model${loading_models ? ' (loading...)' : ''}`);
+    function model_label(m: ModelOpt): string {
+        const suffix = m.billing_multiplier && m.billing_multiplier > 1 ? ` (${m.billing_multiplier}×)` : '';
+        const recommended = m.value === default_model_value ? ' (Recommended)' : '';
+        return `${m.label}${suffix}${recommended}`;
+    }
 </script>
 
 <form
@@ -107,7 +114,7 @@
         <div class="field">
             <Select id="create-planning-model" label={plan_label} bind:value={planning_model} disabled={loading_models}>
                 {#each model_options as m (m.value)}
-                    <option value={m.value}>{m.label}{m.billing_multiplier && m.billing_multiplier > 1 ? ` (${m.billing_multiplier}×)` : ''}</option>
+                    <option value={m.value}>{model_label(m)}</option>
                 {/each}
             </Select>
             <span class="help-text">AI model that breaks your feature into tasks</span>
@@ -115,7 +122,7 @@
         <div class="field">
             <Select id="create-execution-model" label={exec_label} bind:value={execution_model} disabled={loading_models}>
                 {#each model_options as m (m.value)}
-                    <option value={m.value}>{m.label}{m.billing_multiplier && m.billing_multiplier > 1 ? ` (${m.billing_multiplier}×)` : ''}</option>
+                    <option value={m.value}>{model_label(m)}</option>
                 {/each}
             </Select>
             <span class="help-text">AI model that implements each task</span>
