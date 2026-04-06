@@ -8,9 +8,10 @@
 
     interface Props {
         task_id: string
+        agent_type?: string
     }
 
-    let { task_id }: Props = $props();
+    let { task_id, agent_type = 'implementer' }: Props = $props();
 
     let available_traits = $state<Trait[]>([]);
     let available_skills = $state<{ name: string, description: string }[]>([]);
@@ -31,7 +32,7 @@
         loading = true;
         try {
             const [traits, skills, assignments, links] = await Promise.all([
-                api.list_traits('implementer'),
+                api.list_traits(agent_type as import('$lib/types').TraitTarget),
                 api.list_skills(),
                 api.list_trait_assignments({ scope: 'task', task_id }),
                 api.get_task_skills(task_id)

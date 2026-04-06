@@ -95,6 +95,8 @@
         border-color: var(--fg-muted);
     }
 
+    .legend-toggle:focus-visible { box-shadow: var(--focus-ring); outline: none; }
+
     .legend {
         display: flex;
         flex-wrap: wrap;

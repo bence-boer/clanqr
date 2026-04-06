@@ -8,13 +8,15 @@
     import type { Feature, TaskRow } from '$lib/types';
     import TaskItem from './TaskItem.svelte';
 
+    type V2Update = { agent_type?: string, execution_strategy?: string, definition_of_done?: string | null, skills?: string[], context_paths?: string[] };
+
     interface Props {
         feature: Feature
         on_approve: (task_id: string) => Promise<void>
         on_approve_all: (feature_id: string) => Promise<void>
         on_spawn: (task_id: string) => Promise<void>
         on_add: (description: string) => Promise<void>
-        on_update: (task_id: string, description: string, title?: string | null) => Promise<void>
+        on_update: (task_id: string, description: string, title?: string | null, v2?: V2Update) => Promise<void>
         on_delete: (task_id: string) => Promise<void>
         on_toggle_auto_approve: (enabled: boolean) => Promise<void>
     }
@@ -27,6 +29,7 @@
     let editing_task_title = $state('');
     let editing_task_desc = $state('');
     let editing_task_model = $state<string | null>(null);
+    let editing_v2 = $state({ agent_type: 'implementer', execution_strategy: 'sequential', definition_of_done: '', skills_text: '', context_paths_text: '' });
     let saving_task = $state(false);
     let managing_task_id: string | null = $state(null);
     let view_mode = $state<'list' | 'dag'>('list');
@@ -54,13 +57,20 @@
         editing_task_title = task.title || '';
         editing_task_desc = task.description;
         editing_task_model = task.model ?? null;
+        const skills = Array.isArray(task.skills) ? (task.skills as string[]).join(', ') : '';
+        const ctx = Array.isArray(task.context_paths) ? (task.context_paths as string[]).join(', ') : '';
+        editing_v2 = { agent_type: task.agent_type ?? 'implementer', execution_strategy: task.execution_strategy ?? 'sequential', definition_of_done: task.definition_of_done ?? '', skills_text: skills, context_paths_text: ctx };
     }
 
     async function save_edit() {
         if (!editing_task_id || !editing_task_desc.trim()) return;
         saving_task = true;
         try {
-            await on_update(editing_task_id, editing_task_desc.trim(), editing_task_title.trim() || null);
+            const csv = (s: string) => s ? s.split(',').map((v) => v.trim()).filter(Boolean) : [];
+            const v2: V2Update = { agent_type: editing_v2.agent_type, execution_strategy: editing_v2.execution_strategy,
+                definition_of_done: editing_v2.definition_of_done || null,
+                skills: csv(editing_v2.skills_text), context_paths: csv(editing_v2.context_paths_text) };
+            await on_update(editing_task_id, editing_task_desc.trim(), editing_task_title.trim() || null, v2);
             editing_task_id = null;
         }
         finally {
@@ -169,6 +179,7 @@
                     bind:editing_title={editing_task_title}
                     bind:editing_desc={editing_task_desc}
                     bind:editing_model={editing_task_model}
+                    bind:editing_v2={editing_v2}
                     saving={saving_task}
                     on_approve={handle_guarded_approve}
                     {on_spawn}

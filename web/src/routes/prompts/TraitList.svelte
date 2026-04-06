@@ -18,9 +18,10 @@
     interface Props {
         traits: Trait[]
         on_updated: () => void
+        show_form?: boolean
     }
 
-    let { traits, on_updated }: Props = $props();
+    let { traits, on_updated, show_form = $bindable(false) }: Props = $props();
 
     let trait_filter = $state<'all' | TraitTarget>('all');
     let category_search = $state('');
@@ -54,7 +55,7 @@
         }
     }
 
-    import { onMount } from 'svelte';
+    import { onMount, untrack } from 'svelte';
     onMount(() => {
         load_assignments();
     });
@@ -63,7 +64,6 @@
         name: '', description: '', target: 'implementer', is_global: false, content: ''
     });
 
-    let show_form = $state(false);
     let editing_id = $state<string | null>(null);
     let form = $state<TraitFormData>(default_trait_form());
     let form_saving = $state(false);
@@ -72,12 +72,14 @@
     let deleting_id = $state<string | null>(null);
     let list_error = $state('');
 
-    export function open_new_form() {
-        editing_id = null;
-        form = default_trait_form();
-        form_error = '';
-        show_form = true;
-    }
+    $effect(() => {
+        if (show_form && editing_id === null) {
+            untrack(() => {
+                form = default_trait_form();
+                form_error = '';
+            });
+        }
+    });
 
     function open_edit_form(trait: Trait) {
         editing_id = trait.id;

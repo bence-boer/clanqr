@@ -3,11 +3,20 @@
     import { Button, Input, Select } from '$lib/components/primitives';
     import { onMount } from 'svelte';
 
+    interface V2Fields {
+        agent_type: string
+        execution_strategy: string
+        definition_of_done: string
+        skills_text: string
+        context_paths_text: string
+    }
+
     interface Props {
         task_id: string
         title: string
         description: string
         model: string | null
+        v2?: V2Fields
         saving: boolean
         on_save: () => Promise<void>
         on_cancel: () => void
@@ -15,7 +24,8 @@
 
     let {
         task_id, title = $bindable(), description = $bindable(),
-        model = $bindable(), saving, on_save, on_cancel
+        model = $bindable(), v2 = $bindable({ agent_type: 'implementer', execution_strategy: 'sequential', definition_of_done: '', skills_text: '', context_paths_text: '' }),
+        saving, on_save, on_cancel
     }: Props = $props();
 
     let model_options = $state<{ value: string, label: string }[]>([]);
@@ -43,11 +53,6 @@
 
     const agent_types = ['orchestrator', 'explorer', 'architect', 'implementer', 'verifier', 'reviewer', 'synthesizer', 'researcher', 'custom'] as const;
     const strategies = ['sequential', 'parallel', 'background'] as const;
-    let agent_type = $state('implementer');
-    let execution_strategy = $state('sequential');
-    let definition_of_done = $state('');
-    let skills_text = $state('');
-    let context_paths_text = $state('');
 </script>
 
 <div class="task-edit-form">
@@ -82,16 +87,17 @@
     </div>
     <div class="v2-fields">
         <div class="v2-row">
-            <Select id="task-agent-type-{task_id}" label="Agent Type" bind:value={agent_type}>
+            <Select id="task-agent-type-{task_id}" label="Agent Type" bind:value={v2.agent_type}>
                 {#each agent_types as at (at)}<option value={at}>{at.charAt(0).toUpperCase() + at.slice(1)}</option>{/each}
             </Select>
-            <Select id="task-strategy-{task_id}" label="Execution Strategy" bind:value={execution_strategy}>
+            <Select id="task-strategy-{task_id}" label="Execution Strategy" bind:value={v2.execution_strategy}>
                 {#each strategies as s (s)}<option value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>{/each}
             </Select>
         </div>
-        <textarea class="task-desc-input" placeholder="Definition of done…" bind:value={definition_of_done} rows="2" aria-label="Definition of done"></textarea>
-        <Input type="text" placeholder="Skills (comma-separated)" bind:value={skills_text} aria-label="Skills" />
-        <Input type="text" placeholder="Context paths (comma-separated)" bind:value={context_paths_text} aria-label="Context paths" />
+        <textarea class="task-desc-input" placeholder="Definition of done…"
+            bind:value={v2.definition_of_done} rows="2" aria-label="Definition of done"></textarea>
+        <Input type="text" placeholder="Skills (comma-separated)" bind:value={v2.skills_text} aria-label="Skills" />
+        <Input type="text" placeholder="Context paths (comma-separated)" bind:value={v2.context_paths_text} aria-label="Context paths" />
     </div>
     <div class="task-edit-actions">
         <Button variant="primary" size="sm" onclick={on_save} disabled={saving}>Save</Button>

@@ -79,7 +79,7 @@
     let traits = $state<Trait[]>([]);
     let traits_loading = $state(true);
     let traits_error = $state('');
-    let trait_list_ref: TraitList | undefined = $state();
+    let show_trait_form = $state(false);
 
     async function load_traits() {
         try {
@@ -112,7 +112,7 @@
                 {syncing ? 'Syncing…' : 'Sync from Repo'}
             </Button>
         {:else}
-            <Button variant="primary" onclick={() => trait_list_ref?.open_new_form()}>
+            <Button variant="primary" onclick={() => (show_trait_form = true)}>
                 <span class="icon">add</span>
                 New Trait
             </Button>
@@ -165,7 +165,7 @@
         {:else if traits_error}
             <ErrorBanner message={traits_error} />
         {:else}
-            <TraitList bind:this={trait_list_ref} {traits} on_updated={load_traits} />
+            <TraitList {traits} bind:show_form={show_trait_form} on_updated={load_traits} />
         {/if}
     {/if}
 </div>

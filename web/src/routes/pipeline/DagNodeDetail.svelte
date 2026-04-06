@@ -117,6 +117,7 @@
     }
 
     .close-btn:hover { color: var(--fg); }
+    .close-btn:focus-visible { box-shadow: var(--focus-ring); outline: none; }
 
     .detail-body {
         display: flex;

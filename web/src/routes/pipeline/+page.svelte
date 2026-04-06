@@ -84,7 +84,7 @@
         let cancelled = false;
         (async () => {
             try {
-                const r = await api.usage_history(history_page, 20, 'ralph', filter_status || undefined);
+                const r = await api.usage_history(history_page, 20, undefined, filter_status || undefined);
                 if (cancelled) return;
                 history = r.runs;
                 history_total = r.total;

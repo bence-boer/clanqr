@@ -74,7 +74,7 @@
     {:else}
         <div class="types-grid">
             {#each filtered as at (at.name)}
-                <button class="type-card" class:selected={selected?.name === at.name} onclick={() => {
+                <button class="type-card" class:selected={selected?.name === at.name} aria-pressed={selected?.name === at.name} onclick={() => {
                     selected = selected?.name === at.name ? null : at;
                 }}>
                     <div class="card-header">

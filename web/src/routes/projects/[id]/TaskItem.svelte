@@ -17,6 +17,7 @@
         editing_title: string
         editing_desc: string
         editing_model: string | null
+        editing_v2: { agent_type: string, execution_strategy: string, definition_of_done: string, skills_text: string, context_paths_text: string }
         saving: boolean
         on_approve: (task_id: string) => Promise<void>
         on_spawn: (task_id: string) => Promise<void>
@@ -30,7 +31,8 @@
 
     let {
         task, auto_approve, editing, editing_title = $bindable(), editing_desc = $bindable(),
-        editing_model = $bindable(), saving, on_approve, on_spawn, on_start_edit, on_save_edit,
+        editing_model = $bindable(), editing_v2 = $bindable({ agent_type: 'implementer', execution_strategy: 'sequential', definition_of_done: '', skills_text: '', context_paths_text: '' }),
+        saving, on_approve, on_spawn, on_start_edit, on_save_edit,
         on_cancel_edit, on_delete, on_toggle_artifacts, show_artifacts
     }: Props = $props();
 
@@ -67,6 +69,7 @@
             bind:title={editing_title}
             bind:description={editing_desc}
             bind:model={editing_model}
+            bind:v2={editing_v2}
             {saving}
             on_save={on_save_edit}
             on_cancel={on_cancel_edit}
@@ -126,7 +129,7 @@
             <TaskFiles task_id={task.id} />
         {/if}
         {#if show_artifacts}
-            <TaskArtifacts task_id={task.id} />
+            <TaskArtifacts task_id={task.id} agent_type={task.agent_type} />
         {/if}
     {/if}
 </div>

@@ -194,6 +194,7 @@
         font-family: var(--font); margin-top: 0.75rem; margin-bottom: 0.75rem;
     }
     .details-toggle:hover { border-color: var(--accent); color: var(--fg); }
+    .details-toggle:focus-visible { box-shadow: var(--focus-ring); outline: none; }
     .collapsible-details { animation: slide-down 200ms ease; }
     @keyframes slide-down {
         from { opacity: 0; transform: translateY(-8px); }
