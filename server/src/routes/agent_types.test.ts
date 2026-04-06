@@ -24,7 +24,7 @@ mock.module('../utils/logger', () => ({
     } }
 }));
 
-import { create_test_app, auth_headers } from '../test-app';
+import { create_test_app, auth_headers, admin_headers } from '../test-app';
 import { agent_types_routes } from './agent_types';
 
 function setup() {
@@ -80,16 +80,25 @@ describe('agent_types routes', () => {
     });
 
     describe('POST /api/agent-types/sync', () => {
-        it('returns success with count', async () => {
+        it('returns success with count for admin', async () => {
             const { app } = setup();
             const res = await app.request('/api/agent-types/sync', {
                 method: 'POST',
-                headers: auth_headers()
+                headers: admin_headers()
             });
             expect(res.status).toBe(200);
             const body = (await res.json()) as Record<string, unknown>;
             expect(body.success).toBe(true);
             expect(body.count).toBe(2);
+        });
+
+        it('returns 403 for non-admin user', async () => {
+            const { app } = setup();
+            const res = await app.request('/api/agent-types/sync', {
+                method: 'POST',
+                headers: auth_headers()
+            });
+            expect(res.status).toBe(403);
         });
 
         it('returns 401 without auth', async () => {

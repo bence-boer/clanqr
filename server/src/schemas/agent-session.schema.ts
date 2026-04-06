@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const create_agent_session_schema = z.object({
     session_id: z.string().max(500).optional(),
-    agent_type: z.enum(['manager', 'ralph', 'researcher', 'editor', 'chat', 'custom', 'orchestrator', 'explorer', 'architect', 'implementer', 'verifier', 'reviewer', 'synthesizer']),
+    agent_type: z.enum(['orchestrator', 'explorer', 'architect', 'implementer', 'verifier', 'reviewer', 'synthesizer', 'researcher', 'chat', 'custom']),
     feature_id: z.string().uuid().nullable().optional(),
     task_id: z.string().uuid().nullable().optional(),
     model: z.string().max(100).nullable().optional(),

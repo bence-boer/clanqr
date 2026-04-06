@@ -94,6 +94,9 @@ class WatcherService {
             logger.info('Planning feature via orchestrator', {
                 service: 'watcher', feature_id: feature.id, title: feature.title
             });
+            await supabase.from('features').update({
+                manager_retry_count: (feature.manager_retry_count ?? 0) + 1
+            }).eq('id', feature.id);
             this.plan_with_dag(feature, supabase).catch((err) =>
                 logger.error('Plan feature error', {
                     service: 'watcher', feature_id: feature.id, error: String(err)

@@ -26,7 +26,7 @@ export interface PipelineStatus {
 
 class PipelineService {
     private state: PipelineState = 'idle';
-    active_runs = new Map<string, ActiveRun>();
+    private active_runs = new Map<string, ActiveRun>();
     private is_processing = false;
 
     private build_status(): PipelineStatus {

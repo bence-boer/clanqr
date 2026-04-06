@@ -133,7 +133,14 @@ export const traits_routes = new Hono<AppBindings>()
         const task_id = require_param(context, 'task_id');
         const supabase = context.get('supabase');
 
-        const resolved = await resolve_task_traits(supabase, task_id, 'implementer');
+        const { data: task } = await supabase
+            .from('tasks')
+            .select('agent_type')
+            .eq('id', task_id)
+            .single();
+        const agent_type = (task?.agent_type ?? 'implementer') as Enums<'agent_type'>;
+
+        const resolved = await resolve_task_traits(supabase, task_id, agent_type);
         return context.json(resolved);
     })
 

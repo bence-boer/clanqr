@@ -122,6 +122,11 @@ async function on_task_completed(
             task_id, feature_id, verdict: vr.verdict, retry_count: task.retry_count ?? 0
         } });
         if (outcome === 'retry') return; // re-queued — will be picked up next cycle
+        if (outcome === 'escalate') {
+            await supabase.from('tasks').update({ status: 'failed' }).eq('id', task_id);
+            event_bus.emit({ type: 'tasks:update', data: { task_id, feature_id, status: 'failed' } });
+            return;
+        }
     }
 
     event_bus.emit({ type: 'tasks:update', data: { task_id, feature_id, status: 'complete' } });

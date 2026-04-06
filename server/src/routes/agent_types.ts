@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import type { AppBindings } from '../middleware/supabase';
+import { admin_middleware } from '../middleware/auth';
 import { agent_registry_service } from '../services/agent_registry_service';
 import { logger } from '../utils/logger';
 
@@ -31,8 +32,8 @@ export const agent_types_routes = new Hono<AppBindings>()
         }
     })
 
-    // POST /sync — sync agent types from filesystem
-    .post('/sync', async (c) => {
+    // POST /sync — sync agent types from filesystem (admin only)
+    .post('/sync', admin_middleware(), async (c) => {
         try {
             await agent_registry_service.sync_agent_types();
             const agents = await agent_registry_service.list_agent_types();

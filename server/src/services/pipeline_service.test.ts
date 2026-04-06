@@ -101,10 +101,22 @@ mock.module('../utils/logger', () => ({
 // Now import the module under test
 import { pipeline_service } from './pipeline_service';
 
+interface ActiveRunEntry {
+    task_id: string
+    feature_id: string
+    session_id: string
+    started_at: number
+}
+
+function get_active_runs(): Map<string, ActiveRunEntry> {
+    type WithRuns = { active_runs: Map<string, ActiveRunEntry> };
+    return (pipeline_service as unknown as WithRuns).active_runs;
+}
+
 describe('PipelineService', () => {
     beforeEach(() => {
         Object.assign(pipeline_service, { state: 'idle', is_processing: false });
-        pipeline_service.active_runs.clear();
+        get_active_runs().clear();
         mock_can_start = true;
         mock_store = { tasks: [], features: [], agent_sessions: [] };
     });
@@ -125,7 +137,7 @@ describe('PipelineService', () => {
 
         it('reflects active run info', () => {
             Object.assign(pipeline_service, { state: 'running' });
-            pipeline_service.active_runs.set('task-1', {
+            get_active_runs().set('task-1', {
                 task_id: 'task-1', feature_id: 'feat-1', session_id: '', started_at: Date.now()
             });
             const status = pipeline_service.get_status();
@@ -175,12 +187,12 @@ describe('PipelineService', () => {
         });
 
         it('returns immediately when active_run exists', async () => {
-            pipeline_service.active_runs.set('x', {
+            get_active_runs().set('x', {
                 task_id: 'x', feature_id: 'z', session_id: '', started_at: Date.now()
             });
             await pipeline_service.process_next();
             // Still has the active run (wasn't cleared)
-            expect(pipeline_service.active_runs.size).toBe(1);
+            expect(get_active_runs().size).toBe(1);
         });
 
         it('sets state to idle when no tasks available', async () => {

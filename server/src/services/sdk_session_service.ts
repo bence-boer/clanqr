@@ -8,8 +8,8 @@ import { logger } from '../utils/logger';
 import { get_models } from './model_service';
 import { get_sdk_defaults } from './settings_service';
 import type { SdkAgentType, SdkSessionConfig } from '../sdk/types';
+import type { TablesInsert, Enums } from '../database.types';
 
-const db = create_supabase_client();
 const ORCHESTRATOR_TIMEOUT_MS = 5 * 60 * 1000;
 const DEFAULT_TASK_TIMEOUT_MS = 30 * 60 * 1000;
 
@@ -59,7 +59,7 @@ async function get_billing_multiplier(model: string): Promise<number> {
 
 async function get_cost_rate(): Promise<number> {
     try {
-        const defaults = await get_sdk_defaults(db);
+        const defaults = await get_sdk_defaults(create_supabase_client());
         return defaults.cost_per_premium_request;
     }
     catch {
@@ -74,9 +74,10 @@ export async function run_agent_session(config: AgentSessionConfig): Promise<Age
     increment_session_count();
 
     try {
-        const insert_payload: Record<string, unknown> = {
-            agent_type: config.agent_type,
-            status: 'running' as const,
+        const db = create_supabase_client();
+        const insert_payload: TablesInsert<'agent_sessions'> = {
+            agent_type: config.agent_type as Enums<'agent_type'>,
+            status: 'running',
             model: config.model,
             sdk_session_id: sdk_sid,
             started_at: new Date().toISOString(),
@@ -84,7 +85,7 @@ export async function run_agent_session(config: AgentSessionConfig): Promise<Age
             ...(config.task_id ? { task_id: config.task_id } : {})
         };
         const { data: run } = await db.from('agent_sessions')
-            .insert(insert_payload as never).select('id').single();
+            .insert(insert_payload).select('id').single();
         const run_id = run?.id ?? '';
 
         const sdk_config: SdkSessionConfig = {
@@ -144,6 +145,8 @@ export async function plan_feature(feature_id: string, model: string, prompt: st
         agent_type: 'orchestrator', entity_id: feature_id, entity_type: 'feature',
         feature_id, model, prompt, timeout_ms: ORCHESTRATOR_TIMEOUT_MS
     });
+
+    const db = create_supabase_client();
 
     if (!result.success) {
         await db.from('features').update({ status: 'draft' }).eq('id', feature_id);
