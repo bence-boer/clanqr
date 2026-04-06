@@ -448,6 +448,44 @@ export type Database = {
         }
         Relationships: []
       }
+      pipeline_waves: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          feature_id: string
+          id: string
+          started_at: string | null
+          status: string
+          wave_number: number
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          feature_id: string
+          id?: string
+          started_at?: string | null
+          status?: string
+          wave_number: number
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          feature_id?: string
+          id?: string
+          started_at?: string | null
+          status?: string
+          wave_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_waves_feature_id_fkey"
+            columns: ["feature_id"]
+            isOneToOne: false
+            referencedRelation: "features"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           created_at: string
@@ -717,54 +755,114 @@ export type Database = {
           },
         ]
       }
+      task_dependencies: {
+        Row: {
+          created_at: string | null
+          depends_on_task_id: string
+          id: string
+          task_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          depends_on_task_id: string
+          id?: string
+          task_id: string
+        }
+        Update: {
+          created_at?: string | null
+          depends_on_task_id?: string
+          id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_dependencies_depends_on_task_id_fkey"
+            columns: ["depends_on_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_dependencies_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           agent_log: string | null
+          agent_type: Database["public"]["Enums"]["agent_type"]
+          context_paths: Json | null
           created_at: string
           created_by: string | null
+          definition_of_done: string | null
           description: string
+          execution_strategy: Database["public"]["Enums"]["execution_strategy"]
           feature_id: string
           id: string
           max_retries: number
           model: string | null
           output: string | null
           retry_count: number
+          skills: Json | null
           sort_order: number
           status: Database["public"]["Enums"]["task_status"]
           title: string | null
           updated_at: string
+          verification_session_id: string | null
+          verification_status: Database["public"]["Enums"]["verification_status"]
+          wave_number: number | null
         }
         Insert: {
           agent_log?: string | null
+          agent_type?: Database["public"]["Enums"]["agent_type"]
+          context_paths?: Json | null
           created_at?: string
           created_by?: string | null
+          definition_of_done?: string | null
           description: string
+          execution_strategy?: Database["public"]["Enums"]["execution_strategy"]
           feature_id: string
           id?: string
           max_retries?: number
           model?: string | null
           output?: string | null
           retry_count?: number
+          skills?: Json | null
           sort_order?: number
           status?: Database["public"]["Enums"]["task_status"]
           title?: string | null
           updated_at?: string
+          verification_session_id?: string | null
+          verification_status?: Database["public"]["Enums"]["verification_status"]
+          wave_number?: number | null
         }
         Update: {
           agent_log?: string | null
+          agent_type?: Database["public"]["Enums"]["agent_type"]
+          context_paths?: Json | null
           created_at?: string
           created_by?: string | null
+          definition_of_done?: string | null
           description?: string
+          execution_strategy?: Database["public"]["Enums"]["execution_strategy"]
           feature_id?: string
           id?: string
           max_retries?: number
           model?: string | null
           output?: string | null
           retry_count?: number
+          skills?: Json | null
           sort_order?: number
           status?: Database["public"]["Enums"]["task_status"]
           title?: string | null
           updated_at?: string
+          verification_session_id?: string | null
+          verification_status?: Database["public"]["Enums"]["verification_status"]
+          wave_number?: number | null
         }
         Relationships: [
           {
@@ -779,6 +877,13 @@ export type Database = {
             columns: ["feature_id"]
             isOneToOne: false
             referencedRelation: "features"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_verification_session_id_fkey"
+            columns: ["verification_session_id"]
+            isOneToOne: false
+            referencedRelation: "agent_sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -962,13 +1067,18 @@ export type Database = {
         | "failed"
         | "cancelled"
       agent_type:
-        | "manager"
-        | "ralph"
+        | "orchestrator"
+        | "explorer"
+        | "architect"
+        | "implementer"
+        | "verifier"
+        | "reviewer"
+        | "synthesizer"
         | "researcher"
-        | "editor"
         | "chat"
         | "custom"
       assignment_scope: "project" | "feature" | "task"
+      execution_strategy: "sequential" | "parallel" | "background"
       failure_behavior: "stop" | "skip" | "retry"
       feature_status:
         | "draft"
@@ -986,6 +1096,7 @@ export type Database = {
         | "failed"
         | "skipped"
       user_role: "admin" | "member"
+      verification_status: "pending" | "approved" | "rejected" | "skipped"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1122,14 +1233,19 @@ export const Constants = {
         "cancelled",
       ],
       agent_type: [
-        "manager",
-        "ralph",
+        "orchestrator",
+        "explorer",
+        "architect",
+        "implementer",
+        "verifier",
+        "reviewer",
+        "synthesizer",
         "researcher",
-        "editor",
         "chat",
         "custom",
       ],
       assignment_scope: ["project", "feature", "task"],
+      execution_strategy: ["sequential", "parallel", "background"],
       failure_behavior: ["stop", "skip", "retry"],
       feature_status: [
         "draft",
@@ -1149,6 +1265,7 @@ export const Constants = {
         "skipped",
       ],
       user_role: ["admin", "member"],
+      verification_status: ["pending", "approved", "rejected", "skipped"],
     },
   },
 } as const
