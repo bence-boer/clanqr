@@ -2,9 +2,9 @@
     type VerificationStatus = 'approved' | 'rejected' | 'pending' | 'skipped';
 
     interface StatusVisual {
-        icon: string;
-        color: string;
-        label: string;
+        icon: string
+        color: string
+        label: string
     }
 
     const STATUS_MAP: Record<VerificationStatus, StatusVisual> = {

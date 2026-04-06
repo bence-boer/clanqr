@@ -48,9 +48,9 @@ export async function retry_task(task_id: string, reload: () => Promise<void>): 
 }
 
 export interface DagData {
-    nodes: DagNode[];
-    edges: DagEdge[];
-    waves: WaveInfo[];
+    nodes: DagNode[]
+    edges: DagEdge[]
+    waves: WaveInfo[]
 }
 
 export function map_dag_response(raw: unknown): DagData {

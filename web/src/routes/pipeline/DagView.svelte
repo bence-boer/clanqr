@@ -30,7 +30,9 @@
             <span class="icon" style="font-size:18px">account_tree</span>
             Task Graph
         </span>
-        <button class="legend-toggle" onclick={() => { show_legend = !show_legend; }}>
+        <button class="legend-toggle" onclick={() => {
+            show_legend = !show_legend;
+        }}>
             <span class="icon" style="font-size:16px">palette</span>
             {show_legend ? 'Hide' : 'Legend'}
         </button>

@@ -46,12 +46,18 @@
     });
 
     async function load_assignments() {
-        try { assignments = await api.list_trait_assignments({}); }
-        catch { /* non-critical — counts just won't display */ }
+        try {
+            assignments = await api.list_trait_assignments({});
+        }
+        catch {
+            /* non-critical — counts just won't display */
+        }
     }
 
     import { onMount } from 'svelte';
-    onMount(() => { load_assignments(); });
+    onMount(() => {
+        load_assignments();
+    });
 
     const default_trait_form = (): TraitFormData => ({
         name: '', description: '', target: 'implementer', is_global: false, content: ''
@@ -80,7 +86,12 @@
         show_form = true;
     }
 
-    function close_form() { show_form = false; editing_id = null; form = default_trait_form(); form_error = ''; }
+    function close_form() {
+        show_form = false;
+        editing_id = null;
+        form = default_trait_form();
+        form_error = '';
+    }
 
     async function save_trait() {
         if (!form.name.trim()) {
@@ -137,7 +148,9 @@
 <div class="filter-bar">
     <div class="filter-row" role="group" aria-label="Filter traits">
         {#each ['all', 'orchestrator', 'implementer', 'explorer', 'architect', 'verifier', 'reviewer', 'synthesizer', 'researcher'] as const as filter_val (filter_val)}
-            <Button variant="filter" active={trait_filter === filter_val} onclick={() => { trait_filter = filter_val; }}>
+            <Button variant="filter" active={trait_filter === filter_val} onclick={() => {
+                trait_filter = filter_val;
+            }}>
                 {#if filter_val === 'all'}All{:else}<AgentTypeBadge agent_type={filter_val} size="sm" />{/if}</Button>
         {/each}
         <span class="filter-count">{filtered_traits.length} trait{filtered_traits.length !== 1 ? 's' : ''}</span>

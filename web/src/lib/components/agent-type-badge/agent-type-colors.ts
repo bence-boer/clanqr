@@ -1,14 +1,14 @@
 export interface AgentTypeVisual {
-    label: string;
-    icon: string;
-    color: string;
-    css_var: string;
+    label: string
+    icon: string
+    color: string
+    css_var: string
 }
 
 export type AgentTypeKey =
-    | 'orchestrator' | 'explorer' | 'architect' | 'implementer'
-    | 'verifier' | 'reviewer' | 'synthesizer' | 'researcher'
-    | 'chat' | 'custom';
+  | 'orchestrator' | 'explorer' | 'architect' | 'implementer'
+  | 'verifier' | 'reviewer' | 'synthesizer' | 'researcher'
+  | 'chat' | 'custom';
 
 export const AGENT_TYPE_VISUALS: Record<AgentTypeKey, AgentTypeVisual> = {
     orchestrator: { label: 'Orchestrator', icon: 'hub', color: '#d4af37', css_var: '--agent-orchestrator' },

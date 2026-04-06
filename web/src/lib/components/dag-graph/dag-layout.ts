@@ -21,8 +21,8 @@ function assign_layers(nodes: DagNode[], edges: DagEdge[]): Map<string, number> 
 
     for (const edge of edges) {
         if (!node_ids.has(edge.from) || !node_ids.has(edge.to)) continue;
-        out_edges.get(edge.from)!.add(edge.to);
-        in_edges.get(edge.to)!.add(edge.from);
+        out_edges.get(edge.from)?.add(edge.to);
+        in_edges.get(edge.to)?.add(edge.from);
     }
 
     // Longest-path layering via BFS
@@ -30,7 +30,7 @@ function assign_layers(nodes: DagNode[], edges: DagEdge[]): Map<string, number> 
     const queue: string[] = [];
 
     for (const id of node_ids) {
-        if (in_edges.get(id)!.size === 0) {
+        if ((in_edges.get(id)?.size ?? 0) === 0) {
             queue.push(id);
             layer_map.set(id, 0);
         }
@@ -46,14 +46,14 @@ function assign_layers(nodes: DagNode[], edges: DagEdge[]): Map<string, number> 
     let head = 0;
     while (head < queue.length) {
         const current = queue[head++];
-        const current_layer = layer_map.get(current)!;
+        const current_layer = layer_map.get(current) ?? 0;
         for (const next of out_edges.get(current) ?? []) {
             const prev_layer = layer_map.get(next) ?? -1;
             if (current_layer + 1 > prev_layer) {
                 layer_map.set(next, current_layer + 1);
             }
             // Only add to queue if all parents processed
-            const parents = in_edges.get(next)!;
+            const parents = in_edges.get(next) ?? new Set<string>();
             const all_done = [...parents].every((p) => layer_map.has(p));
             if (all_done && !queue.includes(next)) {
                 queue.push(next);
@@ -89,7 +89,7 @@ export function compute_dag_layout(nodes: DagNode[], edges: DagEdge[]): DagLayou
 
     // Assign coordinates
     const layout_nodes: DagLayoutNode[] = [];
-    const node_positions = new Map<string, { x: number; y: number }>();
+    const node_positions = new Map<string, { x: number, y: number }>();
 
     for (let layer = 0; layer <= max_layer; layer++) {
         const layer_nodes = layers[layer];

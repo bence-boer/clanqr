@@ -93,8 +93,15 @@
     }
 
     async function load_dag() {
-        try { const d = await api.get_dag(feature.id); dag_nodes = ((d as Record<string, unknown>).nodes as DagNode[]) ?? []; dag_edges = ((d as Record<string, unknown>).edges as DagEdge[]) ?? []; }
-        catch { dag_nodes = []; dag_edges = []; }
+        try {
+            const d = await api.get_dag(feature.id);
+            dag_nodes = ((d as Record<string, unknown>).nodes as DagNode[]) ?? [];
+            dag_edges = ((d as Record<string, unknown>).edges as DagEdge[]) ?? [];
+        }
+        catch {
+            dag_nodes = [];
+            dag_edges = [];
+        }
     }
 </script>
 
@@ -102,7 +109,10 @@
     <div class="tasks-header">
         <h4><span class="icon" style="font-size:16px">task</span> Tasks ({feature.tasks?.length ?? 0})</h4>
         <div class="tasks-actions">
-            <Button variant="ghost" size="sm" title={view_mode === 'list' ? 'DAG view' : 'List view'} onclick={() => { view_mode = view_mode === 'list' ? 'dag' : 'list'; if (view_mode === 'dag') load_dag(); }}>
+            <Button variant="ghost" size="sm" title={view_mode === 'list' ? 'DAG view' : 'List view'} onclick={() => {
+                view_mode = view_mode === 'list' ? 'dag' : 'list';
+                if (view_mode === 'dag') load_dag();
+            }}>
                 <span class="icon" style="font-size:16px">{view_mode === 'list' ? 'account_tree' : 'list'}</span>
             </Button>
             <label class="toggle-label">

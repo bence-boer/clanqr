@@ -1,8 +1,8 @@
 <script lang="ts">
     export interface WaveInfo {
-        wave: number;
-        status: 'completed' | 'running' | 'pending' | 'failed';
-        task_count: number;
+        wave: number
+        status: 'completed' | 'running' | 'pending' | 'failed'
+        task_count: number
     }
 
     let {

@@ -16,8 +16,8 @@
     } = $props();
 
     const can_verify = $derived(
-        node != null && (node.status === 'completed') &&
-        (!node.verification_status || node.verification_status === 'pending')
+        node != null && (node.status === 'completed')
+        && (!node.verification_status || node.verification_status === 'pending')
     );
 </script>
 
