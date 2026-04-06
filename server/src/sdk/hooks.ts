@@ -2,7 +2,7 @@
  * SDK session hooks for audit logging, permission control, context injection, and error recovery.
  */
 import type { SessionConfig } from '@github/copilot-sdk';
-import { AGENT_TOOL_PERMISSIONS, type SdkSessionConfig } from './types';
+import type { SdkSessionConfig } from './types';
 import { audit_service } from '../services/audit_service';
 import { logger } from '../utils/logger';
 
@@ -23,9 +23,12 @@ function redact_secrets(text: string): string {
     return result;
 }
 
-export function build_hooks(config: SdkSessionConfig, context_text: string): SessionHooks {
+export function build_hooks(
+    config: SdkSessionConfig,
+    context_text: string,
+    permissions: { allowed: string[], denied: string[] }
+): SessionHooks {
     const { agent_type, session_id, entity_id } = config;
-    const permissions = AGENT_TOOL_PERMISSIONS[agent_type];
 
     return {
         onSessionStart: async () => {
