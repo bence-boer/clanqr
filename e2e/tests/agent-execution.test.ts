@@ -125,7 +125,7 @@ test.describe.serial("agent execution: direct task pipeline", () => {
     });
 
     test("6. verify agent_runs record exists", async ({ request }) => {
-        const res = await request.get(`${API_URL}/api/usage/history?type=ralph&per_page=50`, {
+        const res = await request.get(`${API_URL}/api/usage/history?type=implementer&per_page=50`, {
             headers: AUTH,
         });
         expect(res.ok()).toBeTruthy();
@@ -136,7 +136,7 @@ test.describe.serial("agent execution: direct task pipeline", () => {
         // Find the run for our task
         const task_run = runs.find(
             (r: { task_id: string; agent_type: string }) =>
-                r.task_id === task_id && r.agent_type === "ralph"
+                r.task_id === task_id && r.agent_type === "implementer"
         );
         expect(task_run).toBeTruthy();
         expect(task_run.status).toBe("completed");
@@ -161,16 +161,16 @@ test.describe.serial("agent execution: direct task pipeline", () => {
         });
         expect(status_res.ok()).toBeTruthy();
         const agents = await status_res.json();
-        const ralph_agent = agents.find(
+        const implementer_agent = agents.find(
             (a: { task_id: string; agent_type: string }) =>
-                a.task_id === task_id && a.agent_type === "ralph"
+                a.task_id === task_id && a.agent_type === "implementer"
         );
-        expect(ralph_agent).toBeTruthy();
-        expect(ralph_agent.sdk_session_id).toBeTruthy();
+        expect(implementer_agent).toBeTruthy();
+        expect(implementer_agent.sdk_session_id).toBeTruthy();
 
         // Verify events exist via telemetry API (using SDK session ID)
         const events_res = await request.get(
-            `${API_URL}/api/telemetry/sessions/${ralph_agent.sdk_session_id}/events`,
+            `${API_URL}/api/telemetry/sessions/${implementer_agent.sdk_session_id}/events`,
             { headers: AUTH }
         );
         expect(events_res.ok()).toBeTruthy();
@@ -180,7 +180,7 @@ test.describe.serial("agent execution: direct task pipeline", () => {
 
         // Verify tool calls were persisted
         const tools_res = await request.get(
-            `${API_URL}/api/telemetry/sessions/${ralph_agent.sdk_session_id}/tools`,
+            `${API_URL}/api/telemetry/sessions/${implementer_agent.sdk_session_id}/tools`,
             { headers: AUTH }
         );
         expect(tools_res.ok()).toBeTruthy();
@@ -189,12 +189,12 @@ test.describe.serial("agent execution: direct task pipeline", () => {
 
         // Verify session summary is accessible
         const summary_res = await request.get(
-            `${API_URL}/api/telemetry/sessions/${ralph_agent.sdk_session_id}/summary`,
+            `${API_URL}/api/telemetry/sessions/${implementer_agent.sdk_session_id}/summary`,
             { headers: AUTH }
         );
         expect(summary_res.ok()).toBeTruthy();
         const summary = await summary_res.json();
-        expect(summary.agent_type).toBe("ralph");
+        expect(summary.agent_type).toBe("implementer");
         expect(summary.status).toBe("completed");
         expect(summary.event_count).toBeGreaterThan(0);
 
@@ -210,7 +210,7 @@ test.describe.serial("agent execution: direct task pipeline", () => {
 
 // ── 2. Full manager flow: submit → manager creates tasks → execute ────────────
 
-test.describe.serial("agent execution: full manager flow", () => {
+test.describe.serial("agent execution: full orchestrator flow", () => {
     let project_id: string;
     let feature_id: string;
 
@@ -331,7 +331,7 @@ test.describe.serial("agent execution: full manager flow", () => {
         expect(completed.length).toBeGreaterThan(0);
     });
 
-    test("7. verify agent_runs records for manager and ralph", async ({ request }) => {
+    test("7. verify agent_runs records for orchestrator and implementer", async ({ request }) => {
         const res = await request.get(`${API_URL}/api/usage/history?per_page=50`, {
             headers: AUTH,
         });
@@ -339,18 +339,18 @@ test.describe.serial("agent execution: full manager flow", () => {
         const body = await res.json();
         const runs = body.runs ?? body.data ?? body;
 
-        // Should have at least a manager run for this feature
-        const manager_run = runs.find(
+        // Should have at least an orchestrator run for this feature
+        const orchestrator_run = runs.find(
             (r: { feature_id: string; agent_type: string }) =>
-                r.feature_id === feature_id && r.agent_type === "manager"
+                r.feature_id === feature_id && r.agent_type === "orchestrator"
         );
-        expect(manager_run).toBeTruthy();
+        expect(orchestrator_run).toBeTruthy();
 
-        // Should have at least one ralph run
-        const ralph_runs = runs.filter(
+        // Should have at least one implementer run
+        const implementer_runs = runs.filter(
             (r: { feature_id: string; agent_type: string }) =>
-                r.feature_id === feature_id && r.agent_type === "ralph"
+                r.feature_id === feature_id && r.agent_type === "implementer"
         );
-        expect(ralph_runs.length).toBeGreaterThan(0);
+        expect(implementer_runs.length).toBeGreaterThan(0);
     });
 });

@@ -199,7 +199,7 @@ test.describe("UI workflow: dashboard → projects → pipeline → monitoring �
         const status = page.locator(".status-bar");
         await expect(status).toBeVisible({ timeout: 30_000 });
 
-        await expect(page.getByRole("tab", { name: "Queue" })).toBeVisible({ timeout: 5_000 });
+        await expect(page.getByRole("tab", { name: "DAG" })).toBeVisible({ timeout: 5_000 });
         await expect(page.getByRole("tab", { name: "History" })).toBeVisible({ timeout: 5_000 });
     });
 
@@ -264,7 +264,7 @@ test.describe("UX redesign feature validation", () => {
         await page.waitForLoadState("domcontentloaded");
 
         // Pipeline page should have the main container — stats-bar only shows with data
-        const pipeline_content = page.locator(".pipeline-page, main, [data-page='pipeline']");
+        const pipeline_content = page.locator(".page, main, [data-page='pipeline']");
         await expect(pipeline_content.first()).toBeVisible({ timeout: 30_000 });
     });
 });
