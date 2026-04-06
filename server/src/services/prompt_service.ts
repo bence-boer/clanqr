@@ -9,6 +9,8 @@ import { logger } from '../utils/logger';
 
 const PROMPTS_DIR = join(import.meta.dir, '../../../agents/prompts');
 
+// Legacy file names: prompt files on disk predate the V2 agent_type enum rename.
+// orchestrator was "manager", implementer was "ralph".
 const PROMPT_FILES: Record<string, string> = {
     orchestrator: join(PROMPTS_DIR, 'manager.md'),
     implementer: join(PROMPTS_DIR, 'ralph.md')

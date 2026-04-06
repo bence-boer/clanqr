@@ -18,7 +18,7 @@ export function create_feature_handlers(get_feature: () => Feature, on_update: (
     return {
         approve: (task_id: string) => safe_call(() => api.approve_task(task_id), 'approve task', on_update),
         approve_all: (feature_id: string) => safe_call(() => api.approve_all_tasks(feature_id), 'approve tasks', on_update),
-        spawn: (task_id: string) => safe_call(() => api.spawn_ralph(task_id), 'spawn ralph', on_update),
+        spawn: (task_id: string) => safe_call(() => api.spawn_task(task_id), 'spawn task', on_update),
         add_task: (description: string) => safe_call(() => api.create_task({ feature_id: get_feature().id, description }), 'add task', on_update),
         update_task: (task_id: string, description: string, title?: string | null, v2?: { agent_type?: string, execution_strategy?: string, definition_of_done?: string | null, skills?: string[], context_paths?: string[] }) => safe_call(() => api.update_task(task_id, { description, title, ...v2 }), 'update task', on_update),
         delete_task: async (task_id: string) => {

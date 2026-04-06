@@ -9,15 +9,15 @@ function setup() {
         prompts: [
             {
                 id: '00000000-0000-0000-0000-000000000070',
-                agent_type: 'manager',
-                content: 'You are a manager agent.',
+                agent_type: 'orchestrator',
+                content: 'You are an orchestrator agent.',
                 created_at: '2026-01-01T00:00:00Z',
                 updated_at: '2026-01-01T00:00:00Z'
             },
             {
                 id: '00000000-0000-0000-0000-000000000071',
-                agent_type: 'ralph',
-                content: 'You are Ralph.',
+                agent_type: 'implementer',
+                content: 'You are an implementer agent.',
                 created_at: '2026-01-01T00:00:00Z',
                 updated_at: '2026-01-01T00:00:00Z'
             }
@@ -46,24 +46,24 @@ describe('prompts routes', () => {
     });
 
     describe('GET /api/prompts/:role', () => {
-        it('returns prompt for manager', async () => {
+        it('returns prompt for orchestrator', async () => {
             const { app } = setup();
-            const res = await app.request('/api/prompts/manager', {
+            const res = await app.request('/api/prompts/orchestrator', {
                 headers: auth_headers()
             });
             expect(res.status).toBe(200);
             const body = (await res.json()) as Record<string, unknown>;
-            expect(body.agent_type).toBe('manager');
+            expect(body.agent_type).toBe('orchestrator');
         });
 
-        it('returns prompt for ralph', async () => {
+        it('returns prompt for implementer', async () => {
             const { app } = setup();
-            const res = await app.request('/api/prompts/ralph', {
+            const res = await app.request('/api/prompts/implementer', {
                 headers: auth_headers()
             });
             expect(res.status).toBe(200);
             const body = (await res.json()) as Record<string, unknown>;
-            expect(body.agent_type).toBe('ralph');
+            expect(body.agent_type).toBe('implementer');
         });
 
         it('rejects invalid role', async () => {
@@ -88,7 +88,7 @@ describe('prompts routes', () => {
 
         it('rejects empty content', async () => {
             const { app } = setup();
-            const res = await app.request('/api/prompts/manager', {
+            const res = await app.request('/api/prompts/orchestrator', {
                 method: 'PATCH',
                 headers: { ...auth_headers(), 'Content-Type': 'application/json' },
                 body: JSON.stringify({ content: '' })

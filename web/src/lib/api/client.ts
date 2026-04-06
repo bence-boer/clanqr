@@ -40,7 +40,7 @@ export const api = {
         unwrap(await (await client.api.tasks.$get({ query: { feature_id: feature_id ?? '', status: status ?? '' } })).json()),
     approve_task: async (id: string) =>
         unwrap(await (await client.api.tasks[':id'].approve.$post({ param: { id } })).json()),
-    spawn_ralph: async (id: string) =>
+    spawn_task: async (id: string) =>
         unwrap(await (await client.api.tasks[':id'].run.$post({ param: { id } })).json()),
     approve_all_tasks: async (feature_id: string) =>
         unwrap(await (await client.api.tasks['approve-all'][':feature_id'].$post({ param: { feature_id } })).json()),
