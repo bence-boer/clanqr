@@ -16,8 +16,8 @@ const MAX_MANAGER_RETRIES = 3;
 const ORCHESTRATOR_TIMEOUT_MS = 5 * 60 * 1000;
 
 type FeatureRow = Tables<'features'> & {
-    resources?: { url: string; title: string | null }[];
-    projects?: { name: string };
+    resources?: { url: string, title: string | null }[]
+    projects?: { name: string }
 };
 
 class WatcherService {

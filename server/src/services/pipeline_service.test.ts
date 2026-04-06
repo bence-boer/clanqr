@@ -71,11 +71,14 @@ mock.module('./verification_service', () => ({
 }));
 
 mock.module('./event_bus', () => ({
-    event_bus: { emit: () => {}, subscribe: () => () => {} }
+    event_bus: { emit: () => {
+    }, subscribe: () => () => {
+    } }
 }));
 
 mock.module('./log_store_service', () => ({
-    log_store: { get: () => [], append: () => {} }
+    log_store: { get: () => [], append: () => {
+    } }
 }));
 
 mock.module('../utils/logger', () => ({

@@ -11,12 +11,17 @@ mock.module('../services/agent_registry_service', () => ({
     agent_registry_service: {
         list_agent_types: async () => MOCK_AGENTS,
         get_agent_type: async (name: string) => MOCK_AGENTS.find((a) => a.name === name) ?? null,
-        sync_agent_types: async () => {}
+        sync_agent_types: async () => {
+        }
     }
 }));
 
 mock.module('../utils/logger', () => ({
-    logger: { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} }
+    logger: { debug: () => {
+    }, info: () => {
+    }, warn: () => {
+    }, error: () => {
+    } }
 }));
 
 import { create_test_app, auth_headers } from '../test-app';
