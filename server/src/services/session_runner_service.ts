@@ -8,7 +8,7 @@ import {
     extract_usage, extract_shutdown, type ExtractedUsage
 } from '../sdk/event_mapper';
 import { get_agent_tool_permissions } from '../sdk/types';
-import { env } from '../env';
+import { is_test_mode } from '../test_mode';
 import { get_mock_session_result, MOCK_DELAY_MS } from './mock_responses';
 import { stream_service } from './stream_service';
 import { log_store } from './log_store_service';
@@ -120,7 +120,7 @@ export async function run_session(
     timeout_ms: number,
     db_session_id: string
 ): Promise<SdkSessionResult> {
-    if (env.TEST_MODE) {
+    if (is_test_mode()) {
         await new Promise((r) => setTimeout(r, MOCK_DELAY_MS));
         return get_mock_session_result(config.agent_type, config.session_id);
     }
