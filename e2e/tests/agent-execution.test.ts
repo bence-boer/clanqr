@@ -208,7 +208,7 @@ test.describe.serial("agent execution: direct task pipeline", () => {
     });
 });
 
-// ── 2. Full manager flow: submit → manager creates tasks → execute ────────────
+// ── 2. Full orchestrator flow: submit → orchestrator creates tasks → execute ──
 
 test.describe.serial("agent execution: full orchestrator flow", () => {
     let project_id: string;
@@ -220,12 +220,12 @@ test.describe.serial("agent execution: full orchestrator flow", () => {
         }
     });
 
-    test("1. create project for manager flow", async ({ request }) => {
+    test("1. create project for orchestrator flow", async ({ request }) => {
         const res = await request.post(`${API_URL}/api/projects`, {
             headers: AUTH,
             data: {
-                name: "E2E Manager Flow Test",
-                description: "Tests full manager → task → execution flow",
+                name: "E2E Orchestrator Flow Test",
+                description: "Tests full orchestrator → task → execution flow",
             },
         });
         expect(res.ok()).toBeTruthy();
@@ -257,7 +257,7 @@ test.describe.serial("agent execution: full orchestrator flow", () => {
         expect(feature.auto_approve).toBe(true);
     });
 
-    test("3. submit feature to trigger manager", async ({ request }) => {
+    test("3. submit feature to trigger orchestrator", async ({ request }) => {
         const res = await request.post(`${API_URL}/api/features/${feature_id}/submit`, {
             headers: AUTH,
         });
@@ -266,7 +266,7 @@ test.describe.serial("agent execution: full orchestrator flow", () => {
         expect(feature.status).toBe("submitted");
     });
 
-    test("4. wait for manager to create tasks", async ({ request }) => {
+    test("4. wait for orchestrator to create tasks", async ({ request }) => {
         test.setTimeout(AGENT_TIMEOUT_MS);
 
         await poll_until(
@@ -276,15 +276,20 @@ test.describe.serial("agent execution: full orchestrator flow", () => {
                 });
                 if (!res.ok()) return false;
                 const feature = await res.json();
-                // Manager done when tasks exist (auto_approve moves feature to in_progress)
+                // Success: orchestrator created tasks
                 if (feature.tasks && feature.tasks.length > 0) return true;
-                // Also check if feature moved past submitted
-                if (feature.status !== "submitted" && feature.status !== "in_progress") return true;
+                // Failure: orchestrator failed and status reverted to draft
+                if (feature.status === "draft" || feature.status === "cancelled") {
+                    throw new Error(
+                        `Orchestrator failed: status=${feature.status}`
+                    );
+                }
+                // Still waiting: status is submitted or in_progress
                 return false;
             },
             AGENT_TIMEOUT_MS - 30_000,
             POLL_INTERVAL_MS,
-            "manager to create tasks"
+            "orchestrator to create tasks"
         );
 
         const res = await request.get(`${API_URL}/api/features/${feature_id}`, {

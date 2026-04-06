@@ -12,7 +12,7 @@ export type TaskStatus = 'queued' | 'approved' | 'in_progress' | 'complete' | 'f
 export type AgentType =
   | 'orchestrator' | 'explorer' | 'architect' | 'implementer'
   | 'verifier' | 'reviewer' | 'synthesizer' | 'researcher'
-  | 'manager' | 'ralph' | 'editor' | 'chat' | 'custom';
+  | 'chat' | 'custom';
 
 export type AgentSessionStatus = 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled';
 
