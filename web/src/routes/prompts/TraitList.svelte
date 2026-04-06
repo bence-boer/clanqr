@@ -40,28 +40,20 @@
     let assignments = $state<TraitAssignment[]>([]);
     let assignment_counts = $derived.by(() => {
         const counts: Record<string, number> = {};
-        for (const a of assignments) {
-            counts[a.trait_id] = (counts[a.trait_id] ?? 0) + 1;
-        }
+        for (const a of assignments) counts[a.trait_id] = (counts[a.trait_id] ?? 0) + 1;
         return counts;
     });
 
     async function load_assignments() {
-        try {
-            assignments = await api.list_trait_assignments({});
-        }
-        catch {
-            // non-critical — counts just won't display
-        }
+        try { assignments = await api.list_trait_assignments({}); }
+        catch { /* non-critical — counts just won't display */ }
     }
 
     import { onMount } from 'svelte';
-    onMount(() => {
-        load_assignments();
-    });
+    onMount(() => { load_assignments(); });
 
     const default_trait_form = (): TraitFormData => ({
-        name: '', description: '', target: 'ralph', is_global: false, content: ''
+        name: '', description: '', target: 'implementer', is_global: false, content: ''
     });
 
     let show_form = $state(false);
@@ -87,12 +79,7 @@
         show_form = true;
     }
 
-    function close_form() {
-        show_form = false;
-        editing_id = null;
-        form = default_trait_form();
-        form_error = '';
-    }
+    function close_form() { show_form = false; editing_id = null; form = default_trait_form(); form_error = ''; }
 
     async function save_trait() {
         if (!form.name.trim()) {
@@ -148,12 +135,9 @@
 
 <div class="filter-bar">
     <div class="filter-row" role="group" aria-label="Filter traits">
-        {#each ['all', 'manager', 'ralph'] as const as filter_val (filter_val)}
-            <Button variant="filter" active={trait_filter === filter_val} onclick={() => {
-                trait_filter = filter_val;
-            }}>
-                {filter_val === 'all' ? 'All' : filter_val === 'manager' ? 'Manager' : 'Clanqr'}
-            </Button>
+        {#each ['all', 'orchestrator', 'implementer', 'explorer', 'architect', 'verifier', 'reviewer', 'synthesizer', 'researcher'] as const as filter_val (filter_val)}
+            <Button variant="filter" active={trait_filter === filter_val} onclick={() => { trait_filter = filter_val; }}>
+                {filter_val === 'all' ? 'All' : filter_val.charAt(0).toUpperCase() + filter_val.slice(1)}</Button>
         {/each}
         <span class="filter-count">{filtered_traits.length} trait{filtered_traits.length !== 1 ? 's' : ''}</span>
     </div>
@@ -202,21 +186,12 @@
     .filter-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
     .filter-count { margin-left: auto; font-size: 0.8rem; color: var(--fg-muted); }
     .category-search {
-        width: 100%;
-        padding: 0.5rem 0.75rem;
-        background: var(--bg-surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        color: var(--fg);
-        font-size: 0.85rem;
-        outline: none;
-        transition: border-color 0.15s;
+        width: 100%; padding: 0.5rem 0.75rem; background: var(--bg-surface);
+        border: 1px solid var(--border); border-radius: var(--radius);
+        color: var(--fg); font-size: 0.85rem; outline: none; transition: border-color 0.15s;
     }
     .category-search:focus { border-color: var(--accent); }
     .category-search::placeholder { color: var(--fg-muted); }
     .traits-list { overflow-x: hidden; display: flex; flex-direction: column; gap: 0.5rem; }
-    @media (max-width: 768px) {
-        .filter-row { flex-direction: column; align-items: stretch; }
-        .filter-count { margin-left: 0; width: 100%; }
-    }
+    @media (max-width: 768px) { .filter-row { flex-direction: column; align-items: stretch; } .filter-count { margin-left: 0; } }
 </style>

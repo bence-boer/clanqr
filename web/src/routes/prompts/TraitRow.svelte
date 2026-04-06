@@ -26,7 +26,7 @@
         <div class="trait-header-row">
             <span class="trait-name">{trait.name}</span>
             <div class="trait-badges">
-                <Badge variant={trait.target === 'manager' ? 'info' : trait.target === 'ralph' ? 'warning' : 'default'}>{trait.target}</Badge>
+                <Badge variant={trait.target === 'orchestrator' ? 'info' : trait.target === 'implementer' ? 'warning' : 'default'}>{trait.target}</Badge>
                 {#if trait.is_global}<Badge variant="success">global</Badge>{/if}
                 {#if assignment_count > 0}
                     <Badge variant="muted">Used in {assignment_count} task{assignment_count !== 1 ? 's' : ''}</Badge>

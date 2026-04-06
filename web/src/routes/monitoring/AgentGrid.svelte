@@ -45,7 +45,7 @@
 
 <div class="agent-grid">
     {#each agents as agent (agent.id)}
-        {@const is_manager = agent.agent_type === 'manager'}
+        {@const is_manager = agent.agent_type === 'orchestrator'}
         <div class="agent-card" class:running={agent.status === 'running'} class:failed={agent.status === 'failed'}>
             <div class="agent-header">
                 <div class="agent-info">

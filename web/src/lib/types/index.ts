@@ -11,6 +11,7 @@ import type { Database } from 'server/src/database.types';
 type ExtractSuccess<ResponseType> = Exclude<ResponseType, { error: unknown }>;
 
 // Create a type-only client reference for InferResponseType usage
+// @ts-expect-error TS2589 — AppType has many routes; hc<AppType> triggers deep instantiation but works at call sites
 type Client = ReturnType<typeof hc<AppType>>;
 
 // ── Shared DB Enums ───────────────────────────────────────────────────────────
@@ -56,7 +57,7 @@ export type AgentProcess = ExtractSuccess<InferResponseType<Client['api']['agent
 // Agents/Feature returns abbreviated processes
 export type AbbreviatedAgentProcess = {
     id: string
-    type: 'manager' | 'ralph'
+    type: AgentType
     status: 'running' | 'completed' | 'failed' | 'stopped'
     started_at: string
     finished_at?: string
@@ -67,7 +68,6 @@ export type FeatureAgentStatus = {
     pipeline: {
         state: string
         is_active_feature: boolean
-        current_task_id: string | null
     }
 };
 

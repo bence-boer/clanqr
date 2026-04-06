@@ -135,7 +135,7 @@
                                 expanded_row = expanded_row === run.id ? null : run.id;
                             })}
                         >
-                            <td><Badge variant={run.agent_type === 'manager' ? 'info' : run.agent_type === 'chat' ? 'success' : 'warning'}>{run.agent_type}</Badge></td>
+                            <td><Badge variant={run.agent_type === 'orchestrator' ? 'info' : run.agent_type === 'chat' ? 'success' : 'warning'}>{run.agent_type}</Badge></td>
                             <td class="model-col">{run.model ?? 'default'}</td>
                             <td><StatusBadge status={run.status} /></td>
                             <td class="mono">{format_duration(run.duration_ms)}</td>

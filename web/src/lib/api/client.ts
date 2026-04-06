@@ -172,5 +172,27 @@ export const api = {
         }
     },
     task_file_url: (task_id: string, filename: string): string =>
-        `${API_URL}/api/tasks/${encodeURIComponent(task_id)}/files/${encodeURIComponent(filename)}`
+        `${API_URL}/api/tasks/${encodeURIComponent(task_id)}/files/${encodeURIComponent(filename)}`,
+
+    // ── Agent Types ──────────────────────────────────────────────────────────
+    list_agent_types: async () => unwrap(await (await client.api['agent-types'].$get()).json()),
+    get_agent_type: async (name: string) => unwrap(await (await client.api['agent-types'][':name'].$get({ param: { name } })).json()),
+    sync_agent_types: async () => unwrap(await (await client.api['agent-types'].sync.$post()).json()),
+
+    // ── DAG / Verification ───────────────────────────────────────────────────
+    get_dag: async (feature_id: string) => unwrap(await (await client.api.agents.dag[':feature_id'].$get({ param: { feature_id } })).json()),
+    verify_task: async (task_id: string) => unwrap(await (await client.api.agents.verify[':task_id'].$post({ param: { task_id } })).json()),
+
+    // ── Task Dependencies ────────────────────────────────────────────────────
+    get_task_dependencies: async (task_id: string) =>
+        unwrap(await (await client.api.tasks[':id'].dependencies.$get({ param: { id: task_id } })).json()),
+    add_task_dependency: async (task_id: string, depends_on_task_id: string) => {
+        const response = await custom_fetch(`${API_URL}/api/tasks/${encodeURIComponent(task_id)}/dependencies`, {
+            method: 'POST',
+            body: JSON.stringify({ depends_on_task_id })
+        });
+        return response.json();
+    },
+    remove_task_dependency: async (task_id: string, dep_id: string) =>
+        unwrap(await (await client.api.tasks[':id'].dependencies[':dep_id'].$delete({ param: { id: task_id, dep_id } })).json())
 };

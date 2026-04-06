@@ -31,7 +31,7 @@
         loading = true;
         try {
             const [traits, skills, assignments, links] = await Promise.all([
-                api.list_traits('ralph'),
+                api.list_traits('implementer'),
                 api.list_skills(),
                 api.list_trait_assignments({ scope: 'task', task_id }),
                 api.get_task_skills(task_id)

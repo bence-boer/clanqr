@@ -90,7 +90,7 @@
         <div class="header-left">
             <h3>
                 <span class="icon" style="font-size:16px">
-                    {agent.agent_type === 'manager' ? 'assignment' : 'build'}
+                    {agent.agent_type === 'orchestrator' ? 'assignment' : 'build'}
                 </span>
                 {agent.agent_type} — {agent.id.slice(0, 8)}
             </h3>
