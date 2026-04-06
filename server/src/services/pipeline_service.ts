@@ -159,6 +159,7 @@ class PipelineService {
         if (!data || data.length === 0) return null;
         const with_waves = data.filter((t) => t.wave_number != null);
         if (with_waves.length === 0) return null;
+        // wave_number is 0-indexed (assigned by dag_service topological sort)
         const total_waves = Math.max(...with_waves.map((t) => t.wave_number as number)) + 1;
         const pending = with_waves.filter((t) => t.status !== 'complete' && t.status !== 'skipped');
         const current_wave = pending.length > 0

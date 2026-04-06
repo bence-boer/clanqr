@@ -86,10 +86,13 @@ const app = new Hono<AppBindings>()
             test_mode: is_test_mode()
         });
     })
-    // Runtime test-mode toggle (non-production only, no auth)
+    // Runtime test-mode toggle — defense-in-depth: env gate + secret header
     .post('/test-mode', (context) => {
         if (env.NODE_ENV === 'production') {
             return context.json({ error: 'Not available in production' }, 403);
+        }
+        if (context.req.header('x-test-secret') !== env.SESSION_SECRET) {
+            return context.json({ error: 'Forbidden' }, 403);
         }
         const enabled = context.req.query('enabled') === 'true';
         set_test_mode(enabled);
