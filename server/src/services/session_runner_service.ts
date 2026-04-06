@@ -8,6 +8,8 @@ import {
     extract_usage, extract_shutdown, type ExtractedUsage
 } from '../sdk/event_mapper';
 import { get_agent_tool_permissions } from '../sdk/types';
+import { env } from '../env';
+import { get_mock_session_result, MOCK_DELAY_MS } from './mock_responses';
 import { stream_service } from './stream_service';
 import { log_store } from './log_store_service';
 import { persist_event, persist_tool_call, update_tool_result } from './telemetry_persist_service';
@@ -118,6 +120,11 @@ export async function run_session(
     timeout_ms: number,
     db_session_id: string
 ): Promise<SdkSessionResult> {
+    if (env.TEST_MODE) {
+        await new Promise((r) => setTimeout(r, MOCK_DELAY_MS));
+        return get_mock_session_result(config.agent_type, config.session_id);
+    }
+
     const client = await get_connected_client();
     const permissions = await get_agent_tool_permissions(config.agent_type);
     const hooks = build_hooks(config, '', permissions);

@@ -1,9 +1,12 @@
 import { test, expect } from "@playwright/test";
 import { API_URL, ADMIN_AUTH_HEADERS as AUTH, DEV_ADMIN_SESSION_COOKIE } from "./helpers";
 
-// Long timeouts for agent execution
-const AGENT_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
-const POLL_INTERVAL_MS = 5_000; // 5 seconds
+// Mock mode (TEST_MODE=true) returns SDK responses in ~500ms; reduce timeouts accordingly.
+// Full flow in mock mode completes in ~15-30s, so 60s is generous.
+// Real mode keeps original 10-minute timeout for live SDK calls.
+const IS_MOCK_MODE = process.env.TEST_MODE === "true" || process.env.TEST_MODE === "1";
+const AGENT_TIMEOUT_MS = IS_MOCK_MODE ? 60_000 : 10 * 60 * 1000;
+const POLL_INTERVAL_MS = IS_MOCK_MODE ? 2_000 : 5_000;
 
 /** Poll a condition until it returns true or timeout */
 async function poll_until(

@@ -168,17 +168,55 @@ jobs:
           cd $APP_DIR/e2e
           bun x --bun playwright test --grep-invert "agent execution"
 
+      - name: Enable TEST_MODE for agent execution
+        run: |
+          echo "TEST_MODE=true" | sudo tee -a $ENV_FILE > /dev/null
+          touch $APP_DIR/.deploy-trigger-test
+          echo "Waiting for server restart with TEST_MODE..."
+          sleep 10
+          for i in $(seq 1 20); do
+            if curl -sf --max-time 5 http://localhost:3011/health > /dev/null 2>&1; then
+              echo "✅ Test API is healthy with TEST_MODE=true"
+              break
+            fi
+            if [ "$i" -eq 20 ]; then
+              echo "::error::Test API health check failed after enabling TEST_MODE"
+              exit 1
+            fi
+            sleep 5
+          done
+
       - name: Run E2E tests (agent execution)
         env:
           CI: "true"
           BASE_URL: http://test.clanqr.dev
           API_URL: http://localhost:3011
           PLAYWRIGHT_BROWSERS_PATH: /home/scoy/.cache/ms-playwright
+          TEST_MODE: "true"
         timeout-minutes: 25
         run: |
           export PATH="$BUN_INSTALL/bin:$PATH"
           cd $APP_DIR/e2e
           bun x --bun playwright test agent-execution
+
+      - name: Disable TEST_MODE after agent execution
+        if: always()
+        run: |
+          sudo sed -i '/^TEST_MODE=true$/d' $ENV_FILE
+          touch $APP_DIR/.deploy-trigger-test
+          echo "Waiting for server restart without TEST_MODE..."
+          sleep 10
+          for i in $(seq 1 20); do
+            if curl -sf --max-time 5 http://localhost:3011/health > /dev/null 2>&1; then
+              echo "✅ Test API is healthy after removing TEST_MODE"
+              break
+            fi
+            if [ "$i" -eq 20 ]; then
+              echo "::warning::Test API health check failed after disabling TEST_MODE"
+              break
+            fi
+            sleep 5
+          done
 
       - name: Rollback on failure
         if: failure()

@@ -19,7 +19,8 @@ export const env_schema = z.object({
     CLI_URL: z.string().default('localhost:4321'),
     SDK_MAX_CONCURRENT_SESSIONS: z.coerce.number().int().min(1).default(5),
     SDK_SESSION_TIMEOUT_MS: z.coerce.number().default(1_800_000),
-    AGENT_RESOURCES_DIR: z.string().default('/home/scoy/Developer/repositories/agent-resources')
+    AGENT_RESOURCES_DIR: z.string().default('/home/scoy/Developer/repositories/agent-resources'),
+    TEST_MODE: z.coerce.boolean().default(false)
 });
 
 export type Env = z.infer<typeof env_schema>;
