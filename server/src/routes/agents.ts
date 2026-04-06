@@ -1,4 +1,6 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
+import { zValidator } from '@hono/zod-validator';
 import type { AppBindings } from '../middleware/supabase';
 import { validate_uuid_params, require_param } from '../middleware/validate_params';
 import { pipeline_service } from '../services/pipeline_service';
@@ -6,7 +8,13 @@ import { get_session_concurrency } from '../services/session_pool_service';
 import { plan_feature } from '../services/sdk_session_service';
 import { prompt_service } from '../services/prompt_service';
 import { log_store } from '../services/log_store_service';
+import { get_dag } from '../services/dag_service';
+import { dispatch_verifier } from '../services/verification_service';
 import { logger } from '../utils/logger';
+
+const reorder_schema = z.object({
+    task_ids: z.array(z.string().uuid()).min(1).max(100)
+});
 
 function summarize_entry(type: string, data: Record<string, unknown> = {}): string {
     if (type === 'tool_start' || type === 'tool_complete') return `${data.tool_name ?? 'unknown'}`;
@@ -24,83 +32,62 @@ export const agents_routes = new Hono<AppBindings>()
     .get('/queue', async (context) => {
         const supabase = context.get('supabase');
         const pipeline_info = pipeline_service.get_status();
-
         const { count } = await supabase
-            .from('tasks')
-            .select('id', { count: 'exact', head: true })
-            .eq('status', 'approved');
+            .from('tasks').select('id', { count: 'exact', head: true }).eq('status', 'approved');
 
-        let current_task = null;
-        if (pipeline_info.current_task_id) {
-            const { data } = await supabase
-                .from('tasks')
+        let active_tasks: Record<string, unknown>[] = [];
+        if (pipeline_info.active_task_ids.length > 0) {
+            const { data } = await supabase.from('tasks')
                 .select('*, features(id, title, project_id, projects(id, name))')
-                .eq('id', pipeline_info.current_task_id)
-                .single();
-            if (data) {
-                current_task = {
-                    ...data,
-                    feature_title: data.features?.title ?? 'Unknown',
-                    feature_id: data.features?.id ?? null,
-                    project_name: data.features?.projects?.name ?? 'Unknown',
-                    project_id: data.features?.projects?.id ?? null
-                };
-            }
+                .in('id', pipeline_info.active_task_ids);
+            active_tasks = (data ?? []).map((t) => ({
+                ...t, feature_title: t.features?.title ?? 'Unknown',
+                feature_id: t.features?.id ?? null,
+                project_name: t.features?.projects?.name ?? 'Unknown',
+                project_id: t.features?.projects?.id ?? null
+            }));
         }
-
         return context.json({
-            state: pipeline_info.state,
-            current_task,
-            current_run_id: pipeline_info.current_run_id,
-            current_sdk_session_id: pipeline_info.current_sdk_session_id,
-            queue_depth: count ?? 0
+            state: pipeline_info.state, active_tasks,
+            active_run_count: pipeline_info.active_run_count,
+            current_feature_id: pipeline_info.current_feature_id,
+            wave_info: pipeline_info.wave_info, queue_depth: count ?? 0
         });
     })
 
-    .post('/pause', (context) => {
+    .post('/pause', (c) => {
         pipeline_service.pause();
-        return context.json({ success: true, state: 'paused' });
+        return c.json({ success: true, state: 'paused' });
     })
-
-    .post('/resume', (context) => {
+    .post('/resume', (c) => {
         pipeline_service.resume();
-        return context.json({ success: true, state: 'resuming' });
+        return c.json({ success: true, state: 'resuming' });
     })
-
-    .post('/stop-current', (context) => {
+    .post('/stop-current', (c) => {
         pipeline_service.stop_current();
-        return context.json({ success: true });
+        return c.json({ success: true });
     })
+    .get('/queue/log', (c) => c.json({ log: pipeline_service.get_log() }))
 
-    .get('/queue/log', (context) => {
-        const log = pipeline_service.get_log();
-        return context.json({ log });
-    })
-
-    .patch('/queue/reorder', async (context) => {
+    .patch('/queue/reorder', zValidator('json', reorder_schema), async (context) => {
         const supabase = context.get('supabase');
-        const body = await context.req.json();
-        const task_ids: string[] = body.task_ids;
-        if (!Array.isArray(task_ids) || task_ids.length === 0) {
-            return context.json({ error: 'task_ids must be a non-empty array' }, 400);
+        const { task_ids } = context.req.valid('json');
+        try {
+            for (let i = 0; i < task_ids.length; i++) {
+                const { error } = await supabase.from('tasks')
+                    .update({ sort_order: i }).eq('id', task_ids[i]).eq('status', 'approved');
+                if (error) throw error;
+            }
+            return context.json({ success: true });
         }
-
-        for (let i = 0; i < task_ids.length; i++) {
-            const { error } = await supabase.from('tasks')
-                .update({ sort_order: i })
-                .eq('id', task_ids[i])
-                .eq('status', 'approved');
-            if (error) return context.json({ error: error.message }, 500);
+        catch (error) {
+            logger.error('Failed to reorder tasks', { route: 'PATCH /api/agents/queue/reorder', error: String(error) });
+            return context.json({ error: 'Failed to reorder tasks' }, 500);
         }
-        return context.json({ success: true });
     })
 
 // ── SDK session management ────────────────────────────────────────────────
-
-    .get('/sessions', (context) => {
-        const concurrency = get_session_concurrency();
-        return context.json(concurrency);
-    })
+    .get('/sessions', (c) => c.json(get_session_concurrency()))
 
     .post('/plan/:feature_id', validate_uuid_params('feature_id'), async (context) => {
         const feature_id = require_param(context, 'feature_id');
@@ -163,29 +150,56 @@ export const agents_routes = new Hono<AppBindings>()
     .get('/logs/:session_id', async (context) => {
         const session_id = context.req.param('session_id');
         if (!session_id) return context.json({ error: 'Missing session_id' }, 400);
-
         const raw_entries = log_store.get(session_id);
-
         if (raw_entries.length === 0) {
             const supabase = context.get('supabase');
             const { data } = await supabase.from('agent_sessions')
-                .select('summary, error, status')
-                .eq('sdk_session_id', session_id)
-                .single();
+                .select('summary, error, status').eq('sdk_session_id', session_id).single();
             if (data) {
                 const fallback = data.error
                     ? `Status: ${data.status}\nError: ${data.error}`
-                    : data.summary
-                        ? `Status: ${data.status}\nSummary: ${data.summary}`
-                        : `Status: ${data.status}`;
+                    : `Status: ${data.status}${data.summary ? `\nSummary: ${data.summary}` : ''}`;
                 return context.json({ entries: [], text: fallback });
             }
         }
-
         const entries = raw_entries.map((e) => ({
-            timestamp: e.timestamp,
-            type: e.type,
+            timestamp: e.timestamp, type: e.type,
             summary: summarize_entry(e.type, e.data as Record<string, unknown>)
         }));
         return context.json({ entries });
+    })
+
+    // ── DAG visualization ─────────────────────────────────────────────────────
+    .get('/dag/:feature_id', validate_uuid_params('feature_id'), async (context) => {
+        const feature_id = require_param(context, 'feature_id');
+        try {
+            const dag = await get_dag(feature_id);
+            return context.json(dag);
+        }
+        catch (error) {
+            logger.error('Failed to get DAG', { route: 'GET /api/agents/dag/:feature_id', feature_id, error: String(error) });
+            return context.json({ error: 'Failed to get DAG' }, 500);
+        }
+    })
+
+    // ── Manual verification trigger ───────────────────────────────────────────
+    .post('/verify/:task_id', validate_uuid_params('task_id'), async (context) => {
+        const task_id = require_param(context, 'task_id');
+        const supabase = context.get('supabase');
+
+        const { data: task } = await supabase.from('tasks')
+            .select('id, feature_id, agent_type, definition_of_done')
+            .eq('id', task_id)
+            .single();
+
+        if (!task) return context.json({ error: 'Task not found' }, 404);
+
+        try {
+            const result = await dispatch_verifier(task_id, task.feature_id, supabase);
+            return context.json(result);
+        }
+        catch (error) {
+            logger.error('Verification failed', { route: 'POST /api/agents/verify/:task_id', task_id, error: String(error) });
+            return context.json({ error: 'Verification failed' }, 500);
+        }
     });

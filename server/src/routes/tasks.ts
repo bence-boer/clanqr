@@ -1,29 +1,14 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { z } from 'zod';
 import type { AppBindings } from '../middleware/supabase';
 import { validate_uuid_params, require_param } from '../middleware/validate_params';
 import { pipeline_service } from '../services/pipeline_service';
 import { event_bus } from '../services/event_bus';
 import { logger } from '../utils/logger';
 import { task_artifact_routes } from './task_artifacts';
+import { task_dependency_routes } from './task_dependencies';
+import { create_task_schema, update_task_schema } from '../schemas/task.schema';
 import type { Enums } from '../database.types';
-
-const update_task_schema = z.object({
-    status: z
-        .enum(['queued', 'approved', 'in_progress', 'complete', 'failed', 'skipped'])
-        .optional(),
-    title: z.string().nullable().optional(),
-    description: z.string().optional(),
-    output: z.string().nullable().optional()
-});
-
-const create_task_schema = z.object({
-    feature_id: z.string().uuid(),
-    title: z.string().nullable().optional(),
-    description: z.string().min(1),
-    sort_order: z.number().int().optional()
-});
 
 export const tasks_routes = new Hono<AppBindings>()
 
@@ -235,6 +220,9 @@ export const tasks_routes = new Hono<AppBindings>()
         }
         return context.json({ success: true });
     })
+
+    // ── Dependency management ─────────────────────────────────────────────────
+    .route('/', task_dependency_routes)
 
     // Artifact routes (list files, download file)
     .route('/', task_artifact_routes);

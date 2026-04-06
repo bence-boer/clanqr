@@ -3,7 +3,12 @@ import type { Tables } from '../database.types';
 import { check_and_complete_feature } from './feature_utils';
 import { logger } from '../utils/logger';
 
-export type PipelineTask = Tables<'tasks'> & { features?: Tables<'features'> & { projects?: { id: string, name: string } } };
+export type PipelineTask = Tables<'tasks'> & {
+    features?: Tables<'features'> & { projects?: { id: string, name: string } }
+    agent_type_name?: string
+    definition_of_done?: string | null
+    verification_status?: string
+};
 
 export async function handle_task_failure(
     task: PipelineTask,

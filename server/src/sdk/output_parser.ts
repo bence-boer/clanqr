@@ -1,35 +1,34 @@
 /**
  * Zod-validated parsing of structured agent output.
  * Extracts JSON from SDK session responses and validates with schemas.
+ * V2: adds parsers for orchestrator, implementer, verifier, reviewer, and text output.
  */
-import { z } from 'zod';
 import { logger } from '../utils/logger';
+import {
+    manager_output_schema,
+    orchestrator_output_schema,
+    implementer_output_schema,
+    verifier_output_schema,
+    reviewer_output_schema,
+    type ManagerTask,
+    type OrchestratorTask,
+    type ImplementerResult,
+    type VerifierResult,
+    type ReviewerResult
+} from './output_schemas';
+import type { RalphResult } from './output_schemas';
 
-// ── Manager output schema ────────────────────────────────────────────────────
+// Re-export types and schemas for backward compat
+export {
+    manager_output_schema, ralph_output_schema,
+    orchestrator_output_schema, implementer_output_schema,
+    verifier_output_schema, reviewer_output_schema
+} from './output_schemas';
+export type { ManagerTask, RalphResult, OrchestratorTask, ImplementerResult, VerifierResult, ReviewerResult };
 
-const task_schema = z.object({
-    title: z.string().min(5).max(80),
-    description: z.string().min(20).max(5000)
-});
+// ── JSON extraction utilities ────────────────────────────────────────────────
 
-export const manager_output_schema = z.array(task_schema).min(1).max(50);
-
-export type ManagerTask = z.infer<typeof task_schema>;
-
-// ── Ralph output schema ──────────────────────────────────────────────────────
-
-export const ralph_output_schema = z.object({
-    status: z.enum(['completed', 'failed', 'partial']),
-    summary: z.string().optional(),
-    files_changed: z.array(z.string()).optional(),
-    error_details: z.string().nullable().optional()
-});
-
-export type RalphResult = z.infer<typeof ralph_output_schema>;
-
-// ── JSON extraction ──────────────────────────────────────────────────────────
-
-function find_balanced_json(text: string, open: string, close: string): string | null {
+export function find_balanced_json(text: string, open: string, close: string): string | null {
     const start = text.indexOf(open);
     if (start === -1) return null;
 
@@ -59,54 +58,135 @@ function find_balanced_json(text: string, open: string, close: string): string |
     return null;
 }
 
-function extract_json(text: string): string | null {
+export function extract_json(text: string): string | null {
     const code_block = text.match(/```(?:json)?\s*\n([\s\S]*?)\n\s*```/);
     if (code_block) return code_block[1].trim();
-
     return find_balanced_json(text, '[', ']')
       ?? find_balanced_json(text, '{', '}')
       ?? null;
 }
 
-function repair_json(raw: string): string {
+export function repair_json(raw: string): string {
     return raw.replace(/,\s*([}\]])/g, '$1');
 }
 
-export function parse_manager_output(content: string): { tasks: ManagerTask[] } | { error: string } {
+// ── V2 parsers ───────────────────────────────────────────────────────────────
+
+export function parse_orchestrator_output(
+    content: string
+): { tasks: OrchestratorTask[] } | { error: string } {
     const raw = extract_json(content);
     if (!raw) {
-        logger.warn('No JSON found in manager output', { service: 'sdk', content_length: content.length, content_preview: content.slice(0, 300) });
-        return { error: 'No JSON found in manager output' };
+        logger.warn('No JSON found in orchestrator output', {
+            service: 'sdk', content_length: content.length, content_preview: content.slice(0, 300)
+        });
+        return { error: 'No JSON found in orchestrator output' };
     }
-
     try {
         const parsed = JSON.parse(repair_json(raw));
-        const result = manager_output_schema.safeParse(parsed);
-        if (result.success) {
-            return { tasks: result.data };
-        }
-        logger.warn('Manager output validation failed', { service: 'sdk', errors: result.error.issues });
+        const result = orchestrator_output_schema.safeParse(parsed);
+        if (result.success) return { tasks: result.data };
+        logger.warn('Orchestrator output validation failed', { service: 'sdk', errors: result.error.issues });
         return { error: `Validation failed: ${result.error.issues.map((i) => i.message).join(', ')}` };
     }
     catch (err) {
-        logger.warn('Manager JSON parse error', { service: 'sdk', raw_length: raw.length, raw_preview: raw.slice(0, 300), error: String(err) });
+        logger.warn('Orchestrator JSON parse error', { service: 'sdk', error: String(err) });
         return { error: `JSON parse error: ${String(err)}` };
     }
 }
 
-export function parse_ralph_output(content: string): RalphResult | { error: string } {
+export function parse_implementer_output(content: string): ImplementerResult | { error: string } {
     const raw = extract_json(content);
     if (!raw) {
         return { status: 'completed', summary: content.slice(0, 2000) };
     }
-
     try {
         const parsed = JSON.parse(repair_json(raw));
-        const result = ralph_output_schema.safeParse(parsed);
+        const result = implementer_output_schema.safeParse(parsed);
         if (result.success) return result.data;
         return { status: 'completed', summary: content.slice(0, 2000) };
     }
     catch {
         return { status: 'completed', summary: content.slice(0, 2000) };
     }
+}
+
+export function parse_verifier_output(
+    content: string
+): VerifierResult | { error: string } {
+    const raw = extract_json(content);
+    if (!raw) {
+        logger.warn('No JSON found in verifier output', {
+            service: 'sdk', content_length: content.length
+        });
+        return { error: 'No JSON found in verifier output' };
+    }
+    try {
+        const parsed = JSON.parse(repair_json(raw));
+        const result = verifier_output_schema.safeParse(parsed);
+        if (result.success) return result.data;
+        logger.warn('Verifier output validation failed', { service: 'sdk', errors: result.error.issues });
+        return { error: `Validation failed: ${result.error.issues.map((i) => i.message).join(', ')}` };
+    }
+    catch (err) {
+        logger.warn('Verifier JSON parse error', { service: 'sdk', error: String(err) });
+        return { error: `JSON parse error: ${String(err)}` };
+    }
+}
+
+export function parse_reviewer_output(
+    content: string
+): ReviewerResult | { error: string } {
+    const raw = extract_json(content);
+    if (!raw) {
+        logger.warn('No JSON found in reviewer output', {
+            service: 'sdk', content_length: content.length
+        });
+        return { error: 'No JSON found in reviewer output' };
+    }
+    try {
+        const parsed = JSON.parse(repair_json(raw));
+        const result = reviewer_output_schema.safeParse(parsed);
+        if (result.success) return result.data;
+        logger.warn('Reviewer output validation failed', { service: 'sdk', errors: result.error.issues });
+        return { error: `Validation failed: ${result.error.issues.map((i) => i.message).join(', ')}` };
+    }
+    catch (err) {
+        logger.warn('Reviewer JSON parse error', { service: 'sdk', error: String(err) });
+        return { error: `JSON parse error: ${String(err)}` };
+    }
+}
+
+/** Parse plain-text output for explorer, architect, synthesizer, and researcher agents */
+export function parse_text_output(content: string): { content: string } {
+    return { content: content.trim() };
+}
+
+// ── Legacy parsers (deprecated aliases) ──────────────────────────────────────
+
+/** @deprecated Use parse_orchestrator_output instead */
+export function parse_manager_output(content: string): { tasks: ManagerTask[] } | { error: string } {
+    const raw = extract_json(content);
+    if (!raw) {
+        logger.warn('No JSON found in manager output', {
+            service: 'sdk', content_length: content.length, content_preview: content.slice(0, 300)
+        });
+        return { error: 'No JSON found in manager output' };
+    }
+    try {
+        const parsed = JSON.parse(repair_json(raw));
+        const result = manager_output_schema.safeParse(parsed);
+        if (result.success) return { tasks: result.data };
+        logger.warn('Manager output validation failed', { service: 'sdk', errors: result.error.issues });
+        return { error: `Validation failed: ${result.error.issues.map((i) => i.message).join(', ')}` };
+    }
+    catch (err) {
+        logger.warn('Manager JSON parse error', { service: 'sdk', error: String(err) });
+        return { error: `JSON parse error: ${String(err)}` };
+    }
+}
+
+/** @deprecated Use parse_implementer_output instead */
+export function parse_ralph_output(content: string): RalphResult | { error: string } {
+    return parse_implementer_output(content);
 }

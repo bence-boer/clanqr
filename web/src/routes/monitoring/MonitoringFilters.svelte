@@ -14,6 +14,7 @@
     } = $props();
 
     let filter_status = $state<StatusFilter>('all');
+    let filter_agent_type = $state('all');
     let sort_by = $state<SortOption>('newest');
     let search_query = $state('');
 
@@ -24,11 +25,17 @@
         { value: 'failed', label: 'Failed' }
     ];
 
+    const agent_type_options = ['all', 'orchestrator', 'explorer', 'architect', 'implementer', 'verifier', 'reviewer', 'synthesizer', 'researcher', 'chat', 'custom'] as const;
+
     const computed_filtered = $derived.by(() => {
         let result = agents;
 
         if (filter_status !== 'all') {
             result = result.filter((a) => a.status === filter_status);
+        }
+
+        if (filter_agent_type !== 'all') {
+            result = result.filter((a) => a.agent_type === filter_agent_type);
         }
 
         if (search_query.trim()) {
@@ -71,6 +78,14 @@
                 {option.label}
             </Button>
         {/each}
+    </div>
+
+    <div class="agent-type-filter" role="group" aria-label="Filter by agent type">
+        <Select bind:value={filter_agent_type} style="max-width: 180px" aria-label="Agent type">
+            {#each agent_type_options as opt (opt)}
+                <option value={opt}>{opt === 'all' ? 'All Types' : opt.charAt(0).toUpperCase() + opt.slice(1)}</option>
+            {/each}
+        </Select>
     </div>
 
     <div class="toolbar-controls">

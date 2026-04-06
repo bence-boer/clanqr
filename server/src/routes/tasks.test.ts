@@ -31,9 +31,7 @@ describe('tasks routes', () => {
 
         it('filters by feature_id', async () => {
             const { app } = setup();
-            const res = await app.request(`/api/tasks?feature_id=${FEATURE_ID}`, {
-                headers: auth_headers()
-            });
+            const res = await app.request(`/api/tasks?feature_id=${FEATURE_ID}`, { headers: auth_headers() });
             expect(res.status).toBe(200);
             const body = (await res.json()) as Record<string, unknown>[];
             expect(body.every((t: Record<string, unknown>) => t.feature_id === FEATURE_ID)).toBe(true);
@@ -41,9 +39,7 @@ describe('tasks routes', () => {
 
         it('filters by status', async () => {
             const { app } = setup();
-            const res = await app.request('/api/tasks?status=queued', {
-                headers: auth_headers()
-            });
+            const res = await app.request('/api/tasks?status=queued', { headers: auth_headers() });
             expect(res.status).toBe(200);
             const body = (await res.json()) as Record<string, unknown>[];
             expect(body.every((t: Record<string, unknown>) => t.status === 'queued')).toBe(true);
@@ -53,9 +49,7 @@ describe('tasks routes', () => {
     describe('GET /api/tasks/:id', () => {
         it('returns a single task', async () => {
             const { app } = setup();
-            const res = await app.request(`/api/tasks/${TASK_ID}`, {
-                headers: auth_headers()
-            });
+            const res = await app.request(`/api/tasks/${TASK_ID}`, { headers: auth_headers() });
             expect(res.status).toBe(200);
             const body = (await res.json()) as Record<string, unknown>;
             expect(body.id).toBe(TASK_ID);
@@ -63,9 +57,7 @@ describe('tasks routes', () => {
 
         it('rejects invalid UUID', async () => {
             const { app } = setup();
-            const res = await app.request(`/api/tasks/${INVALID_UUID}`, {
-                headers: auth_headers()
-            });
+            const res = await app.request(`/api/tasks/${INVALID_UUID}`, { headers: auth_headers() });
             expect(res.status).toBe(400);
         });
     });
@@ -82,6 +74,26 @@ describe('tasks routes', () => {
             const body = (await res.json()) as Record<string, unknown>;
             expect(body.description).toBe('New task');
             expect(body.status).toBe('queued');
+            expect(body.agent_type).toBe('implementer');
+            expect(body.execution_strategy).toBe('sequential');
+        });
+
+        it('creates a task with V2 fields', async () => {
+            const { app } = setup();
+            const res = await app.request('/api/tasks', {
+                method: 'POST',
+                headers: { ...auth_headers(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    feature_id: FEATURE_ID, description: 'V2 task',
+                    agent_type: 'orchestrator', execution_strategy: 'parallel',
+                    skills: ['typescript'], context_paths: ['src/index.ts'], wave_number: 1
+                })
+            });
+            expect(res.status).toBe(201);
+            const body = (await res.json()) as Record<string, unknown>;
+            expect(body.agent_type).toBe('orchestrator');
+            expect(body.execution_strategy).toBe('parallel');
+            expect(body.wave_number).toBe(1);
         });
 
         it('rejects missing description', async () => {
@@ -124,11 +136,12 @@ describe('tasks routes', () => {
             const res = await app.request(`/api/tasks/${TASK_ID}`, {
                 method: 'PATCH',
                 headers: { ...auth_headers(), 'Content-Type': 'application/json' },
-                body: JSON.stringify({ description: 'Updated task' })
+                body: JSON.stringify({ description: 'Updated task', agent_type: 'verifier' })
             });
             expect(res.status).toBe(200);
             const body = (await res.json()) as Record<string, unknown>;
             expect(body.description).toBe('Updated task');
+            expect(body.agent_type).toBe('verifier');
         });
 
         it('rejects invalid status value', async () => {
@@ -145,10 +158,7 @@ describe('tasks routes', () => {
     describe('POST /api/tasks/:id/approve', () => {
         it('approves a pending task', async () => {
             const { app } = setup();
-            const res = await app.request(`/api/tasks/${TASK_ID}/approve`, {
-                method: 'POST',
-                headers: auth_headers()
-            });
+            const res = await app.request(`/api/tasks/${TASK_ID}/approve`, { method: 'POST', headers: auth_headers() });
             expect(res.status).toBe(200);
             const body = (await res.json()) as Record<string, unknown>;
             expect(body.status).toBe('approved');
@@ -156,10 +166,7 @@ describe('tasks routes', () => {
 
         it('rejects invalid UUID', async () => {
             const { app } = setup();
-            const res = await app.request(`/api/tasks/${INVALID_UUID}/approve`, {
-                method: 'POST',
-                headers: auth_headers()
-            });
+            const res = await app.request(`/api/tasks/${INVALID_UUID}/approve`, { method: 'POST', headers: auth_headers() });
             expect(res.status).toBe(400);
         });
     });

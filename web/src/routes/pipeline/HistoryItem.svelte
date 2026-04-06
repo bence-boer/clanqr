@@ -55,7 +55,7 @@
         if (r.tasks?.id) return `Task · ${r.tasks.id.slice(0, 12)}`;
         const ref_id = r.feature_id ?? r.task_id ?? r.session_id;
         if (!ref_id) return r.agent_type;
-        const kind = r.agent_type === 'manager' ? 'Feature' : r.agent_type === 'ralph' ? 'Task' : 'Chat';
+        const kind = r.agent_type === 'orchestrator' ? 'Feature' : r.agent_type === 'implementer' ? 'Task' : 'Chat';
         return `${kind} · ${ref_id.slice(0, 12)}`;
     }
 

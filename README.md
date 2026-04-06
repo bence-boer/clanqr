@@ -1,4 +1,4 @@
-# Ralph Agent Workspace
+# Clanqr Workspace
 
 Multi-agent orchestration platform for managing AI coding agents. Features a
 project/feature pipeline, prompt management, usage tracking, and a real-time

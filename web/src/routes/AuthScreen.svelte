@@ -66,7 +66,7 @@
     <div class="auth-screen">
         <div class="auth-card">
             <span class="icon large">cloud_off</span>
-            <h1>Ralph Agent Workspace</h1>
+            <h1>Clanqr Workspace</h1>
             <p class="auth-subtitle">Could not reach the API server. Is it running?</p>
             <Button variant="primary" onclick={() => window.location.reload()}>
                 <span class="icon">refresh</span>
@@ -80,7 +80,7 @@
             <svg class="github-logo" viewBox="0 0 24 24" width="48" height="48" aria-hidden="true">
                 <path fill="currentColor" d={gh_d}/>
             </svg>
-            <h1>Ralph Agent Workspace</h1>
+            <h1>Clanqr Workspace</h1>
             {#if classified_error}
                 <AuthFeedback error={error} error_icon="error" error_message={classified_error.message} />
             {/if}

@@ -12,7 +12,7 @@ test.describe("app smoke tests", () => {
 
     test("web app loads", async ({ page }) => {
         await page.goto("/");
-        await expect(page).toHaveTitle(/Ralph/i, { timeout: 10_000 }).catch(() => {});
+        await expect(page).toHaveTitle(/Clanqr/i, { timeout: 10_000 }).catch(() => {});
         const body = page.locator("body");
         await expect(body).toBeVisible();
     });

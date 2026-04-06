@@ -1,21 +1,8 @@
 /**
  * Custom agent definitions for the Copilot SDK.
- * Each agent has scoped tools and a dedicated system prompt.
+ * Registry-driven: loads agent types from agent_registry_service instead of hardcoded builders.
  */
-import { readFileSync } from 'fs';
-import { join } from 'path';
-import type { SdkAgentType } from './types';
-
-const PROMPTS_DIR = join(import.meta.dir, '../../../agents/prompts');
-
-function load_prompt(filename: string): string {
-    try {
-        return readFileSync(join(PROMPTS_DIR, filename), 'utf-8');
-    }
-    catch {
-        return `You are an AI assistant. Follow instructions precisely.`;
-    }
-}
+import { agent_registry_service, type AgentTypeInfo } from '../services/agent_registry_service';
 
 export interface CustomAgentDef {
     name: string
@@ -25,47 +12,30 @@ export interface CustomAgentDef {
     prompt: string
 }
 
-function build_manager_agent(): CustomAgentDef {
+function capitalize_first(value: string): string {
+    if (!value) return value;
+    return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function map_agent_type(info: AgentTypeInfo): CustomAgentDef {
     return {
-        name: 'manager',
-        display_name: 'Manager Agent',
-        description: 'Senior technical architect that plans implementation work and produces task breakdowns',
-        tools: ['grep', 'glob', 'view'],
-        prompt: load_prompt('manager.md')
+        name: info.name,
+        display_name: `${capitalize_first(info.name)} Agent`,
+        description: info.description,
+        tools: info.tools,
+        prompt: info.prompt_content
     };
 }
 
-function build_ralph_agent(): CustomAgentDef {
-    return {
-        name: 'ralph',
-        display_name: 'Ralph Agent',
-        description: 'Coding agent that executes specific implementation tasks with full tool access',
-        tools: ['view', 'edit', 'bash', 'grep', 'glob', 'create'],
-        prompt: load_prompt('ralph.md')
-    };
+/** Get all registered agent type definitions for SDK session creation */
+export async function get_custom_agents(): Promise<CustomAgentDef[]> {
+    const agent_types = await agent_registry_service.list_agent_types();
+    return agent_types.map(map_agent_type);
 }
 
-function build_researcher_agent(): CustomAgentDef {
-    return {
-        name: 'researcher',
-        display_name: 'Research Agent',
-        description: 'Explores codebases, answers questions, and provides architectural analysis using read-only tools',
-        tools: ['grep', 'glob', 'view'],
-        prompt: load_prompt('researcher.md')
-    };
-}
-
-/** Get all custom agent definitions */
-export function get_custom_agents(): CustomAgentDef[] {
-    return [build_manager_agent(), build_ralph_agent(), build_researcher_agent()];
-}
-
-/** Get a single agent definition by type */
-export function get_agent_def(agent_type: SdkAgentType): CustomAgentDef {
-    const agents: Record<SdkAgentType, () => CustomAgentDef> = {
-        manager: build_manager_agent,
-        ralph: build_ralph_agent,
-        researcher: build_researcher_agent
-    };
-    return agents[agent_type]();
+/** Get a single agent definition by type name */
+export async function get_agent_def(agent_type: string): Promise<CustomAgentDef | null> {
+    const info = await agent_registry_service.get_agent_type(agent_type);
+    if (!info) return null;
+    return map_agent_type(info);
 }

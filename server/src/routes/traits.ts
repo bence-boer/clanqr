@@ -10,7 +10,7 @@ import type { Enums } from '../database.types';
 const create_trait_schema = z.object({
     name: z.string().min(1),
     description: z.string().optional(),
-    target: z.enum(['manager', 'ralph', 'researcher', 'editor', 'chat', 'custom']),
+    target: z.enum(['orchestrator', 'explorer', 'architect', 'implementer', 'verifier', 'reviewer', 'synthesizer', 'researcher', 'chat', 'custom']),
     content: z.string().min(1),
     is_global: z.boolean().default(false)
 });
@@ -35,7 +35,7 @@ export const traits_routes = new Hono<AppBindings>()
         const target = context.req.query('target');
 
         let query = supabase.from('traits').select('*').order('name');
-        if (target && ['manager', 'ralph', 'researcher', 'editor', 'chat', 'custom'].includes(target)) {
+        if (target && ['orchestrator', 'explorer', 'architect', 'implementer', 'verifier', 'reviewer', 'synthesizer', 'researcher', 'chat', 'custom'].includes(target)) {
             query = query.eq('target', target as Enums<'agent_type'>);
         }
 
@@ -133,7 +133,14 @@ export const traits_routes = new Hono<AppBindings>()
         const task_id = require_param(context, 'task_id');
         const supabase = context.get('supabase');
 
-        const resolved = await resolve_task_traits(supabase, task_id, 'ralph');
+        const { data: task } = await supabase
+            .from('tasks')
+            .select('agent_type')
+            .eq('id', task_id)
+            .single();
+        const agent_type = (task?.agent_type ?? 'implementer') as Enums<'agent_type'>;
+
+        const resolved = await resolve_task_traits(supabase, task_id, agent_type);
         return context.json(resolved);
     })
 

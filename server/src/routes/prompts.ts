@@ -7,7 +7,7 @@ import { logger } from '../utils/logger';
 import type { Enums } from '../database.types';
 
 const update_schema = z.object({ content: z.string().min(1) });
-const agent_type_schema = z.enum(['manager', 'ralph', 'researcher', 'editor', 'chat', 'custom']);
+const agent_type_schema = z.enum(['orchestrator', 'explorer', 'architect', 'implementer', 'verifier', 'reviewer', 'synthesizer', 'researcher', 'chat', 'custom']);
 
 export const prompts_routes = new Hono<AppBindings>()
 

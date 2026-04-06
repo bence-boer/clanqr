@@ -9,7 +9,10 @@ export type FeatureStatus = 'draft' | 'submitted' | 'in_progress' | 'done' | 'ca
 
 export type TaskStatus = 'queued' | 'approved' | 'in_progress' | 'complete' | 'failed' | 'skipped';
 
-export type AgentType = 'manager' | 'ralph' | 'researcher' | 'editor' | 'chat' | 'custom';
+export type AgentType =
+  | 'orchestrator' | 'explorer' | 'architect' | 'implementer'
+  | 'verifier' | 'reviewer' | 'synthesizer' | 'researcher'
+  | 'chat' | 'custom';
 
 export type AgentSessionStatus = 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled';
 
@@ -20,3 +23,7 @@ export type ResourceStatus = 'pending' | 'fetched' | 'error';
 export type AssignmentScope = 'project' | 'feature' | 'task';
 
 export type MessageRole = 'user' | 'assistant' | 'system';
+
+export type ExecutionStrategy = 'parallel' | 'sequential' | 'background';
+
+export type VerificationStatus = 'pending' | 'approved' | 'rejected' | 'skipped';

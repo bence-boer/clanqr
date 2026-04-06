@@ -86,6 +86,12 @@
                 <span>Skills</span>
             </a>
         </li>
+        <li>
+            <a href={resolve('/agent-types')} onclick={on_close} class:active={is_active('/agent-types')}>
+                <span class="icon">hub</span>
+                <span>Agent Types</span>
+            </a>
+        </li>
     </ul>
 </div>
 

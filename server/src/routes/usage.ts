@@ -7,7 +7,7 @@ import { logger } from '../utils/logger';
 const history_query_schema = z.object({
     page: z.coerce.number().int().min(1).default(1),
     per_page: z.coerce.number().int().min(1).max(100).default(20),
-    type: z.enum(['manager', 'ralph', 'researcher', 'editor', 'chat', 'custom']).optional(),
+    type: z.enum(['orchestrator', 'explorer', 'architect', 'implementer', 'verifier', 'reviewer', 'synthesizer', 'researcher', 'chat', 'custom']).optional(),
     status: z.enum(['pending', 'running', 'paused', 'completed', 'failed', 'cancelled']).optional()
 });
 
@@ -43,18 +43,33 @@ export const usage_routes = new Hono<AppBindings>()
         const { page, per_page, type: type_filter, status: status_filter } = parsed.data;
         const offset = (page - 1) * per_page;
 
-        let query = supabase
+        // Split into two queries to avoid PostgREST failures when count: 'exact'
+        // is combined with deeply nested joins on certain versions / stale schema cache.
+        let count_query = supabase
             .from('agent_sessions')
-            .select('*, tasks(id, title, feature_id, features(id, title, project_id, projects(id, name)))', { count: 'exact' })
+            .select('id', { count: 'exact', head: true });
+
+        let data_query = supabase
+            .from('agent_sessions')
+            .select('*, tasks!agent_sessions_task_id_fkey(id, title, feature_id, features(id, title, project_id, projects(id, name)))')
             .order('created_at', { ascending: false })
             .range(offset, offset + per_page - 1);
 
-        if (type_filter) query = query.eq('agent_type', type_filter);
-        if (status_filter) query = query.eq('status', status_filter);
+        if (type_filter) {
+            count_query = count_query.eq('agent_type', type_filter);
+            data_query = data_query.eq('agent_type', type_filter);
+        }
+        if (status_filter) {
+            count_query = count_query.eq('status', status_filter);
+            data_query = data_query.eq('status', status_filter);
+        }
 
-        const { data, count, error } = await query;
+        const [{ count, error: count_error }, { data, error: data_error }]
+            = await Promise.all([count_query, data_query]);
+
+        const error = count_error || data_error;
         if (error) {
-            logger.error('Failed to fetch history', { route: 'GET /api/usage/history', error: String(error) });
+            logger.error('Failed to fetch history', { route: 'GET /api/usage/history', error: JSON.stringify(error) });
             return context.json({ error: 'Failed to fetch history' }, 500);
         }
 

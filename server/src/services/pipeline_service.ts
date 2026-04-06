@@ -1,90 +1,101 @@
+/** V2 DAG-aware pipeline — parallel task execution with verification gates. */
 import { create_supabase_client } from '../db';
-import type { TypedSupabaseClient } from '../db';
-import { prompt_service } from './prompt_service';
-import { check_and_complete_feature } from './feature_utils';
-import { execute_task as sdk_execute_task } from './sdk_session_service';
 import { logger } from '../utils/logger';
 import { can_start_session, set_on_session_freed } from './session_pool_service';
 import { event_bus } from './event_bus';
-import { handle_task_failure, type PipelineTask } from './pipeline_failure';
 import { log_store } from './log_store_service';
+import type { PipelineTask } from './pipeline_failure';
+import { collect_ready_tasks, run_task_lifecycle, format_log_detail } from './pipeline_dispatch';
 
 type PipelineState = 'idle' | 'running' | 'paused';
 
-function format_log_detail(entry: { type: string, data: Record<string, unknown> }): string {
-    const d = entry.data;
-    switch (entry.type) {
-        case 'tool_start': return `${d.tool_name ?? 'unknown'}`;
-        case 'tool_complete': return `${d.tool_name ?? 'unknown'} (${d.success ? '✓' : '✗'})`;
-        case 'agent_intent': return String(d.intent ?? '');
-        case 'agent_output': return String(d.content ?? '').slice(0, 120);
-        case 'usage': return `${d.model ?? ''} +${d.output ?? 0} tokens`;
-        case 'error': return String(d.message ?? d.error ?? '');
-        default: return '';
-    }
-}
-
 interface ActiveRun {
     task_id: string
-    run_id: string
     feature_id: string
-    sdk_session_id: string
+    session_id: string
+    started_at: number
+}
+
+export interface PipelineStatus {
+    state: PipelineState
+    active_task_ids: string[]
+    active_run_count: number
+    current_feature_id: string | null
+    wave_info: { current_wave: number, total_waves: number } | null
 }
 
 class PipelineService {
     private state: PipelineState = 'idle';
-    private active_run: ActiveRun | null = null;
+    private active_runs = new Map<string, ActiveRun>();
     private is_processing = false;
 
-    private build_status() {
+    private build_status(): PipelineStatus {
+        const task_ids = [...this.active_runs.keys()];
+        const first_run = this.active_runs.values().next().value as ActiveRun | undefined;
         return {
             state: this.state,
-            current_task_id: this.active_run?.task_id ?? null,
-            current_run_id: this.active_run?.run_id ?? null,
-            current_feature_id: this.active_run?.feature_id ?? null,
-            current_sdk_session_id: this.active_run?.sdk_session_id ?? null
+            active_task_ids: task_ids,
+            active_run_count: this.active_runs.size,
+            current_feature_id: first_run?.feature_id ?? null,
+            wave_info: null
         };
     }
 
     private emit_status() {
-        event_bus.emit({ type: 'pipeline:status', data: this.build_status() });
+        const s = this.build_status();
+        event_bus.emit({
+            type: 'pipeline:status',
+            data: {
+                state: s.state,
+                current_task_id: s.active_task_ids[0] ?? null,
+                current_run_id: null,
+                current_feature_id: s.current_feature_id
+            }
+        });
     }
 
-    get_status() {
+    get_status(): PipelineStatus {
         return this.build_status();
     }
 
     get_log(): string {
-        const sid = this.active_run?.sdk_session_id;
+        const first = this.active_runs.values().next().value as ActiveRun | undefined;
+        const sid = first?.session_id;
         if (!sid) return '';
-        const entries = log_store.get(sid);
-        return entries.map((entry) => {
+        return log_store.get(sid).map((entry) => {
             const time = new Date(entry.timestamp).toLocaleTimeString();
             const detail = format_log_detail(entry);
             return `[${time}] ${entry.type}${detail ? ` — ${detail}` : ''}`;
         }).join('\n');
     }
 
-    async process_next(): Promise<void> {
-        if (this.state === 'paused' || this.is_processing || this.active_run) return;
+    /** Main scheduling loop — dispatches all ready tasks up to concurrency limit. */
+    async process_ready_tasks(): Promise<void> {
+        if (this.state === 'paused' || this.is_processing) return;
         this.is_processing = true;
 
         try {
             const supabase = create_supabase_client();
-            const task = await this.get_next_task(supabase);
-            if (!task) {
-                if ((this.state as PipelineState) !== 'paused') {
-                    this.state = 'idle';
-                    this.emit_status();
-                }
-                return;
+            const ready = await collect_ready_tasks(supabase);
+            const new_tasks = ready.filter((t) => !this.active_runs.has(t.id));
+
+            for (const task of new_tasks) {
+                if (!can_start_session()) break;
+                this.dispatch_task(task);
             }
-            this.state = 'running';
+
+            if (new_tasks.length > 0 || this.active_runs.size > 0) {
+                this.state = 'running';
+            }
+            else if ((this.state as PipelineState) !== 'paused') {
+                this.state = 'idle';
+            }
             this.emit_status();
-            await this.run_task(task, supabase);
         }
         catch (error) {
-            logger.error('Pipeline process_next error', { service: 'pipeline', error: String(error) });
+            logger.error('Pipeline process_ready_tasks error', {
+                service: 'pipeline', error: String(error)
+            });
             if ((this.state as PipelineState) !== 'paused') {
                 this.state = 'idle';
                 this.emit_status();
@@ -93,6 +104,11 @@ class PipelineService {
         finally {
             this.is_processing = false;
         }
+    }
+
+    /** Backward-compat alias. */
+    async process_next(): Promise<void> {
+        return this.process_ready_tasks();
     }
 
     pause() {
@@ -108,117 +124,53 @@ class PipelineService {
             this.state = 'idle';
             logger.info('Pipeline resumed', { service: 'pipeline' });
             this.emit_status();
-            this.process_next().catch((err) => logger.error('Pipeline resume error', { service: 'pipeline', error: String(err) }));
+            this.process_ready_tasks().catch((err) =>
+                logger.error('Pipeline resume error', { service: 'pipeline', error: String(err) })
+            );
         }
     }
 
     async stop_current(): Promise<void> {
-        if (!this.active_run) return;
-        const { task_id, run_id } = this.active_run;
-        logger.info('Stopping current pipeline run', { service: 'pipeline', task_id });
+        if (this.active_runs.size === 0) return;
         const supabase = create_supabase_client();
-        if (run_id) {
-            await supabase.from('agent_sessions')
-                .update({ status: 'cancelled', finished_at: new Date().toISOString() })
-                .eq('id', run_id);
+        for (const [task_id] of this.active_runs) {
+            await supabase.from('tasks').update({ status: 'approved' }).eq('id', task_id);
         }
-
-        await supabase.from('tasks').update({ status: 'approved' }).eq('id', task_id);
-        this.active_run = null;
+        this.active_runs.clear();
         if (this.state !== 'paused') this.state = 'idle';
         this.emit_status();
     }
 
-    private async get_next_task(supabase: TypedSupabaseClient): Promise<PipelineTask | null> {
-        const { data, error } = await supabase
-            .from('tasks')
-            .select('*, features(*, projects(*))')
-            .eq('status', 'approved')
-            .order('created_at', { foreignTable: 'features', ascending: true })
-            .order('sort_order', { ascending: true })
-            .limit(1)
-            .single();
-        if (error || !data) return null;
-        return data;
-    }
+    // ── Private ──────────────────────────────────────────────────────────────
 
-    private async run_task(task: PipelineTask, supabase: TypedSupabaseClient): Promise<void> {
-        if (!can_start_session()) {
-            logger.warn('Session limit reached, deferring task', { service: 'pipeline', task_id: task.id });
-            setTimeout(() => this.process_next().catch((err) =>
-                logger.error('Deferred pipeline error', { service: 'pipeline', error: String(err) })
-            ), 5000);
-            return;
-        }
+    private dispatch_task(task: PipelineTask): void {
+        const { id: task_id, feature_id } = task;
+        this.active_runs.set(task_id, {
+            task_id, feature_id, session_id: '', started_at: Date.now()
+        });
 
-        const task_id = task.id;
-        const feature_id: string = task.feature_id;
-        const task_spec = {
-            task_id, title: task.title, description: task.description,
-            feature_title: task.features?.title ?? 'Unknown',
-            project_name: task.features?.projects?.name ?? 'Unknown'
+        const on_session_id = (sid: string) => {
+            const run = this.active_runs.get(task_id);
+            if (run) run.session_id = sid;
+        };
+        const on_pause = () => {
+            this.state = 'paused';
+            this.emit_status();
         };
 
-        const { error: status_error } = await supabase.from('tasks').update({ status: 'in_progress' }).eq('id', task_id);
-        if (status_error) logger.error('Failed to update task status', { service: 'pipeline', task_id, error: status_error.message });
-
-        event_bus.emit({ type: 'tasks:update', data: { task_id, feature_id, status: 'in_progress' } });
-
-        const prompt = await prompt_service.resolve_for_task(task_id, task_spec);
-        const model = task.model || task.features?.execution_model || 'gpt-4.1';
-        const timeout_ms = (task.features?.task_timeout_minutes ?? 30) * 60 * 1000;
-
-        this.active_run = { task_id, run_id: '', feature_id, sdk_session_id: '' };
-
-        try {
-            // Session count is managed inside sdk_execute_task (single owner)
-            const result = await sdk_execute_task(task_id, feature_id, model, prompt, timeout_ms);
-            this.active_run.run_id = result.session_id;
-            this.active_run.sdk_session_id = result.session_id;
-
-            if (result.success) {
-                await supabase.from('tasks').update({
-                    status: 'complete', output: result.content
-                }).eq('id', task.id);
-                event_bus.emit({ type: 'tasks:update', data: { task_id, feature_id, status: 'complete' } });
-                const done = await check_and_complete_feature(task.feature_id, supabase);
-                if (done) {
-                    logger.info('Feature complete', { service: 'pipeline', feature: task.features?.title, feature_id });
-                    event_bus.emit({ type: 'features:update', data: { feature_id, status: 'done', project_id: task.features?.projects?.id } });
-                }
-            }
-            else {
-                const outcome = await handle_task_failure(task, supabase, '', result.error);
-                event_bus.emit({ type: 'tasks:update', data: { task_id, feature_id, status: 'failed' } });
-                if (outcome === 'stop') {
-                    this.state = 'paused';
-                    this.emit_status();
-                }
-            }
-        }
-        catch (error) {
-            const msg = error instanceof Error ? error.message : 'Unknown error';
-            const outcome = await handle_task_failure(task, supabase, this.active_run.run_id, msg);
-            event_bus.emit({ type: 'tasks:update', data: { task_id, feature_id, status: 'failed' } });
-            if (outcome === 'stop') {
-                this.state = 'paused';
-                this.emit_status();
-            }
-        }
-        finally {
-            this.active_run = null;
-        }
-
-        setTimeout(() => this.process_next().catch((err) =>
-            logger.error('Pipeline chain error', { service: 'pipeline', error: String(err) })
-        ), 0);
+        run_task_lifecycle(task, on_session_id, on_pause).finally(() => {
+            this.active_runs.delete(task_id);
+            setTimeout(() => this.process_ready_tasks().catch((e) =>
+                logger.error('Pipeline chain error', { service: 'pipeline', error: String(e) })
+            ), 0);
+        });
     }
 }
 
 export const pipeline_service = new PipelineService();
 
 set_on_session_freed(() => {
-    pipeline_service.process_next().catch((err) =>
+    pipeline_service.process_ready_tasks().catch((err) =>
         logger.error('Pipeline wakeup error', { service: 'pipeline', error: String(err) })
     );
 });

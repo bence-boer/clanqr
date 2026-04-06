@@ -19,6 +19,14 @@
     --info-rgb: 110, 168, 254;
     --accent-rgb: 212, 175, 55;
     --focus-ring: 0 0 0 3px rgba(var(--accent-rgb), 0.25);
+    --agent-orchestrator: #d4af37;
+    --agent-explorer: #8B5CF6;
+    --agent-architect: #F59E0B;
+    --agent-implementer: #10B981;
+    --agent-verifier: #3B82F6;
+    --agent-reviewer: #EC4899;
+    --agent-synthesizer: #6366F1;
+    --agent-researcher: #14B8A6;
     --radius: 8px;
     --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-mono: 'SF Mono', 'Fira Code', 'Fira Mono', Menlo, Consolas, monospace;

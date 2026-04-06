@@ -1,5 +1,6 @@
 <script lang="ts">
     import { Badge, Button } from '$lib/components/primitives';
+    import { AgentTypeBadge } from '$lib/components/agent-type-badge';
     import type { Trait } from '$lib/types';
 
     interface Props {
@@ -26,7 +27,7 @@
         <div class="trait-header-row">
             <span class="trait-name">{trait.name}</span>
             <div class="trait-badges">
-                <Badge variant={trait.target === 'manager' ? 'info' : trait.target === 'ralph' ? 'warning' : 'default'}>{trait.target}</Badge>
+                <AgentTypeBadge agent_type={trait.target} size="sm" />
                 {#if trait.is_global}<Badge variant="success">global</Badge>{/if}
                 {#if assignment_count > 0}
                     <Badge variant="muted">Used in {assignment_count} task{assignment_count !== 1 ? 's' : ''}</Badge>

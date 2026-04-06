@@ -11,7 +11,7 @@ function setup() {
                 id: '00000000-0000-0000-0000-000000000040',
                 name: 'Careful Coder',
                 description: 'Write careful code',
-                target: 'ralph',
+                target: 'implementer',
                 content: 'Be careful and thorough.',
                 is_global: true,
                 created_at: '2026-01-01T00:00:00Z',
@@ -21,7 +21,7 @@ function setup() {
                 id: '00000000-0000-0000-0000-000000000041',
                 name: 'Manager Trait',
                 description: 'Manager-only',
-                target: 'manager',
+                target: 'orchestrator',
                 content: 'Plan well.',
                 is_global: false,
                 created_at: '2026-01-01T00:00:00Z',
@@ -67,12 +67,12 @@ describe('traits routes', () => {
 
         it('filters by target', async () => {
             const { app } = setup();
-            const res = await app.request('/api/traits?target=ralph', {
+            const res = await app.request('/api/traits?target=implementer', {
                 headers: auth_headers()
             });
             expect(res.status).toBe(200);
             const body = (await res.json()) as Record<string, unknown>[];
-            expect(body.every((t: Record<string, unknown>) => t.target === 'ralph')).toBe(true);
+            expect(body.every((t: Record<string, unknown>) => t.target === 'implementer')).toBe(true);
         });
     });
 
@@ -84,7 +84,7 @@ describe('traits routes', () => {
                 headers: { ...auth_headers(), 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     name: 'New Trait',
-                    target: 'ralph',
+                    target: 'implementer',
                     content: 'Some content'
                 })
             });
@@ -98,7 +98,7 @@ describe('traits routes', () => {
             const res = await app.request('/api/traits', {
                 method: 'POST',
                 headers: { ...auth_headers(), 'Content-Type': 'application/json' },
-                body: JSON.stringify({ target: 'ralph', content: 'Content' })
+                body: JSON.stringify({ target: 'implementer', content: 'Content' })
             });
             expect(res.status).toBe(400);
         });

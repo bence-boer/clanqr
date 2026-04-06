@@ -20,14 +20,16 @@
     let elapsed = $state('');
     let log_visible = $state(false);
 
+    let active_task = $derived(pipeline?.active_tasks?.[0] as Record<string, string | null> | undefined);
+
     $effect(() => {
-        const task = pipeline?.current_task;
+        const task = active_task;
         if (!task?.updated_at) {
             elapsed = '';
             return;
         }
         const update = () => {
-            const diff = Math.floor((Date.now() - new Date(task.updated_at).getTime()) / 1000);
+            const diff = Math.floor((Date.now() - new Date(task.updated_at as string).getTime()) / 1000);
             const m = Math.floor(diff / 60);
             const s = diff % 60;
             elapsed = m > 0 ? `${m}m ${s}s` : `${s}s`;
@@ -44,9 +46,9 @@
         Currently Executing
     </h3>
 
-    {#if pipeline?.current_task}
-        {@const task = pipeline.current_task}
-        {@const task_title = task.title ?? task.description?.slice(0, 80) ?? 'Untitled task'}
+    {#if active_task}
+        {@const task = active_task}
+        {@const task_title = (task.title ?? (task.description as string | null)?.slice(0, 80) ?? 'Untitled task') as string}
         <div class="current-task-card">
             {#if task.project_name || task.feature_title}
                 <div class="breadcrumb">
@@ -99,7 +101,7 @@
             </div>
 
             <LiveEventPanel
-                sdk_session_id={pipeline?.current_sdk_session_id}
+                sdk_session_id={active_task?.sdk_session_id as string | undefined}
                 visible={log_visible}
             />
         </div>

@@ -5,6 +5,7 @@
     import { Textarea } from '$lib/components/primitives/textarea';
     import { toast_store } from '$lib/stores/toast.svelte';
     import type { PromptRecord } from '$lib/types';
+    import { AgentTypeBadge } from '$lib/components/agent-type-badge';
 
     interface PromptEditState {
         editing: boolean
@@ -64,9 +65,7 @@
             <div class="prompt-card" class:editing={role_state?.editing}>
                 <div class="prompt-card-header">
                     <div class="prompt-role-info">
-                        <span class="icon role-icon">
-                            {prompt.agent_type === 'manager' ? 'assignment' : prompt.agent_type === 'researcher' ? 'search' : 'build'}
-                        </span>
+                        <AgentTypeBadge agent_type={prompt.agent_type} />
                         <div>
                             <h3 class="prompt-role">
                                 {prompt.agent_type.charAt(0).toUpperCase() + prompt.agent_type.slice(1)} Prompt
@@ -144,12 +143,6 @@
         display: flex;
         align-items: center;
         gap: 0.6rem;
-    }
-
-    .role-icon {
-        font-size: 24px;
-        color: var(--accent);
-        flex-shrink: 0;
     }
 
     .prompt-role {

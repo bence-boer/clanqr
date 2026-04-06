@@ -49,6 +49,7 @@ export const task_artifact_routes = new Hono<AppBindings>()
         }
 
         const project_id = (task.features as { project_id: string }).project_id;
+        // Legacy workspace directory name — kept for backward compatibility with existing artifacts on disk
         const file_path = join(WORKSPACE_DIR, project_id, `ralph-${id}`, 'artifacts', filename);
 
         if (!existsSync(file_path)) {

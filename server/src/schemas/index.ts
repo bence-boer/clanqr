@@ -8,3 +8,4 @@ export * from './prompt.schema';
 export * from './trait.schema';
 export * from './chat.schema';
 export * from './mcp-server.schema';
+export * from './agent-type.schema';

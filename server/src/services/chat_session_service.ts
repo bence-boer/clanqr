@@ -12,6 +12,7 @@ import { build_hooks } from '../sdk/hooks';
 import { increment_session_count, decrement_session_count } from './session_pool_service';
 import { logger } from '../utils/logger';
 import type { SdkSessionConfig } from '../sdk/types';
+import { get_agent_tool_permissions } from '../sdk/types';
 
 const CHAT_MESSAGE_TIMEOUT_MS = 90 * 1000;
 
@@ -33,11 +34,12 @@ async function get_or_create_chat_session(
         session_id: sdk_sid, agent_type: 'researcher', model,
         entity_id: chat_session_id, entity_type: 'chat'
     };
-    const hooks = build_hooks(config, '');
+    const permissions = await get_agent_tool_permissions(config.agent_type);
+    const hooks = build_hooks(config, '', permissions);
     const session_config = {
         sessionId: sdk_sid,
         model,
-        customAgents: get_custom_agents(),
+        customAgents: await get_custom_agents(),
         agent: 'researcher',
         hooks,
         onPermissionRequest: async () => ({ kind: 'approved' as const })

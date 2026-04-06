@@ -68,15 +68,17 @@
                 pipeline = {
                     ...pipeline,
                     state: data.pipeline.state,
-                    current_task: null,
-                    current_run_id: data.pipeline.current_run_id,
+                    active_tasks: pipeline?.active_tasks ?? [],
+                    active_run_count: pipeline?.active_run_count ?? 0,
+                    current_feature_id: data.pipeline.current_feature_id ?? null,
+                    wave_info: pipeline?.wave_info ?? null,
                     queue_depth: pipeline?.queue_depth ?? 0
                 } as PipelineStatus;
                 active_agents = Object.keys(data.agents).length;
             },
             pipeline_status: (data: PipelineStatusData) => {
                 if (pipeline) {
-                    pipeline = { ...pipeline, state: data.state as PipelineStatus['state'], current_run_id: data.current_run_id ?? null };
+                    pipeline = { ...pipeline, state: data.state as PipelineStatus['state'] };
                 }
                 load_data();
                 load_activity();

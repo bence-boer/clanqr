@@ -1,5 +1,6 @@
 <script lang="ts">
     import { Select } from '$lib/components/primitives';
+    import { V2_AGENT_TYPES } from '$lib/components/agent-type-badge/agent-type-colors';
 
     type DateRange = 'today' | '7d' | '30d' | 'all';
 
@@ -42,9 +43,9 @@
     </div>
     <Select style="flex: 1;" onchange={on_type_change} value={filter_type} aria-label="Filter by type">
         <option value="">All types</option>
-        <option value="manager">manager</option>
-        <option value="ralph">ralph</option>
-        <option value="chat">chat</option>
+        {#each V2_AGENT_TYPES as t (t)}
+            <option value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+        {/each}
     </Select>
     <Select style="flex: 1;" onchange={on_status_change} value={filter_status} aria-label="Filter by status">
         <option value="">All statuses</option>

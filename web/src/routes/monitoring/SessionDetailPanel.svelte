@@ -2,6 +2,7 @@
     import type { AgentProcess } from '$lib/types';
     import { telemetry_api, type StructuredLogEntry } from '$lib/api/telemetry-client';
     import { Button } from '$lib/components/primitives';
+    import { AgentTypeBadge } from '$lib/components/agent-type-badge';
     import { Tabs } from '$lib/components';
     import type { TabItem } from '$lib/components/tabs/types';
     import { onMount } from 'svelte';
@@ -89,10 +90,8 @@
     <div class="detail-header">
         <div class="header-left">
             <h3>
-                <span class="icon" style="font-size:16px">
-                    {agent.agent_type === 'manager' ? 'assignment' : 'build'}
-                </span>
-                {agent.agent_type} — {agent.id.slice(0, 8)}
+                <AgentTypeBadge agent_type={agent.agent_type} size="sm" />
+                <span>{agent.id.slice(0, 8)}</span>
             </h3>
             {#if is_live}
                 <span class="live-badge"><span class="live-dot"></span> Live</span>

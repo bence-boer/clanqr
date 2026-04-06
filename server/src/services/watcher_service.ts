@@ -1,13 +1,24 @@
 import { create_supabase_client } from '../db';
 import type { TypedSupabaseClient } from '../db';
 import type { Tables } from '../database.types';
-import { plan_feature } from './sdk_session_service';
+import { run_agent_session } from './sdk_session_service';
+import { can_start_session } from './session_pool_service';
+import { parse_orchestrator_output } from '../sdk/output_parser';
+import { validate_dag, insert_dag_from_plan, compute_waves } from './dag_service';
+import type { DagTask } from './dag_service';
 import { prompt_service } from './prompt_service';
 import { pipeline_service } from './pipeline_service';
+import { event_bus } from './event_bus';
 import { logger } from '../utils/logger';
 
 const POLL_INTERVAL_MS = 5000;
 const MAX_MANAGER_RETRIES = 3;
+const ORCHESTRATOR_TIMEOUT_MS = 5 * 60 * 1000;
+
+type FeatureRow = Tables<'features'> & {
+    resources?: { url: string, title: string | null }[]
+    projects?: { name: string }
+};
 
 class WatcherService {
     private interval: ReturnType<typeof setInterval> | null = null;
@@ -24,7 +35,9 @@ class WatcherService {
             });
         }, POLL_INTERVAL_MS);
 
-        this.poll().catch((err) => logger.error('Watcher initial poll error', { service: 'watcher', error: String(err) }));
+        this.poll().catch((err) =>
+            logger.error('Watcher initial poll error', { service: 'watcher', error: String(err) })
+        );
     }
 
     stop() {
@@ -47,7 +60,11 @@ class WatcherService {
             .select('*, resources(*), projects(*)')
             .eq('status', 'submitted');
 
-        if (error || !features) return;
+        if (error) {
+            logger.error('Failed to query submitted features', { service: 'watcher', error: error.message });
+            return;
+        }
+        if (!features) return;
 
         for (const feature of features) {
             if ((feature.manager_retry_count ?? 0) >= MAX_MANAGER_RETRIES) {
@@ -58,11 +75,11 @@ class WatcherService {
                 continue;
             }
 
-            // Check DB for recent running/completed manager
+            // Check DB for recent running/completed orchestrator session
             const { data: recent_run } = await supabase
                 .from('agent_sessions')
                 .select('id, status')
-                .eq('agent_type', 'manager')
+                .eq('agent_type', 'orchestrator')
                 .eq('feature_id', feature.id)
                 .in('status', ['running', 'completed'])
                 .order('created_at', { ascending: false })
@@ -71,17 +88,28 @@ class WatcherService {
 
             if (recent_run) continue;
 
-            logger.info('Planning feature via SDK', { service: 'watcher', feature_id: feature.id, title: feature.title });
-            this.plan_and_maybe_auto_approve(feature, supabase).catch(
-                (err) => logger.error('Plan feature error', { service: 'watcher', feature_id: feature.id, error: String(err) })
+            if (!can_start_session()) {
+                logger.warn('Session limit reached, skipping feature', {
+                    service: 'watcher', feature_id: feature.id
+                });
+                continue;
+            }
+
+            logger.info('Planning feature via orchestrator', {
+                service: 'watcher', feature_id: feature.id, title: feature.title
+            });
+            await supabase.from('features').update({
+                manager_retry_count: (feature.manager_retry_count ?? 0) + 1
+            }).eq('id', feature.id);
+            this.plan_with_dag(feature, supabase).catch((err) =>
+                logger.error('Plan feature error', {
+                    service: 'watcher', feature_id: feature.id, error: String(err)
+                })
             );
         }
     }
 
-    private async plan_and_maybe_auto_approve(
-        feature: Tables<'features'> & { resources?: { url: string, title: string | null }[], projects?: { name: string } },
-        supabase: TypedSupabaseClient
-    ) {
+    private async plan_with_dag(feature: FeatureRow, supabase: TypedSupabaseClient) {
         const prompt = await prompt_service.resolve_for_manager(
             {
                 title: feature.title,
@@ -93,27 +121,81 @@ class WatcherService {
         );
 
         const model = feature.planning_model || 'gpt-4.1';
-        await plan_feature(feature.id, model, prompt);
+        const result = await run_agent_session({
+            agent_type: 'orchestrator',
+            entity_id: feature.id,
+            entity_type: 'feature',
+            feature_id: feature.id,
+            model,
+            prompt,
+            timeout_ms: ORCHESTRATOR_TIMEOUT_MS
+        });
+
+        if (!result.success) {
+            await this.mark_feature_draft(
+                feature.id, result.error ?? 'Orchestrator session failed', supabase
+            );
+            return;
+        }
+
+        const parsed = parse_orchestrator_output(result.content);
+        if ('error' in parsed) {
+            await this.mark_feature_draft(feature.id, parsed.error, supabase);
+            return;
+        }
+
+        const dag_tasks: DagTask[] = parsed.tasks;
+        const validation = validate_dag(dag_tasks);
+        if (!validation.valid) {
+            logger.error('DAG validation failed', {
+                service: 'watcher', feature_id: feature.id, errors: validation.errors
+            });
+            await this.mark_feature_draft(
+                feature.id, `DAG validation: ${validation.errors.join('; ')}`, supabase
+            );
+            return;
+        }
+
+        await insert_dag_from_plan(feature.id, dag_tasks, supabase);
+        const wave_count = await compute_waves(feature.id, supabase);
+
+        await supabase.from('features').update({ status: 'in_progress' }).eq('id', feature.id);
+        event_bus.emit({ type: 'dag:update', data: { feature_id: feature.id, wave_count } });
+        event_bus.emit({ type: 'features:update', data: { feature_id: feature.id, status: 'in_progress' } });
 
         if (feature.auto_approve) {
-            const { data: tasks } = await supabase
-                .from('tasks')
-                .select('id')
-                .eq('feature_id', feature.id)
-                .eq('status', 'queued');
-
-            if (tasks && tasks.length > 0) {
-                await supabase.from('tasks')
-                    .update({ status: 'approved' })
-                    .eq('feature_id', feature.id)
-                    .eq('status', 'queued');
-
-                logger.info('Auto-approved tasks', { service: 'watcher', feature_id: feature.id, count: tasks.length });
-                pipeline_service.process_next().catch(
-                    (err) => logger.error('Pipeline error after auto-approve', { service: 'watcher', error: String(err) })
-                );
-            }
+            await this.auto_approve_and_dispatch(feature.id, supabase);
         }
+    }
+
+    private async mark_feature_draft(
+        feature_id: string, error_msg: string, supabase: TypedSupabaseClient
+    ) {
+        await supabase.from('features').update({
+            status: 'draft',
+            last_error: error_msg
+        }).eq('id', feature_id);
+        event_bus.emit({ type: 'features:update', data: { feature_id, status: 'draft' } });
+    }
+
+    private async auto_approve_and_dispatch(feature_id: string, supabase: TypedSupabaseClient) {
+        const { data: tasks } = await supabase
+            .from('tasks')
+            .select('id')
+            .eq('feature_id', feature_id)
+            .eq('status', 'queued');
+
+        if (!tasks || tasks.length === 0) return;
+
+        await supabase.from('tasks')
+            .update({ status: 'approved' })
+            .eq('feature_id', feature_id)
+            .eq('status', 'queued');
+
+        logger.info('Auto-approved tasks', { service: 'watcher', feature_id, count: tasks.length });
+        pipeline_service.process_ready_tasks().catch((err) =>
+            logger.error('Pipeline error after auto-approve', { service: 'watcher', error: String(err) })
+        );
     }
 }
 

@@ -26,7 +26,7 @@ export async function get_activity_feed(supabase: TypedSupabaseClient, limit = 2
             return {
                 id: run.id,
                 type: 'task_failed' as const,
-                message: `${run.agent_type === 'manager' ? 'Manager' : 'Task'} failed${run.error ? `: ${run.error.slice(0, 100)}` : ''}`,
+                message: `${run.agent_type === 'orchestrator' ? 'Orchestrator' : 'Task'} failed${run.error ? `: ${run.error.slice(0, 100)}` : ''}`,
                 timestamp: ts,
                 severity: 'danger' as const,
                 link: run.feature_id ? `/projects?feature=${run.feature_id}` : undefined,
@@ -37,9 +37,9 @@ export async function get_activity_feed(supabase: TypedSupabaseClient, limit = 2
         if (run.status === 'completed') {
             return {
                 id: run.id,
-                type: run.agent_type === 'manager' ? 'manager_started' as const : 'task_complete' as const,
-                message: run.agent_type === 'manager'
-                    ? 'Manager completed for feature'
+                type: run.agent_type === 'orchestrator' ? 'manager_started' as const : 'task_complete' as const,
+                message: run.agent_type === 'orchestrator'
+                    ? 'Orchestrator completed for feature'
                     : 'Task agent completed successfully',
                 timestamp: ts,
                 severity: 'success' as const,
@@ -52,7 +52,7 @@ export async function get_activity_feed(supabase: TypedSupabaseClient, limit = 2
             return {
                 id: run.id,
                 type: 'agent_started' as const,
-                message: `${run.agent_type === 'manager' ? 'Manager' : 'Task agent'} is running`,
+                message: `${run.agent_type === 'orchestrator' ? 'Orchestrator' : 'Task agent'} is running`,
                 timestamp: ts,
                 severity: 'info' as const,
                 link: run.feature_id ? `/projects?feature=${run.feature_id}` : undefined,

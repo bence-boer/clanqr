@@ -2,6 +2,7 @@
     import { api } from '$lib/api/client';
     import { EmptyState, ErrorBanner } from '$lib/components';
     import { Button } from '$lib/components/primitives';
+    import { AgentTypeBadge, V2_AGENT_TYPES } from '$lib/components/agent-type-badge';
     import type { Trait, TraitAssignment, TraitTarget } from '$lib/types';
     import TraitForm from './TraitForm.svelte';
     import TraitRow from './TraitRow.svelte';
@@ -17,11 +18,13 @@
     interface Props {
         traits: Trait[]
         on_updated: () => void
+        show_form?: boolean
     }
 
-    let { traits, on_updated }: Props = $props();
+    let { traits, on_updated, show_form = $bindable(false) }: Props = $props();
 
     let trait_filter = $state<'all' | TraitTarget>('all');
+    const trait_filter_options: ('all' | TraitTarget)[] = ['all', ...V2_AGENT_TYPES.filter((t) => t !== 'chat' && t !== 'custom')];
     let category_search = $state('');
 
     let filtered_traits = $derived.by(() => {
@@ -40,9 +43,7 @@
     let assignments = $state<TraitAssignment[]>([]);
     let assignment_counts = $derived.by(() => {
         const counts: Record<string, number> = {};
-        for (const a of assignments) {
-            counts[a.trait_id] = (counts[a.trait_id] ?? 0) + 1;
-        }
+        for (const a of assignments) counts[a.trait_id] = (counts[a.trait_id] ?? 0) + 1;
         return counts;
     });
 
@@ -51,20 +52,19 @@
             assignments = await api.list_trait_assignments({});
         }
         catch {
-            // non-critical — counts just won't display
+            /* non-critical — counts just won't display */
         }
     }
 
-    import { onMount } from 'svelte';
+    import { onMount, untrack } from 'svelte';
     onMount(() => {
         load_assignments();
     });
 
     const default_trait_form = (): TraitFormData => ({
-        name: '', description: '', target: 'ralph', is_global: false, content: ''
+        name: '', description: '', target: 'implementer', is_global: false, content: ''
     });
 
-    let show_form = $state(false);
     let editing_id = $state<string | null>(null);
     let form = $state<TraitFormData>(default_trait_form());
     let form_saving = $state(false);
@@ -73,12 +73,14 @@
     let deleting_id = $state<string | null>(null);
     let list_error = $state('');
 
-    export function open_new_form() {
-        editing_id = null;
-        form = default_trait_form();
-        form_error = '';
-        show_form = true;
-    }
+    $effect(() => {
+        if (show_form && editing_id === null) {
+            untrack(() => {
+                form = default_trait_form();
+                form_error = '';
+            });
+        }
+    });
 
     function open_edit_form(trait: Trait) {
         editing_id = trait.id;
@@ -148,12 +150,11 @@
 
 <div class="filter-bar">
     <div class="filter-row" role="group" aria-label="Filter traits">
-        {#each ['all', 'manager', 'ralph'] as const as filter_val (filter_val)}
+        {#each trait_filter_options as filter_val (filter_val)}
             <Button variant="filter" active={trait_filter === filter_val} onclick={() => {
                 trait_filter = filter_val;
             }}>
-                {filter_val === 'all' ? 'All' : filter_val === 'manager' ? 'Manager' : 'Ralph'}
-            </Button>
+                {#if filter_val === 'all'}All{:else}<AgentTypeBadge agent_type={filter_val} size="sm" />{/if}</Button>
         {/each}
         <span class="filter-count">{filtered_traits.length} trait{filtered_traits.length !== 1 ? 's' : ''}</span>
     </div>
@@ -202,21 +203,12 @@
     .filter-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
     .filter-count { margin-left: auto; font-size: 0.8rem; color: var(--fg-muted); }
     .category-search {
-        width: 100%;
-        padding: 0.5rem 0.75rem;
-        background: var(--bg-surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        color: var(--fg);
-        font-size: 0.85rem;
-        outline: none;
-        transition: border-color 0.15s;
+        width: 100%; padding: 0.5rem 0.75rem; background: var(--bg-surface);
+        border: 1px solid var(--border); border-radius: var(--radius);
+        color: var(--fg); font-size: 0.85rem; outline: none; transition: border-color 0.15s;
     }
     .category-search:focus { border-color: var(--accent); }
     .category-search::placeholder { color: var(--fg-muted); }
     .traits-list { overflow-x: hidden; display: flex; flex-direction: column; gap: 0.5rem; }
-    @media (max-width: 768px) {
-        .filter-row { flex-direction: column; align-items: stretch; }
-        .filter-count { margin-left: 0; width: 100%; }
-    }
+    @media (max-width: 768px) { .filter-row { flex-direction: column; align-items: stretch; } .filter-count { margin-left: 0; } }
 </style>

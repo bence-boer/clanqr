@@ -7,6 +7,8 @@
     import TaskArtifacts from './TaskArtifacts.svelte';
     import TaskEditForm from './TaskEditForm.svelte';
     import TaskFiles from './TaskFiles.svelte';
+    import { AgentTypeBadge } from '$lib/components/agent-type-badge';
+    import { VerificationBadge } from '$lib/components/verification-badge';
 
     interface Props {
         task: Task
@@ -15,6 +17,7 @@
         editing_title: string
         editing_desc: string
         editing_model: string | null
+        editing_v2: { agent_type: string, execution_strategy: string, definition_of_done: string, skills_text: string, context_paths_text: string }
         saving: boolean
         on_approve: (task_id: string) => Promise<void>
         on_spawn: (task_id: string) => Promise<void>
@@ -28,7 +31,8 @@
 
     let {
         task, auto_approve, editing, editing_title = $bindable(), editing_desc = $bindable(),
-        editing_model = $bindable(), saving, on_approve, on_spawn, on_start_edit, on_save_edit,
+        editing_model = $bindable(), editing_v2 = $bindable({ agent_type: 'implementer', execution_strategy: 'sequential', definition_of_done: '', skills_text: '', context_paths_text: '' }),
+        saving, on_approve, on_spawn, on_start_edit, on_save_edit,
         on_cancel_edit, on_delete, on_toggle_artifacts, show_artifacts
     }: Props = $props();
 
@@ -65,6 +69,7 @@
             bind:title={editing_title}
             bind:description={editing_desc}
             bind:model={editing_model}
+            bind:v2={editing_v2}
             {saving}
             on_save={on_save_edit}
             on_cancel={on_cancel_edit}
@@ -75,9 +80,18 @@
                 <span class="task-title">{get_task_title(task)}</span>
             </div>
             <div class="task-badges">
+                {#if task.agent_type}
+                    <AgentTypeBadge agent_type={task.agent_type} size="sm" />
+                {/if}
                 <Badge variant={status_class(display_status) as 'success' | 'danger' | 'muted' | 'info' | 'warning'} icon={status_icon(display_status)}>
                     {display_status.replace(/_/g, ' ')}
                 </Badge>
+                {#if task.verification_status && task.verification_status !== 'pending'}
+                    <VerificationBadge status={task.verification_status} />
+                {/if}
+                {#if task.wave_number != null}
+                    <span class="wave-hint">W{task.wave_number}</span>
+                {/if}
             </div>
         </div>
         {#if task.status === 'failed' && task.output}
@@ -91,7 +105,7 @@
                 <Button variant="primary" size="sm" icon="thumb_up" onclick={handle_approve}>Approve</Button>
             {/if}
             {#if task.status === 'approved'}
-                <Button variant="secondary" size="sm" icon="play_arrow" onclick={() => on_spawn(task.id)}>Run Ralph</Button>
+                <Button variant="secondary" size="sm" icon="play_arrow" onclick={() => on_spawn(task.id)}>Run Clanqr</Button>
             {/if}
             {#if ['queued', 'approved'].includes(task.status)}
                 <Button variant="ghost" size="sm" icon="edit" title="Edit" aria-label="Edit task" onclick={() => on_start_edit(task)} />
@@ -115,7 +129,7 @@
             <TaskFiles task_id={task.id} />
         {/if}
         {#if show_artifacts}
-            <TaskArtifacts task_id={task.id} />
+            <TaskArtifacts task_id={task.id} agent_type={task.agent_type} />
         {/if}
     {/if}
 </div>
@@ -133,7 +147,8 @@
     }
     .task-info { flex: 1; min-width: 0; }
     .task-title { font-size: 0.9rem; font-weight: 600; color: var(--fg); display: block; line-height: 1.4; }
-    .task-badges { display: flex; gap: 0.35rem; align-items: center; flex-shrink: 0; }
+    .task-badges { display: flex; gap: 0.35rem; align-items: center; flex-shrink: 0; flex-wrap: wrap; }
+    .wave-hint { font-size: 0.65rem; color: var(--fg-muted); font-weight: 500; }
     .task-actions {
         margin-top: 0.5rem; display: flex;
         gap: 0.5rem; align-items: center; flex-wrap: wrap;

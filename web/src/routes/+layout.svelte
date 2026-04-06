@@ -100,7 +100,7 @@
 </script>
 
 <svelte:head>
-    <title>Ralph Agent Workspace</title>
+    <title>Clanqr Workspace</title>
 </svelte:head>
 
 {#if current_path === '/invite' || current_path.startsWith('/invite/')}

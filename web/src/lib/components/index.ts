@@ -1,5 +1,7 @@
+export * from './agent-type-badge';
 export * from './checkbox';
 export * from './confirm-modal';
+export * from './dag-graph';
 export * from './empty-state';
 export * from './error-banner';
 export * from './loading-spinner';
@@ -9,3 +11,5 @@ export * from './stat-card';
 export * from './status-badge';
 export * from './tabs';
 export * from './toast';
+export * from './verification-badge';
+export * from './wave-progress';

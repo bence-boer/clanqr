@@ -43,7 +43,7 @@
     <button class="bell-btn" onclick={(e: MouseEvent) => {
         e.stopPropagation();
         toggle();
-    }} aria-label="Notifications">
+    }} aria-label="Notifications" aria-expanded={open} aria-haspopup="true">
         <span class="icon" style="font-size:20px">notifications</span>
         {#if notification_store.unread_count > 0}
             <span class="badge">{notification_store.unread_count > 9 ? '9+' : notification_store.unread_count}</span>
@@ -51,7 +51,9 @@
     </button>
 
     {#if open}
-        <div class="dropdown" role="presentation" onclick={(e: MouseEvent) => e.stopPropagation()}>
+        <div class="dropdown" role="menu" aria-label="Notifications" onclick={(e: MouseEvent) => e.stopPropagation()} onkeydown={(e: KeyboardEvent) => {
+            if (e.key === 'Escape') close();
+        }}>
             <div class="dropdown-header">
                 <span class="dropdown-title">Notifications</span>
                 {#if notification_store.unread_count > 0}
@@ -63,7 +65,7 @@
             {:else}
                 <div class="notification-list">
                     {#each notification_store.items.slice(0, 20) as n (n.id)}
-                        <button class="notification-item" class:unread={!n.read} onclick={() => handle_click(n)}>
+                        <button class="notification-item" class:unread={!n.read} role="menuitem" onclick={() => handle_click(n)}>
                             <span class={['icon', 'n-icon', n.type].join(' ')} style="font-size:16px">{type_icon[n.type]}</span>
                             <div class="n-content">
                                 <span class="n-message">{n.message}</span>
