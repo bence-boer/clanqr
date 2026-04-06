@@ -10,9 +10,9 @@ export type FeatureStatus = 'draft' | 'submitted' | 'in_progress' | 'done' | 'ca
 export type TaskStatus = 'queued' | 'approved' | 'in_progress' | 'complete' | 'failed' | 'skipped';
 
 export type AgentType =
-    | 'orchestrator' | 'explorer' | 'architect' | 'implementer'
-    | 'verifier' | 'reviewer' | 'synthesizer' | 'researcher'
-    | 'manager' | 'ralph' | 'editor' | 'chat' | 'custom';
+  | 'orchestrator' | 'explorer' | 'architect' | 'implementer'
+  | 'verifier' | 'reviewer' | 'synthesizer' | 'researcher'
+  | 'manager' | 'ralph' | 'editor' | 'chat' | 'custom';
 
 export type AgentSessionStatus = 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled';
 
