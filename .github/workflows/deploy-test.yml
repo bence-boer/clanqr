@@ -170,7 +170,7 @@ jobs:
 
       - name: Enable TEST_MODE for agent execution
         run: |
-          RESP=$(curl -sf -X POST -H "x-test-secret: ${{ secrets.SESSION_SECRET }}" "http://localhost:3011/test-mode?enabled=true" 2>/dev/null || echo '{}')
+          RESP=$(curl -sf -X POST "http://localhost:3011/test-mode?enabled=true" 2>/dev/null || echo '{}')
           if echo "$RESP" | grep -q '"test_mode":true'; then
             echo "✅ TEST_MODE enabled via API"
           else
@@ -194,7 +194,7 @@ jobs:
       - name: Disable TEST_MODE after agent execution
         if: always()
         run: |
-          curl -sf -X POST -H "x-test-secret: ${{ secrets.SESSION_SECRET }}" "http://localhost:3011/test-mode?enabled=false" > /dev/null 2>&1 || true
+          curl -sf -X POST "http://localhost:3011/test-mode?enabled=false" > /dev/null 2>&1 || true
           echo "✅ TEST_MODE disabled via API"
 
       - name: Rollback on failure
