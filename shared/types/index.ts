@@ -8,7 +8,9 @@ export type {
     FailureBehavior,
     ResourceStatus,
     AssignmentScope,
-    MessageRole
+    MessageRole,
+    ExecutionStrategy,
+    VerificationStatus
 } from './status';
 
 export type { User } from './user';
