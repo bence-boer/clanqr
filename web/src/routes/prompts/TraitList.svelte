@@ -2,6 +2,7 @@
     import { api } from '$lib/api/client';
     import { EmptyState, ErrorBanner } from '$lib/components';
     import { Button } from '$lib/components/primitives';
+    import { AgentTypeBadge } from '$lib/components/agent-type-badge';
     import type { Trait, TraitAssignment, TraitTarget } from '$lib/types';
     import TraitForm from './TraitForm.svelte';
     import TraitRow from './TraitRow.svelte';
@@ -137,7 +138,7 @@
     <div class="filter-row" role="group" aria-label="Filter traits">
         {#each ['all', 'orchestrator', 'implementer', 'explorer', 'architect', 'verifier', 'reviewer', 'synthesizer', 'researcher'] as const as filter_val (filter_val)}
             <Button variant="filter" active={trait_filter === filter_val} onclick={() => { trait_filter = filter_val; }}>
-                {filter_val === 'all' ? 'All' : filter_val.charAt(0).toUpperCase() + filter_val.slice(1)}</Button>
+                {#if filter_val === 'all'}All{:else}<AgentTypeBadge agent_type={filter_val} size="sm" />{/if}</Button>
         {/each}
         <span class="filter-count">{filtered_traits.length} trait{filtered_traits.length !== 1 ? 's' : ''}</span>
     </div>

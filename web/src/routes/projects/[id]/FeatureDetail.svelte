@@ -7,6 +7,8 @@
     import ResourceList from './ResourceList.svelte';
     import FeatureEditForm from './FeatureEditForm.svelte';
     import TaskProgressBar from './TaskProgressBar.svelte';
+    import { WaveProgress } from '$lib/components/wave-progress';
+    import type { WaveInfo } from '$lib/components/wave-progress';
     import { create_feature_handlers } from './feature-handlers';
 
     interface Props {
@@ -29,6 +31,13 @@
 
     const tasks = $derived<TaskRow[]>(feature.tasks ?? []);
     const is_agent_active = $derived(feature.status === 'in_progress' && tasks.some((t) => t.status === 'in_progress'));
+
+    const show_waves = $derived(['submitted', 'in_progress'].includes(feature.status));
+    const waves = $derived.by((): WaveInfo[] => {
+        const m = new Map<number, [number, number, number, number]>();
+        for (const t of tasks) { if (t.wave_number == null) continue; const w = m.get(t.wave_number) ?? [0, 0, 0, 0]; w[0]++; if (t.status === 'complete') w[1]++; else if (t.status === 'in_progress') w[2]++; else if (t.status === 'failed') w[3]++; m.set(t.wave_number, w); }
+        return [...m].sort(([a], [b]) => a - b).map(([n, [t, c, r, f]]) => ({ wave: n, task_count: t, status: (f > 0 ? 'failed' : r > 0 ? 'running' : c === t ? 'completed' : 'pending') as WaveInfo['status'] }));
+    });
 
     async function handle_save_edit(data: Parameters<typeof handlers.save_edit>[0]) {
         await handlers.save_edit(data);
@@ -89,6 +98,9 @@
 {/if}
 
 <TaskProgressBar {tasks} />
+{#if show_waves && waves.length > 0}
+    <WaveProgress {waves} compact={true} />
+{/if}
 
 <div class="detail-body">
     {#if editing}

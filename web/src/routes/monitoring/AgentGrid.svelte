@@ -2,6 +2,7 @@
     import { resolve } from '$app/paths';
     import type { AgentProcess } from '$lib/types';
     import { Badge, Button } from '$lib/components/primitives';
+    import { AgentTypeBadge, get_agent_visual } from '$lib/components/agent-type-badge';
 
     let {
         agents,
@@ -46,12 +47,12 @@
 <div class="agent-grid">
     {#each agents as agent (agent.id)}
         {@const is_manager = agent.agent_type === 'orchestrator'}
-        <div class="agent-card" class:running={agent.status === 'running'} class:failed={agent.status === 'failed'}>
+        {@const visual = get_agent_visual(agent.agent_type)}
+        <div class="agent-card" class:running={agent.status === 'running'} class:failed={agent.status === 'failed'} style="border-left: 3px solid {visual.color}">
             <div class="agent-header">
                 <div class="agent-info">
-                    <span class="icon agent-icon">{is_manager ? 'assignment' : 'build'}</span>
+                    <AgentTypeBadge agent_type={agent.agent_type} />
                     <div>
-                        <span class="agent-type">{agent.agent_type}</span>
                         <span class="agent-id">{agent.id.slice(0, 8)}{agent.model ? ` · ${agent.model}` : ''}</span>
                     </div>
                 </div>

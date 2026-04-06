@@ -1,6 +1,7 @@
 <script lang="ts">
     import { EmptyState, LoadingSpinner, StatusBadge } from '$lib/components';
     import { Badge, Pagination } from '$lib/components/primitives';
+    import { AgentTypeBadge } from '$lib/components/agent-type-badge';
     import type { AgentSession } from '$lib/types';
     import {
         format_duration, format_relative, format_tokens_short,
@@ -135,7 +136,7 @@
                                 expanded_row = expanded_row === run.id ? null : run.id;
                             })}
                         >
-                            <td><Badge variant={run.agent_type === 'orchestrator' ? 'info' : run.agent_type === 'chat' ? 'success' : 'warning'}>{run.agent_type}</Badge></td>
+                            <td><AgentTypeBadge agent_type={run.agent_type ?? 'custom'} size="sm" /></td>
                             <td class="model-col">{run.model ?? 'default'}</td>
                             <td><StatusBadge status={run.status} /></td>
                             <td class="mono">{format_duration(run.duration_ms)}</td>

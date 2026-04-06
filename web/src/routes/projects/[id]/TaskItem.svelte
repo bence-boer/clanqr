@@ -7,6 +7,8 @@
     import TaskArtifacts from './TaskArtifacts.svelte';
     import TaskEditForm from './TaskEditForm.svelte';
     import TaskFiles from './TaskFiles.svelte';
+    import { AgentTypeBadge } from '$lib/components/agent-type-badge';
+    import { VerificationBadge } from '$lib/components/verification-badge';
 
     interface Props {
         task: Task
@@ -75,9 +77,18 @@
                 <span class="task-title">{get_task_title(task)}</span>
             </div>
             <div class="task-badges">
+                {#if task.agent_type}
+                    <AgentTypeBadge agent_type={task.agent_type} size="sm" />
+                {/if}
                 <Badge variant={status_class(display_status) as 'success' | 'danger' | 'muted' | 'info' | 'warning'} icon={status_icon(display_status)}>
                     {display_status.replace(/_/g, ' ')}
                 </Badge>
+                {#if task.verification_status && task.verification_status !== 'pending'}
+                    <VerificationBadge status={task.verification_status} />
+                {/if}
+                {#if task.wave_number != null}
+                    <span class="wave-hint">W{task.wave_number}</span>
+                {/if}
             </div>
         </div>
         {#if task.status === 'failed' && task.output}
@@ -133,7 +144,8 @@
     }
     .task-info { flex: 1; min-width: 0; }
     .task-title { font-size: 0.9rem; font-weight: 600; color: var(--fg); display: block; line-height: 1.4; }
-    .task-badges { display: flex; gap: 0.35rem; align-items: center; flex-shrink: 0; }
+    .task-badges { display: flex; gap: 0.35rem; align-items: center; flex-shrink: 0; flex-wrap: wrap; }
+    .wave-hint { font-size: 0.65rem; color: var(--fg-muted); font-weight: 500; }
     .task-actions {
         margin-top: 0.5rem; display: flex;
         gap: 0.5rem; align-items: center; flex-wrap: wrap;

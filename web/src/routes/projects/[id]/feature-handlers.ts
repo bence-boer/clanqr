@@ -25,6 +25,9 @@ export function create_feature_handlers(get_feature: () => Feature, on_update: (
             if (!confirm('Delete this task?')) return;
             await safe_call(() => api.delete_task(task_id), 'delete task', on_update);
         },
+        add_dependency: (task_id: string, depends_on: string) => safe_call(() => api.add_task_dependency(task_id, depends_on), 'add dependency', on_update),
+        remove_dependency: (task_id: string, dep_id: string) => safe_call(() => api.remove_task_dependency(task_id, dep_id), 'remove dependency', on_update),
+        verify_task: (task_id: string) => safe_call(() => api.verify_task(task_id), 'verify task', on_update),
         toggle_auto_approve: (enabled: boolean) => safe_call(
             () => api.update_feature(get_feature().id, { auto_approve: enabled }),
             'update auto-approve', on_update
