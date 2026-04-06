@@ -9,7 +9,7 @@ function setup() {
         agent_sessions: [
             {
                 id: '00000000-0000-0000-0000-000000000060',
-                agent_type: 'ralph',
+                agent_type: 'implementer',
                 status: 'completed',
                 model: 'claude-sonnet-4.5',
                 task_id: '00000000-0000-0000-0000-000000000020',
@@ -21,7 +21,7 @@ function setup() {
             },
             {
                 id: '00000000-0000-0000-0000-000000000061',
-                agent_type: 'manager',
+                agent_type: 'orchestrator',
                 status: 'failed',
                 model: 'claude-sonnet-4.5',
                 task_id: null,
@@ -72,12 +72,12 @@ describe('usage routes', () => {
 
         it('supports type filter', async () => {
             const { app } = setup();
-            const res = await app.request('/api/usage/history?type=ralph', {
+            const res = await app.request('/api/usage/history?type=implementer', {
                 headers: auth_headers()
             });
             expect(res.status).toBe(200);
             const body = (await res.json()) as { runs: Record<string, unknown>[] };
-            expect(body.runs.every((r: Record<string, unknown>) => r.agent_type === 'ralph')).toBe(true);
+            expect(body.runs.every((r: Record<string, unknown>) => r.agent_type === 'implementer')).toBe(true);
         });
 
         it('supports status filter', async () => {
