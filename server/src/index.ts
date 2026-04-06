@@ -79,7 +79,11 @@ const app = new Hono<AppBindings>()
     .use('*', supabase_middleware())
     // Health check (no auth)
     .get('/health', (context) => {
-        return context.json({ status: 'ok', timestamp: new Date().toISOString() });
+        return context.json({
+            status: 'ok',
+            timestamp: new Date().toISOString(),
+            test_mode: env.TEST_MODE
+        });
     })
     // Auth mutation routes (register/login) rate-limited: 10 req/min
     // Status check uses global rate limit only (called on every page load)
