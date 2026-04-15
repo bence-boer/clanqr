@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { env } from '../env';
 import type { AppBindings } from '../middleware/supabase';
-import { is_dev_session_token, is_dev_user_id } from '../utils/dev_sessions';
+import { is_dev_session_token } from '../utils/dev_sessions';
 import { login_routes } from './auth_login';
 import { register_routes } from './auth_register';
 
@@ -27,11 +27,6 @@ export const auth_routes = new Hono<AppBindings>()
             .single();
 
         if (!session) {
-            return context.json({ authenticated: false, user: null });
-        }
-
-        if (env.NODE_ENV === 'production' && is_dev_user_id(session.user_id)) {
-            deleteCookie(context, 'session', { path: '/' });
             return context.json({ authenticated: false, user: null });
         }
 
@@ -71,10 +66,6 @@ export const auth_routes = new Hono<AppBindings>()
                 .gt('expires_at', new Date().toISOString())
                 .single();
             if (data) {
-                if (env.NODE_ENV === 'production' && is_dev_user_id(data.user_id)) {
-                    deleteCookie(context, 'session', { path: '/' });
-                    return context.json({ is_setup, authenticated: false, user: null });
-                }
                 const { data: user } = await db
                     .from('users')
                     .select('id, github_id, username, display_name, avatar_url, role')

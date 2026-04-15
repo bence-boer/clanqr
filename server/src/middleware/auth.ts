@@ -1,7 +1,7 @@
 import { createMiddleware } from 'hono/factory';
 import { deleteCookie, getCookie } from 'hono/cookie';
 import { env } from '../env';
-import { is_dev_session_token, is_dev_user_id } from '../utils/dev_sessions';
+import { is_dev_session_token } from '../utils/dev_sessions';
 import type { AppBindings } from './supabase';
 
 interface SessionWithUser {
@@ -34,11 +34,6 @@ export function auth_middleware() {
             .single();
 
         if (!session) {
-            return context.json({ error: 'Session expired' }, 401);
-        }
-
-        if (env.NODE_ENV === 'production' && is_dev_user_id(session.user_id)) {
-            deleteCookie(context, 'session', { path: '/' });
             return context.json({ error: 'Session expired' }, 401);
         }
 
