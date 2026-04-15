@@ -27,7 +27,7 @@ export type TraitScope = Database['public']['Enums']['assignment_scope'];
 
 // ── Projects ──────────────────────────────────────────────────────────────────
 export type Project = ExtractSuccess<InferResponseType<Client['api']['projects']['$get']>>[number];
-export type Feature = ExtractSuccess<InferResponseType<Client['api']['features']['$get']>>[number];
+export type Feature = ExtractSuccess<InferResponseType<Client['api']['features']['$get']>>['data'][number];
 export type Resource = NonNullable<Feature['resources']>[number];
 
 // ── Auth / Admin ──────────────────────────────────────────────────────────────

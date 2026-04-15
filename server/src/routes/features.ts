@@ -40,23 +40,26 @@ export const features_routes = new Hono<AppBindings>()
     .get('/', async (context) => {
         const supabase = context.get('supabase');
         const project_id = context.req.query('project_id');
+        const limit = Math.min(Number(context.req.query('limit') ?? '50'), 100);
+        const offset = Number(context.req.query('offset') ?? '0');
 
         let query = supabase
             .from('features')
-            .select('*, resources(*), tasks(*)')
-            .order('created_at', { ascending: false });
+            .select('*, resources(*), tasks(*)', { count: 'exact' })
+            .order('created_at', { ascending: false })
+            .range(offset, offset + limit - 1);
 
         if (project_id) {
             query = query.eq('project_id', project_id);
         }
 
-        const { data, error } = await query;
+        const { data, error, count } = await query;
 
         if (error) {
             logger.error('Failed to fetch features', { route: 'GET /api/features', error: String(error) });
             return context.json({ error: 'Failed to fetch features' }, 500);
         }
-        return context.json(data);
+        return context.json({ data: data ?? [], total: count ?? 0, limit, offset });
     })
 
     // Get single feature with resources and tasks
@@ -111,9 +114,7 @@ export const features_routes = new Hono<AppBindings>()
                 error: JSON.stringify(feature_error),
                 feature_data: db_feature_data
             });
-            // Print error to console for debugging
-            console.error('Feature creation error:', feature_error);
-            return context.json({ error: 'Failed to create feature', details: feature_error }, 500);
+            return context.json({ error: 'Failed to create feature' }, 500);
         }
 
         if (resources && resources.length > 0) {
