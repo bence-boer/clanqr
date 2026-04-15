@@ -120,4 +120,52 @@ describe('validate_resource_url', () => {
             expect(validate_resource_url('')).toBe(false);
         });
     });
+
+    describe('blocks octal IP notation', () => {
+        it('blocks octal loopback 0177.0.0.1', () => {
+            expect(validate_resource_url('http://0177.0.0.1')).toBe(false);
+        });
+
+        it('blocks octal private 012.0.0.1 (10.x)', () => {
+            expect(validate_resource_url('http://012.0.0.1')).toBe(false);
+        });
+
+        it('blocks octal 0300.0250.0.1 (192.168.x)', () => {
+            expect(validate_resource_url('http://0300.0250.0.1')).toBe(false);
+        });
+    });
+
+    describe('blocks hex IP notation', () => {
+        it('blocks hex loopback 0x7f000001', () => {
+            expect(validate_resource_url('http://0x7f000001')).toBe(false);
+        });
+
+        it('blocks hex component 0x7f.0.0.1', () => {
+            expect(validate_resource_url('http://0x7f.0.0.1')).toBe(false);
+        });
+    });
+
+    describe('blocks IPv6-mapped IPv4', () => {
+        it('blocks ::ffff:127.0.0.1', () => {
+            expect(validate_resource_url('http://[::ffff:127.0.0.1]')).toBe(false);
+        });
+
+        it('blocks ::ffff:10.0.0.1', () => {
+            expect(validate_resource_url('http://[::ffff:10.0.0.1]')).toBe(false);
+        });
+
+        it('blocks ::ffff:192.168.1.1', () => {
+            expect(validate_resource_url('http://[::ffff:192.168.1.1]')).toBe(false);
+        });
+
+        it('allows ::ffff:8.8.8.8 (public)', () => {
+            expect(validate_resource_url('http://[::ffff:8.8.8.8]')).toBe(true);
+        });
+    });
+
+    describe('blocks shorthand IPs', () => {
+        it('blocks http://0', () => {
+            expect(validate_resource_url('http://0')).toBe(false);
+        });
+    });
 });
