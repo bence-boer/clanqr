@@ -4,6 +4,7 @@ import { Hono } from 'hono';
 import { getCookie } from 'hono/cookie';
 import { createMiddleware } from 'hono/factory';
 import type { AppBindings } from './middleware/supabase';
+import { hash_session_token } from './routes/auth_shared';
 import { create_mock_supabase, TEST_SEED } from './test-utils';
 
 type MockStore = Record<string, Record<string, unknown>[]>;
@@ -39,10 +40,11 @@ export function create_test_app(seed?: MockStore): {
                 return context.json({ error: 'Authentication required' }, 401);
             }
 
-            // Look up session in mock store
+            // Look up session in mock store (tokens stored as hashes)
             const sessions = store.sessions ?? [];
+            const hashed_token = hash_session_token(token);
             const session = sessions.find(
-                (s) => s.token === token && new Date(s.expires_at as string) > new Date()
+                (s) => s.token === hashed_token && new Date(s.expires_at as string) > new Date()
             );
             if (!session) {
                 return context.json({ error: 'Session expired' }, 401);

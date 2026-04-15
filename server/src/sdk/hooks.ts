@@ -9,13 +9,19 @@ import { logger } from '../utils/logger';
 type SessionHooks = NonNullable<SessionConfig['hooks']>;
 
 const SECRET_PATTERNS = [
-    /(?:sk|pk)[-_][a-zA-Z0-9]{20,}/g,
-    /ghp_[a-zA-Z0-9]{36}/g,
-    /gho_[a-zA-Z0-9]{36}/g,
-    /-----BEGIN\s+(?:RSA|EC|DSA|OPENSSH)\s+PRIVATE\s+KEY-----/g
+    /(?:sk|pk)[-_][a-zA-Z0-9]{20,}/g, // Stripe-style keys
+    /ghp_[a-zA-Z0-9]{36}/g, // GitHub personal access tokens
+    /gho_[a-zA-Z0-9]{36}/g, // GitHub OAuth tokens
+    /ghs_[a-zA-Z0-9]{36}/g, // GitHub server tokens
+    /ghu_[a-zA-Z0-9]{36}/g, // GitHub user tokens
+    /github_pat_[a-zA-Z0-9_]{22,}/g, // GitHub fine-grained tokens
+    /-----BEGIN\s+(?:RSA|EC|DSA|OPENSSH)\s+PRIVATE\s+KEY-----/g,
+    /AKIA[0-9A-Z]{16}/g, // AWS access keys
+    /eyJ[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{20,}/g, // JWT tokens (e.g., Supabase service role)
+    /xox[bpas]-[a-zA-Z0-9-]+/g // Slack tokens
 ];
 
-function redact_secrets(text: string): string {
+export function redact_secrets(text: string): string {
     let result = text;
     for (const pattern of SECRET_PATTERNS) {
         result = result.replace(pattern, '[REDACTED]');

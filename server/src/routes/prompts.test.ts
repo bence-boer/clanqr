@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { create_test_app, auth_headers } from '../test-app';
+import { create_test_app, auth_headers, admin_headers } from '../test-app';
 import { prompts_routes } from './prompts';
 import { TEST_SEED } from '../test-utils';
 
@@ -75,12 +75,45 @@ describe('prompts routes', () => {
         });
     });
 
+    describe('POST /api/prompts/sync', () => {
+        it('returns 403 for non-admin', async () => {
+            const { app } = setup();
+            const res = await app.request('/api/prompts/sync', {
+                method: 'POST',
+                headers: auth_headers()
+            });
+            expect(res.status).toBe(403);
+        });
+
+        it('allows admin past gate (not 403)', async () => {
+            const { app } = setup();
+            const res = await app.request('/api/prompts/sync', {
+                method: 'POST',
+                headers: admin_headers()
+            });
+            // Admin should pass the 403 gate; may get 200 or 500 depending on
+            // prompt_service.sync_from_repo() connectivity — the key assertion is
+            // the admin middleware does NOT block.
+            expect(res.status).not.toBe(403);
+        });
+    });
+
     describe('PATCH /api/prompts/:role', () => {
+        it('returns 403 for non-admin', async () => {
+            const { app } = setup();
+            const res = await app.request('/api/prompts/orchestrator', {
+                method: 'PATCH',
+                headers: { ...auth_headers(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: 'Updated content' })
+            });
+            expect(res.status).toBe(403);
+        });
+
         it('rejects invalid role', async () => {
             const { app } = setup();
             const res = await app.request('/api/prompts/invalid', {
                 method: 'PATCH',
-                headers: { ...auth_headers(), 'Content-Type': 'application/json' },
+                headers: { ...admin_headers(), 'Content-Type': 'application/json' },
                 body: JSON.stringify({ content: 'Updated content' })
             });
             expect(res.status).toBe(400);
@@ -90,7 +123,7 @@ describe('prompts routes', () => {
             const { app } = setup();
             const res = await app.request('/api/prompts/orchestrator', {
                 method: 'PATCH',
-                headers: { ...auth_headers(), 'Content-Type': 'application/json' },
+                headers: { ...admin_headers(), 'Content-Type': 'application/json' },
                 body: JSON.stringify({ content: '' })
             });
             expect(res.status).toBe(400);

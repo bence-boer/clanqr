@@ -58,10 +58,13 @@ VALUES
   ('aaaaaaaa-0000-0000-0000-000000000002', 2, 'dev-admin', 'Dev Admin', 'https://avatars.githubusercontent.com/u/2', 'admin@test.local', 'admin');
 
 -- Dev session tokens (expire far in the future)
+-- Tokens are stored as SHA-256 hashes; raw values used in E2E cookies:
+--   dev-session-token       → 7fef60999ea6a84de15934221684243e184aff47f2383ab23e0b4e5b88c534af
+--   dev-admin-session-token → 9f50b2867752ded53ca85822eaba1359afd250123e209021b56064424f749b47
 INSERT INTO sessions (user_id, token, github_access_token, expires_at)
 VALUES
-  ('aaaaaaaa-0000-0000-0000-000000000001', 'dev-session-token', 'gho_fake_user_token', NOW() + INTERVAL '1 year'),
-  ('aaaaaaaa-0000-0000-0000-000000000002', 'dev-admin-session-token', 'gho_fake_admin_token', NOW() + INTERVAL '1 year');
+  ('aaaaaaaa-0000-0000-0000-000000000001', '7fef60999ea6a84de15934221684243e184aff47f2383ab23e0b4e5b88c534af', 'gho_fake_user_token', NOW() + INTERVAL '1 year'),
+  ('aaaaaaaa-0000-0000-0000-000000000002', '9f50b2867752ded53ca85822eaba1359afd250123e209021b56064424f749b47', 'gho_fake_admin_token', NOW() + INTERVAL '1 year');
 
 -- Test project
 INSERT INTO projects (name, description, status, created_by)

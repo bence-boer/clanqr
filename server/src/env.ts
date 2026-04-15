@@ -33,6 +33,26 @@ function parse_env(): Env {
         }
         process.exit(1);
     }
+
+    // Production secret guard — refuse to start with default/weak secrets
+    if (result.data.NODE_ENV === 'production') {
+        const insecure: string[] = [];
+        if (result.data.SESSION_SECRET === 'dev-session-secret' || result.data.SESSION_SECRET.length < 32) {
+            insecure.push('SESSION_SECRET must be ≥32 chars and not the default value');
+        }
+        if (result.data.ENCRYPTION_KEY === 'dev-encryption-key' || result.data.ENCRYPTION_KEY.length < 32) {
+            insecure.push('ENCRYPTION_KEY must be ≥32 chars and not the default value');
+        }
+        if (!result.data.GITHUB_CLIENT_ID || !result.data.GITHUB_CLIENT_SECRET) {
+            insecure.push('GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET are required');
+        }
+        if (insecure.length > 0) {
+            console.error('❌ Insecure configuration for production:');
+            for (const msg of insecure) console.error(`  - ${msg}`);
+            process.exit(1);
+        }
+    }
+
     return result.data;
 }
 

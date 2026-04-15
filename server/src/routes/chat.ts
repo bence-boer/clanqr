@@ -15,7 +15,7 @@ const update_session_schema = z.object({
 });
 
 const send_message_schema = z.object({
-    content: z.string().min(1),
+    content: z.string().min(1).max(50_000),
     model: z.string().optional()
 });
 

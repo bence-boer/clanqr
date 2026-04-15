@@ -6,16 +6,24 @@ import { pipeline_service } from '../services/pipeline_service';
 import { logger } from '../utils/logger';
 
 const KEEPALIVE_INTERVAL_MS = 25_000;
+const MAX_SSE_CONNECTIONS = 5;
+let active_connections = 0;
 
 export const events_routes = new Hono<AppBindings>()
 
     .get('/stream', (context) => {
+        if (active_connections >= MAX_SSE_CONNECTIONS) {
+            return context.json({ error: 'Too many active connections' }, 429);
+        }
+        active_connections++;
+
         return streamSSE(context, async (stream) => {
             let event_id = 0;
             let alive = true;
 
             stream.onAbort(() => {
                 alive = false;
+                active_connections = Math.max(0, active_connections - 1);
             });
 
             const pipeline_info = pipeline_service.get_status();
@@ -72,6 +80,7 @@ export const events_routes = new Hono<AppBindings>()
             }
             finally {
                 unsubscribe();
+                active_connections = Math.max(0, active_connections - 1);
             }
         });
     });

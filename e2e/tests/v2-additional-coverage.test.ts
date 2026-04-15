@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { API_URL, AUTH_HEADERS } from "./helpers";
+import { API_URL, AUTH_HEADERS, ADMIN_AUTH_HEADERS } from "./helpers";
 
 // ── Verification API — happy path (M5) ───────────────────────────────────────
 
@@ -46,7 +46,7 @@ test.describe.serial("verification happy path", () => {
 
     test("verify existing task returns 200 with verdict and reasons", async ({ request }) => {
         const res = await request.post(`${API_URL}/api/agents/verify/${task_id}`, {
-            headers: AUTH_HEADERS,
+            headers: ADMIN_AUTH_HEADERS,
             data: {},
         });
         expect(res.status()).toBe(200);
@@ -72,7 +72,7 @@ test.describe.serial("traits API CRUD", () => {
 
     test("create trait with V2 target", async ({ request }) => {
         const res = await request.post(`${API_URL}/api/traits`, {
-            headers: AUTH_HEADERS,
+            headers: ADMIN_AUTH_HEADERS,
             data: {
                 name: "e2e_test_trait",
                 target: "architect",
@@ -99,7 +99,7 @@ test.describe.serial("traits API CRUD", () => {
 
     test("delete trait by ID removes it", async ({ request }) => {
         const del_res = await request.delete(`${API_URL}/api/traits/${trait_id}`, {
-            headers: AUTH_HEADERS,
+            headers: ADMIN_AUTH_HEADERS,
         });
         expect(del_res.ok()).toBeTruthy();
 

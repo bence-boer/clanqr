@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { createMiddleware } from 'hono/factory';
 import type { AppBindings } from '../middleware/supabase';
 import { create_mock_supabase, TEST_SEED } from '../test-utils';
+import { hash_session_token } from './auth_shared';
 import { auth_routes } from './auth';
 
 function setup() {
@@ -66,7 +67,7 @@ describe('auth routes', () => {
             });
             store.sessions.push({
                 id: '00000000-0000-0000-0000-0000000000aa', user_id: 'dev-admin',
-                token: 'dev-admin-session-token', expires_at: '2099-12-31T23:59:59Z'
+                token: hash_session_token('dev-admin-session-token'), expires_at: '2099-12-31T23:59:59Z'
             });
             const res = await app.request('/api/auth/status', {
                 headers: { Cookie: 'session=dev-admin-session-token' }

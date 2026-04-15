@@ -299,7 +299,7 @@ test.describe("verification API", () => {
         // Use a valid UUID that won't match any real task
         const fake_id = "00000000-0000-0000-0000-000000000099";
         const res = await request.post(`${API_URL}/api/agents/verify/${fake_id}`, {
-            headers: AUTH_HEADERS,
+            headers: ADMIN_AUTH_HEADERS,
             data: {},
         });
         expect(res.status()).toBe(404);
@@ -309,7 +309,7 @@ test.describe("verification API", () => {
 
     test("verify with invalid UUID returns 400", async ({ request }) => {
         const res = await request.post(`${API_URL}/api/agents/verify/bad-uuid`, {
-            headers: AUTH_HEADERS,
+            headers: ADMIN_AUTH_HEADERS,
             data: {},
         });
         expect(res.status()).toBe(400);

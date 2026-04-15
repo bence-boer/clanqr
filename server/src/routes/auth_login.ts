@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import type { AppBindings } from '../middleware/supabase';
 import { env } from '../env';
-import { generate_session_token } from './auth_shared';
+import { generate_session_token, hash_session_token } from './auth_shared';
 import { encrypt_token } from '../utils/token_encryption';
 
 const GITHUB_AUTHORIZE_URL = 'https://github.com/login/oauth/authorize';
@@ -197,11 +197,11 @@ export const login_routes = new Hono<AppBindings>()
         // Create session with encrypted token
         const session_token = generate_session_token();
         const encrypted_access_token = encrypt_token(token_data.access_token, env.SESSION_SECRET);
-        const expires_at = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+        const expires_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
         const { error: session_error } = await db.from('sessions').insert({
             user_id: user.id,
-            token: session_token,
+            token: hash_session_token(session_token),
             github_access_token: encrypted_access_token,
             expires_at: expires_at.toISOString()
         });
@@ -217,7 +217,7 @@ export const login_routes = new Hono<AppBindings>()
             secure: env.NODE_ENV === 'production',
             sameSite: 'Lax',
             path: '/',
-            maxAge: 30 * 24 * 60 * 60
+            maxAge: 7 * 24 * 60 * 60 // 7 days
         });
 
         return context.redirect(env.FRONTEND_URL);

@@ -18,8 +18,10 @@ export const api = {
         unwrap(await (await client.api.projects[':id'].$delete({ param: { id } })).json()),
 
     // ── Features ──────────────────────────────────────────────────────────────
-    list_features: async (project_id?: string): Promise<Types.Feature[]> =>
-        unwrap(await (await client.api.features.$get({ query: { project_id: project_id ?? '' } })).json()),
+    list_features: async (project_id?: string): Promise<Types.Feature[]> => {
+        const res = unwrap(await (await client.api.features.$get({ query: { project_id: project_id ?? '' } })).json());
+        return (res as { data: Types.Feature[] }).data;
+    },
     get_feature: async (id: string): Promise<Types.Feature> =>
         unwrap(await (await client.api.features[':id'].$get({ param: { id } })).json()),
     create_feature: async (data: Record<string, unknown>) =>

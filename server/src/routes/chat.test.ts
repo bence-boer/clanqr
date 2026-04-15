@@ -142,5 +142,15 @@ describe('chat routes', () => {
             });
             expect(res.status).toBe(400);
         });
+
+        it('rejects content exceeding 50,000 characters (SEC-020)', async () => {
+            const { app } = setup();
+            const res = await app.request(`/api/chat/sessions/${SESSION_ID}/send`, {
+                method: 'POST',
+                headers: { ...auth_headers(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: 'a'.repeat(50_001) })
+            });
+            expect(res.status).toBe(400);
+        });
     });
 });

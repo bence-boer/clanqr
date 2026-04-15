@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { create_mock_supabase, TEST_SEED } from './test-utils';
+import { hash_session_token } from './routes/auth_shared';
 
 describe('mock supabase client', () => {
     it('creates a client with seeded data', () => {
@@ -40,7 +41,7 @@ describe('mock supabase client', () => {
         const { data, error } = await client
             .from('sessions')
             .select('*')
-            .eq('token', 'test-session-token')
+            .eq('token', hash_session_token('test-session-token'))
             .single();
         expect(error).toBeNull();
         expect(data?.user_id).toBe('test-user');

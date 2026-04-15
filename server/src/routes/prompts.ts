@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import type { AppBindings } from '../middleware/supabase';
+import { admin_middleware } from '../middleware/auth';
 import { prompt_service } from '../services/prompt_service';
 import { logger } from '../utils/logger';
 import type { Enums } from '../database.types';
@@ -27,7 +28,7 @@ export const prompts_routes = new Hono<AppBindings>()
     })
 
     // Re-sync prompts from repo files (before /:role to avoid conflict)
-    .post('/sync', async (context) => {
+    .post('/sync', admin_middleware(), async (context) => {
         await prompt_service.sync_from_repo();
         return context.json({ success: true, message: 'Prompts synced from repo' });
     })
@@ -51,7 +52,7 @@ export const prompts_routes = new Hono<AppBindings>()
     })
 
     // Update prompt text
-    .patch('/:role', zValidator('json', update_schema), async (context) => {
+    .patch('/:role', admin_middleware(), zValidator('json', update_schema), async (context) => {
         const role = context.req.param('role');
         const parsed = context.req.valid('json');
 

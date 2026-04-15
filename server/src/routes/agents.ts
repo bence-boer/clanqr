@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import type { AppBindings } from '../middleware/supabase';
 import { validate_uuid_params, require_param } from '../middleware/validate_params';
+import { admin_middleware } from '../middleware/auth';
 import { pipeline_service } from '../services/pipeline_service';
 import { get_session_concurrency } from '../services/session_pool_service';
 import { plan_feature } from '../services/sdk_session_service';
@@ -55,21 +56,21 @@ export const agents_routes = new Hono<AppBindings>()
         });
     })
 
-    .post('/pause', (c) => {
+    .post('/pause', admin_middleware(), (c) => {
         pipeline_service.pause();
         return c.json({ success: true, state: 'paused' });
     })
-    .post('/resume', (c) => {
+    .post('/resume', admin_middleware(), (c) => {
         pipeline_service.resume();
         return c.json({ success: true, state: 'resuming' });
     })
-    .post('/stop-current', (c) => {
+    .post('/stop-current', admin_middleware(), (c) => {
         pipeline_service.stop_current();
         return c.json({ success: true });
     })
     .get('/queue/log', (c) => c.json({ log: pipeline_service.get_log() }))
 
-    .patch('/queue/reorder', zValidator('json', reorder_schema), async (context) => {
+    .patch('/queue/reorder', admin_middleware(), zValidator('json', reorder_schema), async (context) => {
         const supabase = context.get('supabase');
         const { task_ids } = context.req.valid('json');
         try {
@@ -89,7 +90,7 @@ export const agents_routes = new Hono<AppBindings>()
 // ── SDK session management ────────────────────────────────────────────────
     .get('/sessions', (c) => c.json(get_session_concurrency()))
 
-    .post('/plan/:feature_id', validate_uuid_params('feature_id'), async (context) => {
+    .post('/plan/:feature_id', admin_middleware(), validate_uuid_params('feature_id'), async (context) => {
         const feature_id = require_param(context, 'feature_id');
         const supabase = context.get('supabase');
 
@@ -139,7 +140,7 @@ export const agents_routes = new Hono<AppBindings>()
         return context.json([...(running ?? []), ...(recent ?? [])]);
     })
 
-    .post('/stop-all', async (context) => {
+    .post('/stop-all', admin_middleware(), async (context) => {
         const supabase = context.get('supabase');
         await supabase.from('agent_sessions')
             .update({ status: 'cancelled', finished_at: new Date().toISOString() })
@@ -183,7 +184,7 @@ export const agents_routes = new Hono<AppBindings>()
     })
 
     // ── Manual verification trigger ───────────────────────────────────────────
-    .post('/verify/:task_id', validate_uuid_params('task_id'), async (context) => {
+    .post('/verify/:task_id', admin_middleware(), validate_uuid_params('task_id'), async (context) => {
         const task_id = require_param(context, 'task_id');
         const supabase = context.get('supabase');
 
