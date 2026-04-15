@@ -13,6 +13,7 @@ import { get_mock_session_result, MOCK_DELAY_MS } from './mock_responses';
 import { stream_service } from './stream_service';
 import { log_store } from './log_store_service';
 import { persist_event, persist_tool_call, update_tool_result } from './telemetry_persist_service';
+import { logger } from '../utils/logger';
 import type { SdkSessionConfig, SdkSessionResult } from '../sdk/types';
 
 const DEFAULT_COST_PER_PREMIUM_REQUEST = 0.04;
@@ -138,7 +139,14 @@ export async function run_session(
         customAgents: await get_custom_agents(),
         agent: config.agent_type,
         hooks,
-        onPermissionRequest: async () => ({ kind: 'approved' as const })
+        onPermissionRequest: async (request) => {
+            const tool_name = String((request as Record<string, unknown>)?.toolName ?? request?.kind ?? '');
+            if (permissions.denied.length > 0 && permissions.denied.includes(tool_name)) {
+                logger.warn('Permission denied for tool', { service: 'sdk', session_id: config.session_id, tool: tool_name });
+                return { kind: 'denied-by-rules' as const, rules: [] };
+            }
+            return { kind: 'approved' as const };
+        }
     });
 
     const metrics = empty_metrics();

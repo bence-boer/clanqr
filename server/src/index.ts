@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import { cors } from 'hono/cors';
 import { HTTPException } from 'hono/http-exception';
 import { logger as hono_logger } from 'hono/logger';
-import { secureHeaders } from 'hono/secure-headers';
-import { create_supabase_client } from './db';
+import { security_headers } from './middleware/security_headers';
 import { env } from './env';
 import { is_test_mode, set_test_mode } from './test_mode';
 import { auth_middleware } from './middleware/auth';
@@ -27,10 +27,7 @@ import { traits_routes } from './routes/traits';
 import { activity_routes } from './routes/activity';
 import { usage_routes } from './routes/usage';
 import { agent_types_routes } from './routes/agent_types';
-import { pipeline_service } from './services/pipeline_service';
-import { prompt_service } from './services/prompt_service';
-import { watcher_service } from './services/watcher_service';
-import { agent_registry_service } from './services/agent_registry_service';
+import { boot } from './boot';
 import { logger } from './utils/logger';
 
 const allowed_origins = env.FRONTEND_URL.split(',').map((origin) => origin.trim());
@@ -57,7 +54,7 @@ const app = new Hono<AppBindings>()
     })
     // Global middleware
     .use('*', hono_logger())
-    .use('*', secureHeaders())
+    .use('*', security_headers)
     .use('*', request_id_middleware())
     .use('*', metrics_middleware())
     .use(
@@ -69,13 +66,10 @@ const app = new Hono<AppBindings>()
             credentials: true
         })
     )
-    .use('*', async (c, next) => {
-        const content_length = parseInt(c.req.header('content-length') ?? '0');
-        if (content_length > 1_000_000) {
-            return c.json({ error: 'Request body too large (max 1MB)' }, 413);
-        }
-        await next();
-    })
+    .use('*', bodyLimit({
+        maxSize: 1_000_000, // 1MB
+        onError: (c) => c.json({ error: 'Request body too large (max 1MB)' }, 413)
+    }))
     .use('*', rate_limit(env.NODE_ENV === 'production' ? 100 : 500, 60_000))
     .use('*', supabase_middleware())
     // Health check (no auth)
@@ -125,96 +119,6 @@ const app = new Hono<AppBindings>()
     .route('/api/agent-types', agent_types_routes)
     // Admin routes (role check handled inside admin_routes, auth already applied by /api/* above)
     .route('/api/admin', admin_routes);
-
-// Boot sequence
-async function boot() {
-    const supabase = create_supabase_client();
-
-    // 1. Recover stale agent runs from previous server crash
-    const now = new Date().toISOString();
-
-    const { data: interrupted_runs } = await supabase
-        .from('agent_sessions')
-        .select('feature_id')
-        .eq('agent_type', 'orchestrator')
-        .eq('status', 'running');
-    const interrupted_feature_ids: string[] = (interrupted_runs ?? [])
-        .map((r) => r.feature_id)
-        .filter((id): id is string => id !== null);
-
-    await supabase
-        .from('agent_sessions')
-        .update({ status: 'failed', error: 'Server restarted during execution', finished_at: now })
-        .eq('status', 'running');
-    await supabase
-        .from('tasks')
-        .update({ status: 'approved' })
-        .eq('status', 'in_progress');
-
-    if (interrupted_feature_ids.length > 0) {
-        await supabase
-            .from('features')
-            .update({ status: 'submitted' })
-            .eq('status', 'in_progress')
-            .in('id', interrupted_feature_ids);
-    }
-
-    // M-6.5: Reset in_progress features that have no tasks (missing tasks.json scenario)
-    const { data: in_progress_features } = await supabase
-        .from('features')
-        .select('id, tasks(id)')
-        .eq('status', 'in_progress');
-
-    for (const feature of in_progress_features ?? []) {
-        if (!feature.tasks?.length) {
-            await supabase
-                .from('features')
-                .update({ status: 'submitted' })
-                .eq('id', feature.id);
-            logger.info('Reset feature to submitted (no tasks found)', { service: 'boot', feature_id: feature.id });
-        }
-    }
-
-    logger.info('Stale process recovery complete', { service: 'boot' });
-
-    // 2. Sync base prompts from repo files → DB
-    await prompt_service.sync_from_repo();
-
-    // 3. Sync agent type definitions from filesystem → DB
-    await agent_registry_service.sync_agent_types();
-
-    // 4. Cleanup expired data
-    await cleanup_expired_data(supabase);
-
-    setInterval(() => {
-        cleanup_expired_data(supabase).catch((err) => logger.error('Cleanup error', { service: 'boot', error: String(err) }));
-    }, 24 * 60 * 60 * 1000);
-
-    // 5. Start watcher service (orchestrator-only — pipeline handles task execution)
-    watcher_service.start();
-
-    // 6. Start pipeline service — trigger on any already-approved tasks
-    pipeline_service.process_next().catch((err) => logger.error('Pipeline start error', { service: 'boot', error: String(err) }));
-    logger.info('Pipeline service started', { service: 'boot' });
-}
-
-/** M-5.5: Clean expired sessions */
-async function cleanup_expired_data(supabase: ReturnType<typeof create_supabase_client>) {
-    const now = new Date().toISOString();
-
-    // Delete expired sessions
-    const { count: sessions_deleted } = await supabase
-        .from('sessions')
-        .delete({ count: 'exact' })
-        .lt('expires_at', now);
-
-    if ((sessions_deleted ?? 0) > 0) {
-        logger.info('Cleaned expired data', {
-            service: 'boot',
-            sessions_deleted: sessions_deleted ?? 0
-        });
-    }
-}
 
 boot().catch((err) => logger.error('Boot failed', { error: String(err) }));
 

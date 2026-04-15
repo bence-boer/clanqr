@@ -3,6 +3,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import type { AppBindings } from '../middleware/supabase';
 import { validate_uuid_params, require_param } from '../middleware/validate_params';
+import { admin_middleware } from '../middleware/auth';
 import { resolve_task_traits, resolve_scope_traits } from '../services/trait_service';
 import { logger } from '../utils/logger';
 import type { Enums } from '../database.types';
@@ -48,7 +49,7 @@ export const traits_routes = new Hono<AppBindings>()
     })
 
     // Create trait
-    .post('/', zValidator('json', create_trait_schema), async (context) => {
+    .post('/', admin_middleware(), zValidator('json', create_trait_schema), async (context) => {
         const parsed = context.req.valid('json');
 
         const supabase = context.get('supabase');
@@ -83,7 +84,7 @@ export const traits_routes = new Hono<AppBindings>()
         return context.json(data);
     })
 
-    .post('/assign', zValidator('json', assign_schema), async (context) => {
+    .post('/assign', admin_middleware(), zValidator('json', assign_schema), async (context) => {
         const parsed = context.req.valid('json');
 
         const { scope, project_id, feature_id, task_id } = parsed;
@@ -182,7 +183,7 @@ export const traits_routes = new Hono<AppBindings>()
     })
 
     // Update trait
-    .patch('/:id', validate_uuid_params('id'), zValidator('json', update_trait_schema), async (context) => {
+    .patch('/:id', admin_middleware(), validate_uuid_params('id'), zValidator('json', update_trait_schema), async (context) => {
         const id = require_param(context, 'id');
         const result = context.req.valid('json');
 
@@ -199,7 +200,7 @@ export const traits_routes = new Hono<AppBindings>()
     })
 
     // Delete trait
-    .delete('/:id', validate_uuid_params('id'), async (context) => {
+    .delete('/:id', admin_middleware(), validate_uuid_params('id'), async (context) => {
         const id = require_param(context, 'id');
         const supabase = context.get('supabase');
 
@@ -212,7 +213,7 @@ export const traits_routes = new Hono<AppBindings>()
     })
 
     // Remove assignment
-    .delete('/assign/:id', validate_uuid_params('id'), async (context) => {
+    .delete('/assign/:id', admin_middleware(), validate_uuid_params('id'), async (context) => {
         const id = require_param(context, 'id');
         const supabase = context.get('supabase');
 

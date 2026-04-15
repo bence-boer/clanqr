@@ -1,4 +1,5 @@
 import type { MockStore } from './mock_query_builder';
+import { hash_session_token } from './routes/auth_shared';
 
 /**
  * Default seed data for tests — mirrors dev-db-reset.sh
@@ -36,13 +37,13 @@ export const TEST_SEED: MockStore = {
         {
             id: '00000000-0000-0000-0000-000000000002',
             user_id: 'test-user',
-            token: 'test-session-token',
+            token: hash_session_token('test-session-token'),
             expires_at: '2099-12-31T23:59:59Z'
         },
         {
             id: '00000000-0000-0000-0000-000000000003',
             user_id: 'test-admin',
-            token: 'test-admin-session-token',
+            token: hash_session_token('test-admin-session-token'),
             expires_at: '2099-12-31T23:59:59Z'
         }
     ],

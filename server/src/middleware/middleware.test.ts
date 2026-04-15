@@ -4,6 +4,7 @@ import { createMiddleware } from 'hono/factory';
 import { auth_middleware } from './auth';
 import { create_test_app, auth_headers, admin_headers } from '../test-app';
 import { create_mock_supabase, TEST_SEED } from '../test-utils';
+import { hash_session_token } from '../routes/auth_shared';
 import type { AppBindings } from '../middleware/supabase';
 
 describe('auth middleware', () => {
@@ -72,7 +73,7 @@ describe('auth middleware', () => {
             seed.sessions.push({
                 id: '00000000-0000-0000-0000-0000000000ab',
                 user_id: 'dev-admin',
-                token: 'dev-admin-session-token',
+                token: hash_session_token('dev-admin-session-token'),
                 expires_at: '2099-12-31T23:59:59Z'
             });
 

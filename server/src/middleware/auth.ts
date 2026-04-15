@@ -1,7 +1,8 @@
 import { createMiddleware } from 'hono/factory';
 import { deleteCookie, getCookie } from 'hono/cookie';
 import { env } from '../env';
-import { is_dev_session_token, is_dev_user_id } from '../utils/dev_sessions';
+import { hash_session_token } from '../routes/auth_shared';
+import { is_dev_session_token } from '../utils/dev_sessions';
 import type { AppBindings } from './supabase';
 
 interface SessionWithUser {
@@ -28,17 +29,12 @@ export function auth_middleware() {
         const { data: session } = await db
             .from('sessions')
             .select('id, user_id, expires_at, users(id, username, role, github_id)')
-            .eq('token', token)
+            .eq('token', hash_session_token(token))
             .gt('expires_at', new Date().toISOString())
             .returns<SessionWithUser[]>()
             .single();
 
         if (!session) {
-            return context.json({ error: 'Session expired' }, 401);
-        }
-
-        if (env.NODE_ENV === 'production' && is_dev_user_id(session.user_id)) {
-            deleteCookie(context, 'session', { path: '/' });
             return context.json({ error: 'Session expired' }, 401);
         }
 

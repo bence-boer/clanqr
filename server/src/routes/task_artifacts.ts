@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
-import { existsSync, statSync } from 'fs';
-import { join } from 'path';
+import { existsSync, lstatSync } from 'fs';
+import { resolve } from 'path';
 import type { AppBindings } from '../middleware/supabase';
 import { validate_uuid_params, require_param } from '../middleware/validate_params';
 import { logger } from '../utils/logger';
@@ -30,9 +30,20 @@ export const task_artifact_routes = new Hono<AppBindings>()
     // Download a specific artifact file
     .get('/:id/files/:filename', validate_uuid_params('id'), async (context) => {
         const id = require_param(context, 'id');
-        const filename = context.req.param('filename');
+        const raw_filename = context.req.param('filename');
 
-        if (!filename || filename.includes('..') || filename.includes('/')) {
+        // Decode and validate filename
+        let filename: string;
+        try {
+            filename = decodeURIComponent(raw_filename ?? '');
+        }
+        catch {
+            return context.json({ error: 'Invalid filename' }, 400);
+        }
+
+        // Reject path-escape characters after decoding
+        if (!filename || filename.includes('..') || filename.includes('/')
+          || filename.includes('\\') || filename.includes('\0')) {
             return context.json({ error: 'Invalid filename' }, 400);
         }
 
@@ -49,15 +60,25 @@ export const task_artifact_routes = new Hono<AppBindings>()
         }
 
         const project_id = (task.features as { project_id: string }).project_id;
-        // Legacy workspace directory name — kept for backward compatibility with existing artifacts on disk
-        const file_path = join(WORKSPACE_DIR, project_id, `ralph-${id}`, 'artifacts', filename);
+        const base_dir = resolve(WORKSPACE_DIR, project_id, `ralph-${id}`, 'artifacts');
+        const file_path = resolve(base_dir, filename);
+
+        // Verify resolved path is within the expected directory
+        if (!file_path.startsWith(base_dir + '/')) {
+            return context.json({ error: 'Invalid filename' }, 400);
+        }
 
         if (!existsSync(file_path)) {
             return context.json({ error: 'File not found' }, 404);
         }
 
+        // Check for symlinks — don't follow them
+        const stat = lstatSync(file_path);
+        if (stat.isSymbolicLink() || !stat.isFile()) {
+            return context.json({ error: 'Invalid file' }, 400);
+        }
+
         const mime = lookup_mime(filename);
-        const stat = statSync(file_path);
         const file = Bun.file(file_path);
 
         return new Response(file, {

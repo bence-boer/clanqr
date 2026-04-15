@@ -5,6 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AppBindings } from '../middleware/supabase';
 import { log_store } from '../services/log_store_service';
 import { stream_service } from '../services/stream_service';
+import { logger } from '../utils/logger';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -40,7 +41,10 @@ export const telemetry_routes = new Hono<AppBindings>()
         if (type_filter) query = query.eq('event_type', type_filter);
 
         const { data, count, error } = await query;
-        if (error) return context.json({ error: error.message }, 500);
+        if (error) {
+            logger.error('Telemetry query failed', { route: 'GET /api/telemetry/sessions/:id/events', error: String(error) });
+            return context.json({ error: 'Internal server error' }, 500);
+        }
 
         return context.json({ events: data ?? [], total: count ?? 0, page, per_page });
     })
@@ -55,7 +59,10 @@ export const telemetry_routes = new Hono<AppBindings>()
             .select('*').eq('agent_session_id', uuid)
             .order('created_at', { ascending: true });
 
-        if (error) return context.json({ error: error.message }, 500);
+        if (error) {
+            logger.error('Telemetry query failed', { route: 'GET /api/telemetry/sessions/:id/tools', error: String(error) });
+            return context.json({ error: 'Internal server error' }, 500);
+        }
         return context.json({ tools: data ?? [] });
     })
 
