@@ -6,6 +6,7 @@ import { get_metrics } from '../middleware/metrics';
 import type { AppBindings } from '../middleware/supabase';
 import { validate_uuid_params, require_param } from '../middleware/validate_params';
 import { check_last_admin, get_users } from '../services/admin_service';
+import { audit_service } from '../services/audit_service';
 import { logger } from '../utils/logger';
 import { invite_routes } from './admin_invites';
 import { settings_routes } from './settings';
@@ -63,6 +64,7 @@ export const admin_routes = new Hono<AppBindings>()
             logger.error('Failed to update role', { route: 'PATCH /api/admin/:id', id, error: String(error) });
             return context.json({ error: 'Failed to update role' }, 500);
         }
+        audit_service.log_admin_action(current_user_id, 'admin_role_change', { target_id: id, new_role: role });
         return context.json(data);
     })
 
@@ -81,6 +83,7 @@ export const admin_routes = new Hono<AppBindings>()
             logger.error('Failed to revoke sessions', { route: 'DELETE /api/admin/:id/sessions', id, error: String(error) });
             return context.json({ error: 'Failed to revoke sessions' }, 500);
         }
+        audit_service.log_admin_action(current_user_id, 'admin_session_revoke', { target_id: id });
         return context.json({ success: true });
     })
 
@@ -113,6 +116,7 @@ export const admin_routes = new Hono<AppBindings>()
             logger.error('Failed to delete user', { route: 'DELETE /api/admin/:id', id, error: String(error) });
             return context.json({ error: 'Failed to delete user' }, 500);
         }
+        audit_service.log_admin_action(current_user_id, 'admin_user_delete', { target_id: id });
         return context.json({ success: true });
     })
 
