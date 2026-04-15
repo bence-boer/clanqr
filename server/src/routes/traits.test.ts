@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { create_test_app, auth_headers } from '../test-app';
+import { create_test_app, auth_headers, admin_headers } from '../test-app';
 import { traits_routes } from './traits';
 import { TEST_SEED } from '../test-utils';
 
@@ -77,11 +77,25 @@ describe('traits routes', () => {
     });
 
     describe('POST /api/traits', () => {
-        it('creates a trait', async () => {
+        it('returns 403 for non-admin', async () => {
             const { app } = setup();
             const res = await app.request('/api/traits', {
                 method: 'POST',
                 headers: { ...auth_headers(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: 'New Trait',
+                    target: 'implementer',
+                    content: 'Some content'
+                })
+            });
+            expect(res.status).toBe(403);
+        });
+
+        it('creates a trait for admin', async () => {
+            const { app } = setup();
+            const res = await app.request('/api/traits', {
+                method: 'POST',
+                headers: { ...admin_headers(), 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     name: 'New Trait',
                     target: 'implementer',
@@ -97,7 +111,7 @@ describe('traits routes', () => {
             const { app } = setup();
             const res = await app.request('/api/traits', {
                 method: 'POST',
-                headers: { ...auth_headers(), 'Content-Type': 'application/json' },
+                headers: { ...admin_headers(), 'Content-Type': 'application/json' },
                 body: JSON.stringify({ target: 'implementer', content: 'Content' })
             });
             expect(res.status).toBe(400);
@@ -107,7 +121,7 @@ describe('traits routes', () => {
             const { app } = setup();
             const res = await app.request('/api/traits', {
                 method: 'POST',
-                headers: { ...auth_headers(), 'Content-Type': 'application/json' },
+                headers: { ...admin_headers(), 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name: 'Bad', target: 'invalid', content: 'x' })
             });
             expect(res.status).toBe(400);
@@ -135,11 +149,21 @@ describe('traits routes', () => {
     });
 
     describe('PATCH /api/traits/:id', () => {
-        it('updates a trait', async () => {
+        it('returns 403 for non-admin', async () => {
             const { app } = setup();
             const res = await app.request(`/api/traits/${TRAIT_ID}`, {
                 method: 'PATCH',
                 headers: { ...auth_headers(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: 'Updated Trait' })
+            });
+            expect(res.status).toBe(403);
+        });
+
+        it('updates a trait for admin', async () => {
+            const { app } = setup();
+            const res = await app.request(`/api/traits/${TRAIT_ID}`, {
+                method: 'PATCH',
+                headers: { ...admin_headers(), 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name: 'Updated Trait' })
             });
             expect(res.status).toBe(200);
@@ -149,12 +173,21 @@ describe('traits routes', () => {
     });
 
     describe('DELETE /api/traits/:id', () => {
-        it('deletes a trait', async () => {
+        it('returns 403 for non-admin', async () => {
+            const { app } = setup();
+            const res = await app.request(`/api/traits/${TRAIT_ID}`, {
+                method: 'DELETE',
+                headers: auth_headers()
+            });
+            expect(res.status).toBe(403);
+        });
+
+        it('deletes a trait for admin', async () => {
             const { app, store } = setup();
             const before = store.traits.length;
             const res = await app.request(`/api/traits/${TRAIT_ID}`, {
                 method: 'DELETE',
-                headers: auth_headers()
+                headers: admin_headers()
             });
             expect(res.status).toBe(200);
             expect(store.traits.length).toBe(before - 1);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { create_test_app, auth_headers } from '../test-app';
+import { create_test_app, auth_headers, admin_headers } from '../test-app';
 import { traits_routes } from './traits';
 import { TEST_SEED } from '../test-utils';
 
@@ -73,11 +73,25 @@ describe('traits assignment routes', () => {
     });
 
     describe('POST /api/traits/assign', () => {
-        it('creates an assignment', async () => {
+        it('returns 403 for non-admin', async () => {
             const { app } = setup();
             const res = await app.request('/api/traits/assign', {
                 method: 'POST',
                 headers: { ...auth_headers(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    trait_id: TRAIT_ID,
+                    scope: 'feature',
+                    feature_id: '00000000-0000-0000-0000-000000000010'
+                })
+            });
+            expect(res.status).toBe(403);
+        });
+
+        it('creates an assignment for admin', async () => {
+            const { app } = setup();
+            const res = await app.request('/api/traits/assign', {
+                method: 'POST',
+                headers: { ...admin_headers(), 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     trait_id: TRAIT_ID,
                     scope: 'feature',
@@ -91,7 +105,7 @@ describe('traits assignment routes', () => {
             const { app } = setup();
             const res = await app.request('/api/traits/assign', {
                 method: 'POST',
-                headers: { ...auth_headers(), 'Content-Type': 'application/json' },
+                headers: { ...admin_headers(), 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     trait_id: TRAIT_ID,
                     scope: 'project'
@@ -104,7 +118,7 @@ describe('traits assignment routes', () => {
             const { app } = setup();
             const res = await app.request('/api/traits/assign', {
                 method: 'POST',
-                headers: { ...auth_headers(), 'Content-Type': 'application/json' },
+                headers: { ...admin_headers(), 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     trait_id: TRAIT_ID,
                     scope: 'project',
@@ -116,12 +130,21 @@ describe('traits assignment routes', () => {
     });
 
     describe('DELETE /api/traits/assign/:id', () => {
-        it('removes an assignment', async () => {
+        it('returns 403 for non-admin', async () => {
+            const { app } = setup();
+            const res = await app.request(`/api/traits/assign/${ASSIGNMENT_ID}`, {
+                method: 'DELETE',
+                headers: auth_headers()
+            });
+            expect(res.status).toBe(403);
+        });
+
+        it('removes an assignment for admin', async () => {
             const { app, store } = setup();
             const before = store.trait_assignments.length;
             const res = await app.request(`/api/traits/assign/${ASSIGNMENT_ID}`, {
                 method: 'DELETE',
-                headers: auth_headers()
+                headers: admin_headers()
             });
             expect(res.status).toBe(200);
             expect(store.trait_assignments.length).toBe(before - 1);

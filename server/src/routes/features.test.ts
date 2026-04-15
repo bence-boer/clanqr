@@ -50,6 +50,34 @@ describe('features routes', () => {
             });
             expect(res.status).toBe(400);
         });
+
+        it('rejects non-draft status on create (SEC-025)', async () => {
+            const { app } = build_app();
+            const res = await app.request('/api/features', {
+                method: 'POST',
+                headers: { ...auth_headers(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    project_id: '00000000-0000-0000-0000-000000000001',
+                    title: 'Sneaky Feature',
+                    status: 'in_progress'
+                })
+            });
+            expect(res.status).toBe(400);
+        });
+
+        it('accepts explicit draft status on create', async () => {
+            const { app } = build_app();
+            const res = await app.request('/api/features', {
+                method: 'POST',
+                headers: { ...auth_headers(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    project_id: '00000000-0000-0000-0000-000000000001',
+                    title: 'Good Feature',
+                    status: 'draft'
+                })
+            });
+            expect(res.status).toBe(201);
+        });
     });
 
     describe('error sanitization (BE-004)', () => {

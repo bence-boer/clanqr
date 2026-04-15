@@ -17,7 +17,7 @@ const create_feature_schema = z.object({
     auto_approve: z.boolean().default(false),
     task_timeout_minutes: z.number().int().min(1).max(120).default(30),
     manager_retry_count: z.number().int().min(0).max(10).default(0),
-    status: z.enum(['draft', 'submitted', 'in_progress', 'done', 'cancelled']).default('draft'),
+    status: z.literal('draft').default('draft'),
     resources: z
         .array(z.object({ url: z.string().url(), title: z.string().optional() }))
         .optional()
