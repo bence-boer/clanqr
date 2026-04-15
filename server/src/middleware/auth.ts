@@ -1,6 +1,7 @@
 import { createMiddleware } from 'hono/factory';
 import { deleteCookie, getCookie } from 'hono/cookie';
 import { env } from '../env';
+import { hash_session_token } from '../routes/auth_shared';
 import { is_dev_session_token } from '../utils/dev_sessions';
 import type { AppBindings } from './supabase';
 
@@ -28,7 +29,7 @@ export function auth_middleware() {
         const { data: session } = await db
             .from('sessions')
             .select('id, user_id, expires_at, users(id, username, role, github_id)')
-            .eq('token', token)
+            .eq('token', hash_session_token(token))
             .gt('expires_at', new Date().toISOString())
             .returns<SessionWithUser[]>()
             .single();

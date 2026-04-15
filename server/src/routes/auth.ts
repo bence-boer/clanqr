@@ -3,6 +3,7 @@ import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { env } from '../env';
 import type { AppBindings } from '../middleware/supabase';
 import { is_dev_session_token } from '../utils/dev_sessions';
+import { hash_session_token } from './auth_shared';
 import { login_routes } from './auth_login';
 import { register_routes } from './auth_register';
 
@@ -22,7 +23,7 @@ export const auth_routes = new Hono<AppBindings>()
         const { data: session } = await db
             .from('sessions')
             .select('id, user_id, expires_at')
-            .eq('token', token)
+            .eq('token', hash_session_token(token))
             .gt('expires_at', new Date().toISOString())
             .single();
 
@@ -62,7 +63,7 @@ export const auth_routes = new Hono<AppBindings>()
             const { data } = await db
                 .from('sessions')
                 .select('id, expires_at, user_id')
-                .eq('token', token)
+                .eq('token', hash_session_token(token))
                 .gt('expires_at', new Date().toISOString())
                 .single();
             if (data) {
@@ -146,7 +147,7 @@ export const auth_routes = new Hono<AppBindings>()
         const db = context.get('supabase');
         const token = getCookie(context, 'session');
         if (token) {
-            await db.from('sessions').delete().eq('token', token);
+            await db.from('sessions').delete().eq('token', hash_session_token(token));
         }
         deleteCookie(context, 'session', { path: '/' });
         return context.json({ success: true });
