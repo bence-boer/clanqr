@@ -42,7 +42,14 @@ async function get_or_create_chat_session(
         customAgents: await get_custom_agents(),
         agent: 'researcher',
         hooks,
-        onPermissionRequest: async () => ({ kind: 'approved' as const })
+        onPermissionRequest: async (request: Record<string, unknown>) => {
+            const tool_name = String(request?.toolName ?? request?.kind ?? '');
+            if (permissions.denied.length > 0 && permissions.denied.includes(tool_name)) {
+                logger.warn('Chat permission denied for tool', { service: 'sdk', chat_session_id, tool: tool_name });
+                return { kind: 'denied-by-rules' as const, rules: [] as unknown[] };
+            }
+            return { kind: 'approved' as const };
+        }
     };
 
     let session: CopilotSession;
