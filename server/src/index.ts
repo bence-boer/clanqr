@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import { cors } from 'hono/cors';
 import { HTTPException } from 'hono/http-exception';
 import { logger as hono_logger } from 'hono/logger';
@@ -69,13 +70,10 @@ const app = new Hono<AppBindings>()
             credentials: true
         })
     )
-    .use('*', async (c, next) => {
-        const content_length = parseInt(c.req.header('content-length') ?? '0');
-        if (content_length > 1_000_000) {
-            return c.json({ error: 'Request body too large (max 1MB)' }, 413);
-        }
-        await next();
-    })
+    .use('*', bodyLimit({
+        maxSize: 1_000_000, // 1MB
+        onError: (c) => c.json({ error: 'Request body too large (max 1MB)' }, 413)
+    }))
     .use('*', rate_limit(env.NODE_ENV === 'production' ? 100 : 500, 60_000))
     .use('*', supabase_middleware())
     // Health check (no auth)
