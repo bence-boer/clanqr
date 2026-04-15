@@ -50,7 +50,11 @@ mock.module('./sdk_session_service', () => ({
 
 mock.module('./prompt_service', () => ({
     prompt_service: {
-        resolve_for_task: () => Promise.resolve('test prompt')
+        resolve_for_task: () => Promise.resolve('test prompt'),
+        resolve_for_manager: () => Promise.resolve('test prompt'),
+        sync_from_repo: () => Promise.resolve(),
+        get_prompt: () => Promise.resolve(null),
+        update_prompt: () => Promise.resolve(true)
     }
 }));
 
