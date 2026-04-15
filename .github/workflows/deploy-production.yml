@@ -55,6 +55,7 @@ jobs:
     steps:
       - name: Setup environment
         run: |
+          umask 077
           cat > /tmp/ralph-api-prod.env << ENVEOF
           SUPABASE_URL=http://172.17.0.1:54321
           SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
